@@ -25,7 +25,7 @@
  * - イラストのサムネイルからブックマークができる
  * -------------------------------------------------------------
  *
- * @version  1.10
+ * @version  1.11
  * @date     2011-04-14
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
@@ -536,6 +536,7 @@ Tombloo.Service.extractors.register([
 
 var pixivService = Tombloo.Service.extractors['Photo - pixiv (with *Tags)'];
 
+
 models.register(update({
     name: 'pixiv Bookmark',
     ICON: pixivService.ICON,
@@ -574,23 +575,42 @@ models.register(update({
         //input[@type="hidden"][@name="user_id"]/@value
     ]]></>),
     check: function(ps) {
-        return ps.pageUrl.indexOf(this.BASE_URL) === 0 &&
-               (this.canBookmark(ps) || this.canBookmarkUser(ps));
+        var result = false, isPrefs = false, re;
+        try {
+            // 設定画面を開いたときは pageUrl.match が true を返す
+            if (ps && ps.pageUrl && ps.pageUrl.match() === true) {
+                isPrefs = true;
+            }
+        } catch (e) {}
+        re = /(?:regular|photo|quote|link|conversation|video|bookmark)/;
+        result = re.test(ps.type);
+        if (!isPrefs) {
+            if (result && ps && ps.pageUrl &&
+                stringify(ps.pageUrl).indexOf(this.BASE_URL) === 0 &&
+                (this.canBookmark(ps) || this.canBookmarkUser(ps))) {
+                result = true;
+            } else {
+                result = false;
+            }
+        }
+        return result;
     },
     canBookmark: function(ps) {
-        return this.ILLUST_ID_REGEXP.test(ps.pageUrl) ||
-               !!$x(this.XPATH_BOOKMARK, this.getDocument(ps));
+        return ps && ps.pageUrl &&
+               (this.ILLUST_ID_REGEXP.test(ps.pageUrl) ||
+               !!$x(this.XPATH_BOOKMARK, this.getDocument(ps)));
     },
     canBookmarkUser: function(ps) {
-        return this.USER_ID_REGEXP.test(ps.pageUrl) ||
-               !!$x(this.XPATH_BOOKMARK_USER, this.getDocument(ps));
+        return ps && ps.pageUrl &&
+               (this.USER_ID_REGEXP.test(ps.pageUrl) ||
+               !!$x(this.XPATH_BOOKMARK_USER, this.getDocument(ps)));
     },
     isMangaPage: function(url) {
         return this.ILLUST_PAGE_REGEXP.test(url) &&
                this.MANGA_PAGE_REGEXP.test(url);
     },
     getIllustId: function(ps, doc) {
-        var illustId, xpaths, xpath, re, elem, value;
+        var self = this, illustId, xpaths, xpath, re, elem, value;
         re = /[()]\s*or\s*[()]/gi;
         xpaths = this.XPATH_BOOKMARK.split(re).map(function(x) {
             return x.replace(/^\s*[(]|[)]\s*$/g, '');
@@ -618,7 +638,7 @@ models.register(update({
                                     value = elem.getAttribute('href');
                                 } else if (tagName(elem) === 'form') {
                                     value = $x(
-                                        this.XPATH_BOOKMARK_ILLUST_ID_BY_FORM,
+                                        self.XPATH_BOOKMARK_ILLUST_ID_BY_FORM,
                                         elem
                                     );
                                 }
