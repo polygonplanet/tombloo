@@ -13,7 +13,7 @@ update(Tombloo.Service.actions[getMessage('label.action.installPatch')], {
         // 簡単にインストールできるように
         // GitHubじゃなくてもJavaScriptなら許可する
         var filename, url = ctx.linkURL;
-        filename = String(url).replace(/[!?#].*$/, '');
+        filename = String(url).replace(/[!?#].*$/g, '');
         return ctx.onLink &&
             filename.split('.').pop().toLowerCase() === 'js';
             //
