@@ -59,6 +59,7 @@ update(Tombloo.Service.actions[getMessage('label.action.installPatch')], {
                 addCallback(function(file) {
                     // 異常なスクリプトが含まれているとここで停止する
                     reload();
+                    
                     notify(
                         self.name,
                         getMessage('message.install.success'),
