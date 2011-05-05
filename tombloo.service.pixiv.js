@@ -31,8 +31,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version  1.20
- * @date     2011-05-02
+ * @version  1.21
+ * @date     2011-05-05
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -200,7 +200,7 @@ var pixivProto = {
         return uri;
     },
     getFullSizeImageURL: function(isManga, res) {
-        var url, xpath, text, re, match;
+        var url, text;
         text = res && res.responseText || '';
         if (isManga) {
             url = this.getMangaFirstImage(text);
@@ -981,7 +981,7 @@ update(pixivThumbsExpander, {
             this.inited = true;
             try {
                 cwin = this.getChromeWindow();
-                browser = cwin.getBrowser();
+                browser = cwin.gBrowser || cwin.getBrowser();
                 
                 //
                 // タブの読み込み状況から各ウィンドウをチェックする
@@ -1211,7 +1211,7 @@ update(pixivThumbsExpander, {
     },
     // ページ読み込み時の処理
     onPageLoaded: function() {
-        var self = this, win, doc, name;
+        var self = this, win, doc, name, target;
         win = this.getWindow();
         doc = this.getDocument();
         try {
@@ -1227,9 +1227,11 @@ update(pixivThumbsExpander, {
         if (this.setStoragePoint()) {
             
             // タブが閉じられるとき各プロパティを開放
+            target = doc.defaultView;
             name = 'beforeunload';
-            doc.defaultView.addEventListener(name, function() {
-                win.removeEventListener(name, arguments.callee, true);
+            
+            target.addEventListener(name, function() {
+                target.removeEventListener(name, arguments.callee, true);
                 self.clearProps(true);
             }, true);
             
