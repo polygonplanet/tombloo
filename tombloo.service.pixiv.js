@@ -31,7 +31,7 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version  1.21
+ * @version  1.22
  * @date     2011-05-05
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
@@ -1007,7 +1007,7 @@ update(pixivThumbsExpander, {
                     } catch (e) {
                         self.debug(e);
                     }
-                }, false);
+                }, true);
                 
                 // メニューがクリックされたとき pixiv 内ならその場で実行
                 if (this.check()) {
@@ -1226,10 +1226,10 @@ update(pixivThumbsExpander, {
         // ここで重複を遮断
         if (this.setStoragePoint()) {
             
-            // タブが閉じられるとき各プロパティを開放
-            target = doc.defaultView;
+            target = doc.defaultView || win;
             name = 'beforeunload';
             
+            // タブが閉じられるとき各プロパティを開放
             target.addEventListener(name, function() {
                 target.removeEventListener(name, arguments.callee, true);
                 self.clearProps(true);
