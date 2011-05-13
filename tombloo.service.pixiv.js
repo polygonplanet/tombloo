@@ -31,7 +31,7 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version  1.22
+ * @version  1.23
  * @date     2011-05-05
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
@@ -80,10 +80,18 @@ var pixivProto = {
         return result;
     },
     isThumbnailPage: function(ctx) {
-        var result = false, img, link, re, src, href;
+        var result = false, img, link, re, src, i, href;
         try {
             img = ctx.target;
             link = img.parentNode;
+            i = 0;
+            while (link && i < 3) {
+                if (link.href) {
+                    break;
+                }
+                link = link.parentNode;
+                i++;
+            }
             if (img && link && img.src && link.href) {
                 src = stringify(img.src);
                 href = stringify(link.href);
@@ -116,7 +124,7 @@ var pixivProto = {
         }
     },
     getNextPageURL: function(ctx) {
-        var url, xpath, doc, base, type, patterns = {
+        var url, xpath, doc, base, type, node, i, patterns = {
             illust: {
                 by: /\b(?:(mode=)(?:medium|[a-z]+))\b/i,
                 to: '$1big'
@@ -134,7 +142,14 @@ var pixivProto = {
         doc = this.getDocument(false, ctx);
         if (this.isThumbnailPage(ctx)) {
             try {
-                url = ctx.target.parentNode.href;
+                node = ctx.target.parentNode;
+                for (i = 0; i < 3; i++) {
+                    if (node.href) {
+                        break;
+                    }
+                    node = node.parentNode;
+                }
+                url = node.href;
             } catch (e) {}
         } else if (ctx && ctx.href && this.isMangaPage(ctx.href)) {
             url = ctx.href;
@@ -961,11 +976,21 @@ update(pixivThumbsExpander, {
             height: 448
         }
     },
+    // デフォルトの検索ページCSS
+    searchPageDefaultLayout: {
+        li: {
+            height: '250px',
+            overflow: 'auto'
+        }
+    },
+    // 画像読み込みエラー秒数
+    loadTimeLimit: 10,
     debugMode: false,
     loadingCanvas: defineLoadingCanvas(),
     fadings: [],
     isRankingPage: false,
     isStaccfeedPage: false,
+    isSearchPage: false,
     inited: false,
     init: function() {
         var self = this, cwin, browser;
@@ -1483,6 +1508,9 @@ update(pixivThumbsExpander, {
                 textAlign: 'left',
                 position: 'relative'
             });
+            if (opts.show === mimg && self.isSearchPage) {
+                self.fixSearchPageLayoutBefore(li);
+            }
             if (opts.show === mimg && self.isRankingPage) {
                 self.fixRankingPageLayout(li);
             }
@@ -1519,6 +1547,9 @@ update(pixivThumbsExpander, {
                 removeStyle(li, 'textAlign');
                 removeStyle(li, 'position');
                 removeStyle(li, 'width');
+                if (self.isSearchPage) {
+                    self.fixSearchPageLayoutAfter(li);
+                }
             };
             params = [mimg, to, from, before, after];
         } else {
@@ -1744,18 +1775,18 @@ update(pixivThumbsExpander, {
                 self.onErrorLoadImage.call(self, loading, nop, simg, mimg);
             };
             // 画像キャッシュが残ってる場合 onload の信頼性が薄いので
-            // 5秒以上経っても onload が呼ばれない場合エラーとみなす
+            // 規定秒以上経っても onload が呼ばれない場合エラーとみなす
             timerId = setTimeout(function() {
                 if (!loaded) {
                     error();
                 }
-            }, 5000);
+            }, this.loadTimeLimit * 1000);
             mimg.addEventListener('error', error, true);
             mimg.addEventListener('load', function() {
                 loaded = true;
                 clearTimeout(timerId);
                 
-                // 5秒以上経ってから onload が呼ばれた場合は遅延させる
+                // 規定秒間経ってから onload が呼ばれた場合は遅延させる
                 callLater(failed ? 3.5 : 0, function() {
                     try {
                         self.loadingCanvas.stop();
@@ -1893,6 +1924,44 @@ update(pixivThumbsExpander, {
             this.debug(e);
         }
     },
+    // 検索ページ用
+    // <p><img/></p> となっているのを整形する
+    // レイアウト調整
+    fixSearchPage: function(simg) {
+        var p, pc, parent, remove = false;
+        if (simg && simg.parentNode) {
+            if (tagName(simg.parentNode) === 'p') {
+                p = simg.parentNode;
+                pc = p.cloneNode(false);
+                pc.removeAttribute('style');
+                if (!pc.attributes || !pc.attributes.length) {
+                    remove = true;
+                }
+                pc = null;
+                if (remove) {
+                    parent = p.parentNode;
+                    p.removeChild(simg);
+                    parent.removeChild(p);
+                    parent.appendChild(simg);
+                }
+            }
+        }
+    },
+    fixSearchPageLayoutBefore: function(li) {
+        var self = this;
+        ['height', 'overflow'].forEach(function(prop) {
+            self.searchPageDefaultLayout.li[prop] = li.style[prop];
+        });
+        css(li, {
+            height: 'auto',
+            overflow: 'visible'
+        });
+    },
+    fixSearchPageLayoutAfter: function(li) {
+        forEach(this.searchPageDefaultLayout.li, function([key, val]) {
+            css(li, key, val);
+        });
+    },
     setImageEvent: function(simg) {
         var self = this, doc, a, parent, uri;
         doc = this.getDocument();
@@ -1916,6 +1985,12 @@ update(pixivThumbsExpander, {
                 // http://www.pixiv.net/ranking*
                 //
                 this.isRankingPage = true;
+            } else if (uri.indexOf('/search') >= 15) {
+                // Search
+                // http://www.pixiv.net/search.php?s_mode=s_tag&word=xxx
+                //
+                this.isSearchPage = true;
+                this.fixSearchPage(simg);
             }
             parent = a.parentNode;
             if (this.isParentNode(parent)) {
