@@ -31,8 +31,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version  1.23
- * @date     2011-05-05
+ * @version  1.24
+ * @date     2011-05-22
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -991,6 +991,7 @@ update(pixivThumbsExpander, {
     isRankingPage: false,
     isStaccfeedPage: false,
     isSearchPage: false,
+    isBookmarkUserNewIllustPage: false,
     inited: false,
     init: function() {
         var self = this, cwin, browser;
@@ -1508,7 +1509,8 @@ update(pixivThumbsExpander, {
                 textAlign: 'left',
                 position: 'relative'
             });
-            if (opts.show === mimg && self.isSearchPage) {
+            if (opts.show === mimg &&
+                (self.isSearchPage || self.isBookmarkUserNewIllustPage)) {
                 self.fixSearchPageLayoutBefore(li);
             }
             if (opts.show === mimg && self.isRankingPage) {
@@ -1547,7 +1549,7 @@ update(pixivThumbsExpander, {
                 removeStyle(li, 'textAlign');
                 removeStyle(li, 'position');
                 removeStyle(li, 'width');
-                if (self.isSearchPage) {
+                if (self.isSearchPage || self.isBookmarkUserNewIllustPage) {
                     self.fixSearchPageLayoutAfter(li);
                 }
             };
@@ -1990,6 +1992,13 @@ update(pixivThumbsExpander, {
                 // http://www.pixiv.net/search.php?s_mode=s_tag&word=xxx
                 //
                 this.isSearchPage = true;
+                this.fixSearchPage(simg);
+            } else if (uri.indexOf('/bookmark_new_illust') >= 15) {
+                // お気に入りユーザー新着イラスト
+                // http://www.pixiv.net/bookmark_new_illust*
+                //
+                this.isBookmarkUserNewIllustPage = true;
+                // 処理は Search と同じ
                 this.fixSearchPage(simg);
             }
             parent = a.parentNode;
