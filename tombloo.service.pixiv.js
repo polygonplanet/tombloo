@@ -31,7 +31,7 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version  1.24
+ * @version  1.25
  * @date     2011-05-22
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
@@ -976,8 +976,8 @@ update(pixivThumbsExpander, {
             height: 448
         }
     },
-    // デフォルトの検索ページCSS
-    searchPageDefaultLayout: {
+    // デフォルトの検索(<p><img/><p>となっている)ページのCSS
+    wrappedPageDefaultLayout: {
         li: {
             height: '250px',
             overflow: 'auto'
@@ -991,7 +991,7 @@ update(pixivThumbsExpander, {
     isRankingPage: false,
     isStaccfeedPage: false,
     isSearchPage: false,
-    isBookmarkUserNewIllustPage: false,
+    isWrappedImagePage: false,
     inited: false,
     init: function() {
         var self = this, cwin, browser;
@@ -1509,9 +1509,8 @@ update(pixivThumbsExpander, {
                 textAlign: 'left',
                 position: 'relative'
             });
-            if (opts.show === mimg &&
-                (self.isSearchPage || self.isBookmarkUserNewIllustPage)) {
-                self.fixSearchPageLayoutBefore(li);
+            if (opts.show === mimg && self.isWrappedImagePage) {
+                self.fixWrappedPageLayoutBefore(li);
             }
             if (opts.show === mimg && self.isRankingPage) {
                 self.fixRankingPageLayout(li);
@@ -1549,8 +1548,8 @@ update(pixivThumbsExpander, {
                 removeStyle(li, 'textAlign');
                 removeStyle(li, 'position');
                 removeStyle(li, 'width');
-                if (self.isSearchPage || self.isBookmarkUserNewIllustPage) {
-                    self.fixSearchPageLayoutAfter(li);
+                if (self.isWrappedImagePage) {
+                    self.fixWrappedPageLayoutAfter(li);
                 }
             };
             params = [mimg, to, from, before, after];
@@ -1926,41 +1925,39 @@ update(pixivThumbsExpander, {
             this.debug(e);
         }
     },
-    // 検索ページ用
+    // 検索系ページ用
     // <p><img/></p> となっているのを整形する
     // レイアウト調整
-    fixSearchPage: function(simg) {
+    fixWrappedPage: function(simg) {
         var p, pc, parent, remove = false;
-        if (simg && simg.parentNode) {
-            if (tagName(simg.parentNode) === 'p') {
-                p = simg.parentNode;
-                pc = p.cloneNode(false);
-                pc.removeAttribute('style');
-                if (!pc.attributes || !pc.attributes.length) {
-                    remove = true;
-                }
-                pc = null;
-                if (remove) {
-                    parent = p.parentNode;
-                    p.removeChild(simg);
-                    parent.removeChild(p);
-                    parent.appendChild(simg);
-                }
+        if (this.isWrappedPage(simg)) {
+            p = simg.parentNode;
+            pc = p.cloneNode(false);
+            pc.removeAttribute('style');
+            if (!pc.attributes || !pc.attributes.length) {
+                remove = true;
+            }
+            pc = null;
+            if (remove) {
+                parent = p.parentNode;
+                p.removeChild(simg);
+                parent.removeChild(p);
+                parent.appendChild(simg);
             }
         }
     },
-    fixSearchPageLayoutBefore: function(li) {
+    fixWrappedPageLayoutBefore: function(li) {
         var self = this;
         ['height', 'overflow'].forEach(function(prop) {
-            self.searchPageDefaultLayout.li[prop] = li.style[prop];
+            self.wrappedPageDefaultLayout.li[prop] = li.style[prop];
         });
         css(li, {
             height: 'auto',
             overflow: 'visible'
         });
     },
-    fixSearchPageLayoutAfter: function(li) {
-        forEach(this.searchPageDefaultLayout.li, function([key, val]) {
+    fixWrappedPageLayoutAfter: function(li) {
+        forEach(this.wrappedPageDefaultLayout.li, function([key, val]) {
             css(li, key, val);
         });
     },
@@ -1987,19 +1984,13 @@ update(pixivThumbsExpander, {
                 // http://www.pixiv.net/ranking*
                 //
                 this.isRankingPage = true;
-            } else if (uri.indexOf('/search') >= 15) {
-                // Search
-                // http://www.pixiv.net/search.php?s_mode=s_tag&word=xxx
+            }
+            if (this.isWrappedPage(simg)) {
                 //
-                this.isSearchPage = true;
-                this.fixSearchPage(simg);
-            } else if (uri.indexOf('/bookmark_new_illust') >= 15) {
-                // お気に入りユーザー新着イラスト
-                // http://www.pixiv.net/bookmark_new_illust*
+                // <p><img/></p> となっているページ
                 //
-                this.isBookmarkUserNewIllustPage = true;
-                // 処理は Search と同じ
-                this.fixSearchPage(simg);
+                this.isWrappedImagePage = true;
+                this.fixWrappedPage(simg);
             }
             parent = a.parentNode;
             if (this.isParentNode(parent)) {
@@ -2011,6 +2002,9 @@ update(pixivThumbsExpander, {
     },
     isBasicPage: function() {
         return !this.isRankingPage && !this.isStaccfeedPage;
+    },
+    isWrappedPage: function(simg) {
+        return simg && simg.parentNode && tagName(simg.parentNode) === 'p';
     },
     isParentNode: function(node) {
         var parents = {
