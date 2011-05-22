@@ -10,8 +10,8 @@
  * ※通知はウザイ可能性があるのでその場合はパッチ削除
  *
  *
- * @version  1.03
- * @date     2011-05-19
+ * @version  1.04
+ * @date     2011-05-22
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -44,8 +44,8 @@ var retryErrors = [
                 Tumblr: 
                   message : src is null
             ]]></>),
-        limit: 1,
-        defaultLimit: 1
+        limit: 2,
+        defaultLimit: 2
     }
     /*
     ,
