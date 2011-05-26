@@ -31,8 +31,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version  1.25
- * @date     2011-05-22
+ * @version  1.26
+ * @date     2011-05-26
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -187,7 +187,7 @@ var pixivProto = {
     },
     getMangaFirstImage: function(text) {
         var url, re;
-        re = /\b(https?:\/+.*?pixiv\.net\/[\w#!=.\/+-]*?\d+_p0\.\w+)\b/i;
+        re = /\b(https?:\/+.*?pixiv\.net\/[\w#!?=&;:.\/+-]*?\d+_p0\.\w+)\b/i;
         try {
             url = text.match(re)[1];
         } catch (e) {}
@@ -437,7 +437,8 @@ var pixivProto = {
     extractThumbnail: function(ctx, url) {
         var self = this;
         try {
-            if (ctx.pixivDocKey) {
+            // 外部から参照する場合は pixivExternal を使う
+            if (ctx.pixivDocKey && !ctx.pixivExternal) {
                 // 再帰呼び出しが起きたら永久ループするので止める
                 this.pixivDocuments[ctx.pixivDocKey] = null;
                 delete this.pixivDocuments[ctx.pixivDocKey];
@@ -749,7 +750,7 @@ var pixivBookmark = update({
                 });
                 break;
             default:
-                throw new Error('Bug: Invalid token')
+                throw new Error('Bug: Invalid token');
         }
         return result;
     },
@@ -819,20 +820,28 @@ var pixivBookmark = update({
                 return request(uri, {
                     referrer: psc.referUrl || addUrl
                 }).addCallback(function(response) {
-                    var oldNode, newNode, html, selectors, label, found;
-                    selectors = [
-                        '.works_illusticonsBlock div:last-child span',
-                        '#bookmark'
-                    ];
+                    var oldNode, newNode, html, label, found, selectors = [
+                        [0, '.works_illusticonsBlock div:last-child span'],
+                        [0, '#bookmark'],
+                        [1, 'a[href*="bookmark_add"][href*="type=illust"]'],
+                        [1, '.action .bookmark a[href*="type=illust"]'],
+                        [1, '.bookmark a[href*="type=illust"]']
+                    ], select = function(context, [level, selector]) {
+                        var node = context.querySelector(selector);
+                        while (node && --level >= 0) {
+                            node = node.parentNode;
+                        }
+                        return node;
+                    };
                     try {
                         html = convertToHTMLDocument(response.responseText);
                         found = false;
-                        selectors.forEach(function(selector) {
+                        selectors.forEach(function(sels) {
                             if (!found) {
-                                newNode = html.querySelector(selector);
-                                oldNode = curDoc.querySelector(selector);
+                                newNode = select(html, sels);
+                                oldNode = select(curDoc, sels);
                                 if (newNode && oldNode) {
-                                    found = selector;
+                                    found = true;
                                 }
                             }
                         });
@@ -840,7 +849,9 @@ var pixivBookmark = update({
                             //FIXME: まれにデコード未処理で返ってくる
                             label = self.fixBookmarkPageLabel(newNode);
                             oldNode.innerHTML = label || newNode.innerHTML;
-                            oldNode.removeAttribute('class');
+                            if (!/bookmark/.test(oldNode.className)) {
+                                oldNode.removeAttribute('class');
+                            }
                         }
                     } catch (e) {
                         // この時すでにPOST完了してるので例外は投げない
@@ -877,15 +888,32 @@ var pixivBookmark = update({
             }).addCallback(function(res) {
                 var uri = psc.pageUrl, curDoc = self.getDocument(psc, true);
                 return request(uri).addCallback(function(response) {
-                    var oldNode, newNode, html, selector;
-                    selector = '#favorite-container';
+                    var oldNode, newNode, html, label, found, selectors = [
+                        [0, '#favorite-container'],
+                        [1, 'a[href*="bookmark"][href*="type=user"]']
+                    ], select = function(context, [level, selector]) {
+                        var node = context.querySelector(selector);
+                        while (node && --level >= 0) {
+                            node = node.parentNode;
+                        }
+                        return node;
+                    };
                     try {
                         html = convertToHTMLDocument(response.responseText);
-                        newNode = html.querySelector(selector);
-                        oldNode = curDoc.querySelector(selector);
-                        if (newNode && oldNode) {
+                        found = false;
+                        selectors.forEach(function(sels) {
+                            if (!found) {
+                                newNode = select(html, sels);
+                                oldNode = select(curDoc, sels);
+                                if (newNode && oldNode) {
+                                    found = true;
+                                }
+                            }
+                        });
+                        if (found) {
                             // イベントはコピーしないので見た目だけ
-                            oldNode.innerHTML = newNode.innerHTML;
+                            label = self.fixBookmarkPageLabel(newNode);
+                            oldNode.innerHTML = label || newNode.innerHTML;
                         }
                     } catch (e) {
                         // この時すでにPOST完了してるので例外は投げない
@@ -1715,9 +1743,18 @@ update(pixivThumbsExpander, {
             MozBorderRadius: 3,
             borderRadius: 3,
             padding: 2,
-            verticalAlign: 'middle'
+            verticalAlign: 'middle',
+            //cursor: 'zoom-in',
+            cursor: '-moz-zoom-in'
         });
         return img;
+    },
+    setNopStyle: function(nop) {
+        css(nop, {
+            //cursor: 'zoom-in',
+            cursor: '-moz-zoom-in'
+        });
+        return nop;
     },
     onErrorLoadImage: function(loading, nop, simg, mimg) {
         var self = this, doc, errmsg;
@@ -1896,6 +1933,7 @@ update(pixivThumbsExpander, {
                 return false;
             }, true);
             this.setImageStyle(simg);
+            this.setNopStyle(nop);
             show(li, 'inline-block');
         }
     },
