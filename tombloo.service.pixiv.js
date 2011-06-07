@@ -31,8 +31,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version  1.26
- * @date     2011-05-26
+ * @version  1.27
+ * @date     2011-06-07
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -1408,7 +1408,7 @@ update(pixivThumbsExpander, {
     onNodeInserted: function(event) {
         var elem;
         elem = event.target;
-        if (elem && tagName(elem) === 'img' &&
+        if (this.expanding && elem && tagName(elem) === 'img' &&
             pixivService.isThumbnailPage(event)) {
             
             this.setImageEvent(elem);
@@ -1416,13 +1416,15 @@ update(pixivThumbsExpander, {
     },
     searchImageNodes: function(context) {
         var self = this, doc, images;
-        doc = this.getDocument();
-        images = (context || doc).getElementsByTagName('img');
-        toArray(images).forEach(function(image) {
-            callLater(0.1, function() {
-                self.onNodeInserted.call(self, {target: image});
+        if (this.expanding) {
+            doc = this.getDocument();
+            images = (context || doc).getElementsByTagName('img');
+            toArray(images).forEach(function(image) {
+                callLater(0.1, function() {
+                    self.onNodeInserted.call(self, {target: image});
+                });
             });
-        });
+        }
     },
     // エレメントのサイズと座標を取得 (表示サイズ)
     getSizePos: function(elem) {
