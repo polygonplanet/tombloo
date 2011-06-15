@@ -15,8 +15,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version  1.10
- * @date     2011-06-01
+ * @version  1.11
+ * @date     2011-06-15
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -31,8 +31,22 @@
 //-----------------------------------------------------------------------------
 (function(undefined) {
 
+// Define language
+const LANG = (function(n) {
+    return ((n && n.language || n.userLanguage || n.browserLanguage ||
+           n.systemLanguage) || 'en').split('-').shift().toLowerCase();
+})(navigator);
+
+// メニューのラベル
+const MENU_LABEL = ({
+    ja: 'Twitter括弧で囲うパッチの設定',
+    en: 'Twitter enclosure settings'
+})[LANG === 'ja' && LANG || 'en'];
+
+
 // Util object
 var potTwitterEncUtil = definePotTwitterEncUtil();
+
 
 // postの前に代替テキストとセパレータを設定
 addBefore(Twitter, 'post', function(ps) {
@@ -45,7 +59,7 @@ addBefore(Twitter, 'post', function(ps) {
 
 // コンテキストメニューに設定ダイアログを登録
 Tombloo.Service.actions.register({
-    name: 'Twitter enclosure settings',
+    name: MENU_LABEL,
     type: 'context',
     icon: Twitter.ICON,
     check: function(ctx) {
@@ -79,7 +93,7 @@ Tombloo.Service.actions.register({
 Tombloo.Service.actions.register({
     name: '----',
     type: 'context'
-}, 'Twitter enclosure settings');
+}, MENU_LABEL);
 
 
 /**
@@ -153,7 +167,21 @@ function beforeFilter(ps, prefix, separator) {
 
 
 function generateXUL() {
-    var head, template, script, code;
+    var head, template, script, code, labels;
+    labels = {
+        '{PREFIX}': {
+            ja: '何も入力しなかったときの代替テキスト：',
+            en: 'Alternative(prefix) text when input field is empty:'
+        },
+        '{SEPARATOR}': {
+            ja: '代替テキストの後に付くセパレータ：',
+            en: 'Separator which adheres after alternative text:'
+        },
+        '{SEPARATOR_NOTE}': {
+            ja: 'セパレータは代替テキストの末尾が記号の場合は付きません',
+            en: 'If the symbolic end of the alt text, then separator is not appended.'
+        }
+    };
     head = 'data:application/vnd.mozilla.xul+xml;charset=utf-8,';
     template = trim(<><![CDATA[
         <?xml version="1.0" encoding="utf-8"?>
@@ -186,12 +214,12 @@ function generateXUL() {
                 xmlns:html="http://www.w3.org/1999/xhtml">
             <hbox flex="1">
                 <vbox style="margin-left: 0.7em;" flex="1">
-                    <label value="何も入力しなかったときの代替テキスト："/>
+                    <label value="{PREFIX}"/>
                     <textbox id="prefix" rows="1" multiline="false"
                              maxlength="140" value=""/>
                     <spacer height="5"/>
-                    <label value="代替テキストの後に付くセパレータ："/>
-                    <label value="セパレータは代替テキストの末尾が記号の場合は付きません"
+                    <label value="{SEPARATOR}"/>
+                    <label value="{SEPARATOR_NOTE}"
                            style="margin: 0.5em; font-size: small;"/>
                     <textbox id="separator" rows="1" multiline="false"
                              maxlength="140" value=""/>
@@ -199,13 +227,17 @@ function generateXUL() {
                     <textbox id="preview" rows="5" multiline="true"
                              readonly="true" value=""/>
                     <spacer height="10"/>
-                    <button id="submit-button" dlgtype="accept" 
+                    <button id="submit-button" dlgtype="accept" label="OK"
                             image="chrome://tombloo/skin/accept.png"/>
                 </vbox>
             </hbox>
             <script>{SCRIPT}</script>
         </dialog>
     ]]></>.toString());
+    
+    forEach(labels, function([key, vals]) {
+        template = template.replace(key, vals[LANG === 'ja' && LANG || 'en']);
+    });
     
     script = <><![CDATA[
         var args = arguments, params = args[0], env;
