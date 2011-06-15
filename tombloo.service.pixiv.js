@@ -31,8 +31,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version  1.27
- * @date     2011-06-07
+ * @version  1.28
+ * @date     2011-06-15
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -44,6 +44,11 @@
 //-----------------------------------------------------------------------------
 (function(undefined) {
 //-----------------------------------------------------------------------------
+const LANG = (function(n) {
+    return ((n && n.language || n.userLanguage || n.browserLanguage ||
+           n.systemLanguage) || 'en').split('-').shift().toLowerCase();
+})(navigator);
+
 /**
  * pixiv Extractor
  */
@@ -2063,8 +2068,16 @@ update(pixivThumbsExpander, {
 
 //-----------------------------------------------------------------------------
 // コンテキストメニューに登録
+(function() {
+
+const PIXIV_MENU_LABEL = ({
+    ja: 'pixivサムネイルの拡大表示',
+    en: 'Expand pixiv thumbnail image'
+})[LANG === 'ja' && LANG || 'en'];
+
+
 Tombloo.Service.actions.register({
-    name: 'Expand pixiv thumbnail image',
+    name: PIXIV_MENU_LABEL,
     type: 'context',
     icon: pixivService.ICON,
     
@@ -2123,7 +2136,11 @@ Tombloo.Service.actions.register({
 }, '----');
 
 // プロパティを初期化
-Tombloo.Service.actions['Expand pixiv thumbnail image'].init();
+Tombloo.Service.actions[PIXIV_MENU_LABEL].init();
+
+
+})();
+
 
 })();
 //-----------------------------------------------------------------------------
