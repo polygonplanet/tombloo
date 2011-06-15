@@ -29,7 +29,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.17
+ * @version  1.18
  * @date     2011-06-16
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
@@ -156,7 +156,7 @@ const POT_SCRIPT_DOCCOMMENT_SIZE = 1024 * 5;
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.17',
+    VERSION: '1.18',
     SYSTEM: 'Tombloo',
     lang: (function(n) {
         return ((n && n.language || n.userLanguage || n.browserLanguage ||
