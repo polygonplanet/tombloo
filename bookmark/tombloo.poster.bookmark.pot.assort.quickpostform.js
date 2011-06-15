@@ -16,8 +16,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.06
- * @date     2011-06-15
+ * @version  1.07
+ * @date     2011-06-16
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -574,14 +574,22 @@ update(FormPanel.prototype.types, {
             setTimeout(function() {
                 var sw, sh, win;
                 try {
-                    win = getMostRecentWindow();
+                    try {
+                        win = getMostRecentWindow();
+                    } catch (e) {
+                        win = window;
+                    }
                     try {
                         sw = win.screen.availWidth  || win.screen.width;
                         sh = win.screen.availHeight || win.screen.height;
                     } catch (e) {
-                        sw = 1200;
-                        sh = 900;
+                        try {
+                            sw = win.content.screen.availWidth  || win.content.screen.width;
+                            sh = win.content.screen.availHeight || win.content.screen.height;
+                        } catch (e) {}
                     }
+                    sw = sw || 1200;
+                    sh = sh || 900;
                     window.moveTo(
                         Math.floor((sw - (window.outerWidth  || window.innerWidth  || 400)) / 2),
                         Math.floor((sh - (window.outerHeight || window.innerHeight || 600)) / 2)
