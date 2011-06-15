@@ -29,7 +29,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.18
+ * @version  1.19
  * @date     2011-06-16
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
@@ -156,7 +156,7 @@ const POT_SCRIPT_DOCCOMMENT_SIZE = 1024 * 5;
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.18',
+    VERSION: '1.19',
     SYSTEM: 'Tombloo',
     lang: (function(n) {
         return ((n && n.language || n.userLanguage || n.browserLanguage ||
@@ -7458,6 +7458,17 @@ Pot.extend(Pot.SetupUtil, {
                 ]]></>)
             },
             {
+                // セパレータのマージンを調整(下側)
+                from: Pot.SetupUtil.createPattern(<><![CDATA[
+                    ([\u0009\u0020]*)(<separator\b 
+                        class = ["']groove-thin['"] width = ["']1['"] 
+                        style = ["']margin : 0?\.6em 0 1\.5em 0;?['"] />)(\r\n|\r|\n|)
+                ]]></>),
+                to: Pot.StringUtil.mtrim(<><![CDATA[
+                    $1<separator class="groove-thin" width="1" style="margin: 0.1em 0 0.1em 0;" />$3
+                ]]></>)
+            },
+            {
                 // 「Bookmarkクイックポスト」の入力欄を追加
                 from: Pot.SetupUtil.createPattern(<><![CDATA[
                     ([\u0009\u0020]*)(<row\b[^>]*>
@@ -7621,6 +7632,11 @@ Pot.extend(Pot.SetupUtil, {
             Pot.SetupUtil.progressLog('%s Appended.', PSU_DTD_EN_FILE);
             return wait(1);
         }).addCallback(function() {
+            // ブックマークのショートカットキーを設定
+            if (Pot.getPref(POT_SHORTCUTKEY_BOOKMARK) === undefined) {
+                // 'CTRL + D' をBookmarkショートカットに設定
+                Pot.setPref(POT_SHORTCUTKEY_BOOKMARK, Pot.sprintf('%s + D', KEY_ACCEL));
+            }
             Pot.SetupUtil.progressLog('Installation completion.');
             return wait(2);
         }).addCallback(function() {
