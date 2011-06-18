@@ -16,8 +16,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.07
- * @date     2011-06-16
+ * @version  1.08
+ * @date     2011-06-19
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -35,7 +35,7 @@ try {
         throw new Error('Illegal flow, this script must run in content directory');
     }
 } catch (e) {
-    return;
+    throw e;
 }
 
 //-----------------------------------------------------------------------------
@@ -168,6 +168,36 @@ update(FormPanel.prototype.types, {
                         removeElementClass(elmTag, 'used');
                     }
                 });
+            },
+            // 最大値を超えた場合はパッチのAPIを使う
+            comvertToCandidates: function(tags) {
+                // 各タグサービスで使われてるデリミタを合成
+                const SEP = ' []'.slice(0, 2);
+                let d, source = tags.join(SEP);
+                if (source.includesFullwidth()) {
+                    d = Yahoo.getRomaReadings(source).addCallback(function(result) {
+                        return result.join('').split(SEP);
+                    }).addErrback(function(err) {
+                        // err: "Request Entity Too Large"
+                        let df = Yahoo.Pot.getRomaReadings(source).addCallback(function(result) {
+                            return result.join('').split(SEP);
+                        });
+                        df.callback();
+                        return df;
+                    });
+                } else {
+                    d = succeed(tags);
+                }
+                d.addCallback(function(readings) {
+                    return zip(readings, tags).map(function([reading, tag]) {
+                        return {
+                            // 読みをある程度補完して返す
+                            reading: Pot.StringUtil.precedeReading(reading, tag),
+                            value: tag
+                        };
+                    });
+                });
+                return d;
             },
             // コンテキストメニューを拡張
             potMenuLoaded: false,
@@ -591,8 +621,8 @@ update(FormPanel.prototype.types, {
                     sw = sw || 1200;
                     sh = sh || 900;
                     window.moveTo(
-                        Math.floor((sw - (window.outerWidth  || window.innerWidth  || 400)) / 2),
-                        Math.floor((sh - (window.outerHeight || window.innerHeight || 600)) / 2)
+                        Math.floor((sw / 2) - ((window.outerWidth  || window.innerWidth  || 400) / 2)),
+                        Math.floor((sh / 2) - ((window.outerHeight || window.innerHeight || 600) / 2))
                     );
                 } catch (e) {}
             }, 75);
