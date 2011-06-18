@@ -26,10 +26,11 @@
  * - タグ付け補助用のキーワード抽出などをメニューに追加
  * - パッチのバージョン確認と自動アップデート機能を実装
  * - メニューからクリックするだけでパッチのアンインストールが可能
+ * - FirefoxBookmarkなどおすすめタグが無いサービスでもキーワードを表示する機能
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.20
+ * @version  1.21
  * @date     2011-06-19
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
@@ -156,7 +157,7 @@ const POT_SCRIPT_DOCCOMMENT_SIZE = 1024 * 5;
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.20',
+    VERSION: '1.21',
     SYSTEM: 'Tombloo',
     lang: (function(n) {
         return ((n && n.language || n.userLanguage || n.browserLanguage ||
@@ -8036,6 +8037,9 @@ Pot.extend(Pot.SetupUtil, {
             case PSU_DTD_EN_FILE:
                 uri = 'tombloo://chrome/locale/' + fileName;
                 break;
+            case PSU_BMA_SCRIPT_NAME:
+                uri = 'tombloo.patch://' + fileName;
+                break;
             default:
                 uri = fileName;
                 break;
@@ -8439,6 +8443,15 @@ Pot.extend(Pot.SetupUtil, {
             path = Pot.SetupUtil.getConstantURI(PSU_DTD_EN_FILE);
             Pot.SetupUtil.restoreBackup(path);
             Pot.SetupUtil.progressLog('%s Restored.', PSU_DTD_EN_FILE);
+            return wait(1);
+        }).addCallback(function() {
+            // Bookmarkパッチ(このファイル)を削除
+            let path;
+            path = Pot.SetupUtil.getConstantURI(PSU_BMA_SCRIPT_NAME);
+            if (!Pot.SetupUtil.removeFile(path)) {
+                throw new Error('Failed to remove the file: ' + PSU_BMA_SCRIPT_NAME);
+            }
+            Pot.SetupUtil.progressLog('%s Removed.', PSU_BMA_SCRIPT_NAME);
             return wait(1);
         }).addCallback(function() {
             Pot.SetupUtil.progressLog('Uninstallation completion.');
