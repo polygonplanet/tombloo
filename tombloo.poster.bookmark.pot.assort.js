@@ -27,10 +27,11 @@
  * - パッチのバージョン確認と自動アップデート機能を実装
  * - メニューからクリックするだけでパッチのアンインストールが可能
  * - FirefoxBookmarkなどおすすめタグが無いサービスでもキーワードを表示する機能
+ * - タグ名補完で読みが想定外なものを本来の読みに一部修正
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.21
+ * @version  1.22
  * @date     2011-06-19
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
@@ -157,7 +158,7 @@ const POT_SCRIPT_DOCCOMMENT_SIZE = 1024 * 5;
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.21',
+    VERSION: '1.22',
     SYSTEM: 'Tombloo',
     lang: (function(n) {
         return ((n && n.language || n.userLanguage || n.browserLanguage ||
@@ -3421,16 +3422,32 @@ Pot.extend(Pot.StringUtil, {
             'サンカッケー'                   : '△'
         };
         forEach(lists, function([k, v]) {
-            maps.set(k.toRoma(), v);
+            let roma;
+            try {
+                roma = k.toRoma();
+                if (!roma) {
+                    throw roma;
+                }
+                maps.set(roma, v);
+            } catch (e) {}
         });
         lists = null;
         return (Pot.StringUtil.precedeReading = function(reading, tag) {
             let result = reading;
             maps.forEach(function(read, val) {
-                if ((Pot.isString(val) && tag === val) ||
-                    (Pot.isRegExp(val) && val.test(tag))) {
-                    result = read;
-                    throw Pot.StopIteration;
+                try {
+                    if ((Pot.isString(val) && tag === val) ||
+                        (Pot.isRegExp(val) && val.test(tag))) {
+                        result = read;
+                        throw Pot.StopIteration;
+                    }
+                } catch (e) {
+                    if (e == StopIteration || (e instanceof StopIteration) ||
+                        e == Pot.StopIteration || (e instanceof Pot.StopIteration) ||
+                        Pot.isStopIter(e)
+                    ) {
+                        throw e;
+                    }
                 }
             });
             return result;
