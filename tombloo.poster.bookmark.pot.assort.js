@@ -35,8 +35,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.23
- * @date     2011-06-19
+ * @version  1.24
+ * @date     2011-06-20
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -162,7 +162,7 @@ const POT_SCRIPT_DOCCOMMENT_SIZE = 1024 * 5;
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.23',
+    VERSION: '1.24',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -417,7 +417,7 @@ Pot.extend({
         });
         ForEach.prototype = {
             constructor: ForEach,
-            interval: 12,
+            interval: ForEach.speeds.normal,
             speeds: ForEach.speeds,
             iter: null,
             result: null,
@@ -2456,7 +2456,7 @@ Pot.extend(Pot.FileUtil, {
         if (!file.exists()) {
             result = true;
         } else {
-            file.permissions = 0666;
+            file.permissions = file.isDirectory() ? 0774 : 0666;
             file.remove(!!recursive);
             if (!file.exists()) {
                 result = true;
@@ -2581,7 +2581,7 @@ Pot.extend(Pot.FileUtil, {
         file = getExtensionDir(EXTENSION_ID);
         dir = Pot.StringUtil.stringify(path).split(/[\/\\]/);
         fileName = dir.pop();
-        while (dir && dir[dir.length - 1].length === 0) {
+        while (dir && dir.length && dir[dir.length - 1].length === 0) {
             dir.pop();
         }
         dir = dir.join(sep);
@@ -8267,6 +8267,7 @@ const PSU_UNINSTALL_TITLE   = 'Tombloo - Bookmarkパッチのアンインスト�
 const PSU_UPDATECHECK_TITLE = 'Tombloo - Bookmarkパッチのアップデート確認';
 const PSU_UPDATE_TITLE      = 'Tombloo - Bookmarkパッチのアップデート';
 const PSU_BACKUP_SUFFIX     = '-bookmark.pot.assort.bk';
+const PSU_BACKUP_DIR_NAME   = 'chrome';
 const PSU_BMA_SCRIPT_NAME   = 'tombloo.poster.bookmark.pot.assort.js';
 const PSU_QPF_SCRIPT_NAME   = 'tombloo.poster.bookmark.pot.assort.quickpostform.js';
 const PSU_QPF_XUL_FILE      = 'quickPostForm.xul';
@@ -8312,6 +8313,9 @@ Pot.extend(Pot.SetupUtil, {
             case PSU_BMA_SCRIPT_NAME:
                 uri = 'tombloo.patch://' + fileName;
                 break;
+            case PSU_BACKUP_DIR_NAME:
+                uri = 'tombloo://' + fileName;
+                break;
             default:
                 uri = fileName;
                 break;
@@ -8328,6 +8332,14 @@ Pot.extend(Pot.SetupUtil, {
             Pot.SetupUtil.progress = new Pot.ProgressDialog();
             Pot.SetupUtil.progress.open(PSU_INSTALL_TITLE, 'Installing...');
             return wait(2);
+        }).addCallback(function() {
+            // すべてのバックアップを作成
+            Pot.SetupUtil.progressLog('Processing to backup the directory...');
+            if (!Pot.SetupUtil.backupAll()) {
+                throw new Error('Failed to backup directory: inititalize');
+            }
+            Pot.SetupUtil.progressLog('Backup: Completed.');
+            return wait(1);
         }).addCallback(function() {
             // QuickPostFormパッチをダウンロード
             let code, file, path, dd;
@@ -8627,6 +8639,15 @@ Pot.extend(Pot.SetupUtil, {
             Pot.SetupUtil.progressLog('%s Appended.', PSU_DTD_EN_FILE);
             return wait(1);
         }).addCallback(function() {
+            // バックアップを消去する
+            try {
+                Pot.SetupUtil.removeBackupAll();
+                Pot.SetupUtil.progressLog('A backup directory: Cleared.');
+            } catch (e) {
+                Pot.SetupUtil.progressLog('A backup directory: Failed to clear!');
+            }
+            return wait(1);
+        }).addCallback(function() {
             // ブックマークのショートカットキーを設定
             if (Pot.getPref(POT_SHORTCUTKEY_BOOKMARK) === undefined) {
                 // 'CTRL + D' をBookmarkショートカットに設定
@@ -8649,6 +8670,15 @@ Pot.extend(Pot.SetupUtil, {
                 try {
                     d.cancel(err);
                 } catch (er) {}
+                try {
+                    // 途中でファイルが欠落してた場合はバックアップから復元する
+                    Pot.SetupUtil.restoreBackupAll();
+                } catch (e) {}
+                callLater(2, function() {
+                    try {
+                        Pot.SetupUtil.removeBackupAll();
+                    } catch (e) {}
+                });
                 Pot.SetupUtil.progressLog(
                     'エラーが起きてしまいました…ごめんなさい…\n\n%s',
                     err && err.message || err
@@ -8674,6 +8704,18 @@ Pot.extend(Pot.SetupUtil, {
             Pot.SetupUtil.progress = new Pot.ProgressDialog();
             Pot.SetupUtil.progress.open(PSU_UNINSTALL_TITLE, 'Uninstalling...');
             return wait(2);
+        }).addCallback(function() {
+            // すべてのバックアップを作成
+            try {
+                // もし古いバックアップが残ってたら消去する
+                Pot.SetupUtil.removeBackupAll();
+            } catch (e) {}
+            Pot.SetupUtil.progressLog('Processing to backup the directory...');
+            if (!Pot.SetupUtil.backupAll()) {
+                throw new Error('Failed to backup directory: inititalize');
+            }
+            Pot.SetupUtil.progressLog('Backup: Completed.');
+            return wait(1);
         }).addCallback(function() {
             // QuickPostFormパッチを削除
             let path;
@@ -8726,6 +8768,15 @@ Pot.extend(Pot.SetupUtil, {
             Pot.SetupUtil.progressLog('%s Removed.', PSU_BMA_SCRIPT_NAME);
             return wait(1);
         }).addCallback(function() {
+            // バックアップを消去する
+            try {
+                Pot.SetupUtil.removeBackupAll();
+                Pot.SetupUtil.progressLog('A backup directory: Cleared.');
+            } catch (e) {
+                Pot.SetupUtil.progressLog('A backup directory: Failed to clear!');
+            }
+            return wait(1);
+        }).addCallback(function() {
             Pot.SetupUtil.progressLog('Uninstallation completion.');
             return wait(2);
         }).addCallback(function() {
@@ -8745,6 +8796,15 @@ Pot.extend(Pot.SetupUtil, {
                 try {
                     d.cancel(err);
                 } catch (er) {}
+                try {
+                    // 途中でファイルが欠落してエラーが起きた場合はバックアップから復元する
+                    Pot.SetupUtil.restoreBackupAll();
+                } catch (e) {}
+                callLater(2, function() {
+                    try {
+                        Pot.SetupUtil.removeBackupAll();
+                    } catch (e) {}
+                });
                 Pot.SetupUtil.progressLog(
                     'エラーが起きてしまいました…ごめんなさい…\n\n%s',
                     err && err.message || err
@@ -9029,6 +9089,27 @@ Pot.extend(Pot.SetupUtil, {
         }
         return result;
     },
+    backupAll: function() {
+        let result = false, path, dir, bk;
+        try {
+            path = Pot.SetupUtil.getConstantURI(PSU_BACKUP_DIR_NAME);
+            dir = Pot.SetupUtil.assignLocalFile(path);
+            if (dir.isDirectory()) {
+                bk = Pot.SetupUtil.toBackupFile(dir.path);
+                if (bk.exists() && bk.isDirectory()) {
+                    result = true;
+                } else {
+                    dir.copyTo(createDir(bk.parent), bk.leafName);
+                    if (bk.exists() && bk.isDirectory()) {
+                        result = true;
+                    }
+                }
+            }
+        } catch (e) {
+            Pot.SetupUtil.raiseError(e);
+        }
+        return result;
+    },
     backup: function(path) {
         let result = false, file, bk;
         try {
@@ -9047,6 +9128,28 @@ Pot.extend(Pot.SetupUtil, {
             }
             if (!result) {
                 throw new Error('Backup failed: ' + bk.leafName);
+            }
+        } catch (e) {
+            Pot.SetupUtil.raiseError(e);
+        }
+        return result;
+    },
+    restoreBackupAll: function() {
+        let result = false, name, path, dir, bk;
+        try {
+            path = Pot.SetupUtil.getConstantURI(PSU_BACKUP_DIR_NAME);
+            dir = Pot.SetupUtil.assignLocalFile(path);
+            if (dir.exists() && dir.isDirectory()) {
+                name = dir.leafName;
+                bk = Pot.SetupUtil.toBackupFile(dir.path);
+                if (bk.exists() && bk.isDirectory()) {
+                    dir.permissions = 0774;
+                    if (Pot.SetupUtil.removeFile(dir, true)) {
+                        if (Pot.FileUtil.rename(bk, name)) {
+                            result = true;
+                        }
+                    }
+                }
             }
         } catch (e) {
             Pot.SetupUtil.raiseError(e);
@@ -9079,14 +9182,33 @@ Pot.extend(Pot.SetupUtil, {
         }
         return result;
     },
+    removeBackupAll: function() {
+        let result = false, path, bk;
+        try {
+            path = Pot.SetupUtil.getConstantURI(PSU_BACKUP_DIR_NAME);
+            bk = Pot.SetupUtil.toBackupFile(path);
+            if (!bk.exists()) {
+                result = true;
+            } else if (bk.isDirectory()) {
+                bk.permissions = 0774;
+                if (Pot.SetupUtil.removeFile(bk, true)) {
+                    result = true;
+                }
+            }
+        } catch (e) {
+            Pot.SetupUtil.raiseError(e);
+        }
+        return result;
+    },
     removeFile: function(fileName, recursive) {
-        let file, result = false;
+        let file, perms, result = false;
         try {
             file = Pot.SetupUtil.assignLocalFile(fileName);
             if (!file.exists()) {
                 result = true;
             } else {
-                file.permissions = 0666;
+                perms = file.isDirectory() ? 0774 : 0666;
+                file.permissions = perms;
                 file.remove(!!recursive);
                 if (!file.exists()) {
                     result = true;
@@ -9196,7 +9318,7 @@ Pot.extend(Pot.SetupUtil, {
             file = getExtensionDir(EXTENSION_ID);
             dir = Pot.StringUtil.stringify(path).split(/[\/\\]/);
             fileName = dir.pop();
-            while (dir && dir[dir.length - 1].length === 0) {
+            while (dir && dir.length && dir[dir.length - 1].length === 0) {
                 dir.pop();
             }
             dir = dir.join(sep);
