@@ -1,6 +1,8 @@
 /**
  * Poster.Bookmark.Pot.Assort.QuickPostForm - Tombloo patches
  *
+ * https://github.com/polygonplanet/tombloo
+ *
  * Postersに「Bookmark」を追加するパッチ (for QuickPostForm)
  *
  * [注意!]
@@ -16,7 +18,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.08
+ * @version  1.10
  * @date     2011-06-19
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
@@ -601,31 +603,40 @@ update(FormPanel.prototype.types, {
 (function() {
     window.addEventListener('load', function() {
         if (ps && ps.type === 'bookmark') {
-            setTimeout(function() {
-                var sw, sh, win;
-                try {
+            (function() {
+                var limit, interval, current, toCenter = function() {
+                    var sw, sh, win;
                     try {
-                        win = getMostRecentWindow();
-                    } catch (e) {
-                        win = window;
-                    }
-                    try {
-                        sw = win.screen.availWidth  || win.screen.width;
-                        sh = win.screen.availHeight || win.screen.height;
-                    } catch (e) {
                         try {
-                            sw = win.content.screen.availWidth  || win.content.screen.width;
-                            sh = win.content.screen.availHeight || win.content.screen.height;
-                        } catch (e) {}
-                    }
-                    sw = sw || 1200;
-                    sh = sh || 900;
-                    window.moveTo(
-                        Math.floor((sw / 2) - ((window.outerWidth  || window.innerWidth  || 400) / 2)),
-                        Math.floor((sh / 2) - ((window.outerHeight || window.innerHeight || 600) / 2))
-                    );
-                } catch (e) {}
-            }, 75);
+                            win = getMostRecentWindow();
+                        } catch (e) {
+                            win = window;
+                        }
+                        try {
+                            sw = win.screen.availWidth  || win.screen.width;
+                            sh = win.screen.availHeight || win.screen.height;
+                        } catch (e) {
+                            try {
+                                sw = win.content.screen.availWidth  || win.content.screen.width;
+                                sh = win.content.screen.availHeight || win.content.screen.height;
+                            } catch (e) {}
+                        }
+                        sw = sw || 1200;
+                        sh = sh || 900;
+                        window.moveTo(
+                            Math.floor((sw / 2) - ((window.outerWidth  || window.innerWidth  || 400) / 2)),
+                            Math.floor((sh / 2) - ((window.outerHeight || window.innerHeight || 600) / 2))
+                        );
+                    } catch (e) {}
+                };
+                limit = 5;
+                interval = 20;
+                current = 0;
+                do {
+                    setTimeout(toCenter, current);
+                    current += interval;
+                } while (current < limit * interval);
+            })();
         }
         (function() {
             // テキストボックスを拡張
