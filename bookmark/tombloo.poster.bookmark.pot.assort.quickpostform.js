@@ -3,7 +3,7 @@
  *
  * https://github.com/polygonplanet/tombloo
  *
- * Postersに「Bookmark」を追加するパッチ (for QuickPostForm)
+ * Postersに「Audio」と「Bookmark」を追加するパッチ(for QuickPostForm)
  *
  * [注意!]
  *   このスクリプトは tombloo.poster.bookmark.pot.assort.js とセットで動き
@@ -18,7 +18,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.10
+ * @version  1.11
  * @date     2011-06-19
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
@@ -604,8 +604,8 @@ update(FormPanel.prototype.types, {
     window.addEventListener('load', function() {
         if (ps && ps.type === 'bookmark') {
             (function() {
-                var limit, interval, current, toCenter = function() {
-                    var sw, sh, win;
+                let limit, count, interval, current, toCenter = function() {
+                    let sw, sh, win;
                     try {
                         try {
                             win = getMostRecentWindow();
@@ -629,13 +629,14 @@ update(FormPanel.prototype.types, {
                         );
                     } catch (e) {}
                 };
-                limit = 5;
+                count = 5;
                 interval = 20;
+                limit = count * interval;
                 current = 0;
                 do {
                     setTimeout(toCenter, current);
                     current += interval;
-                } while (current < limit * interval);
+                } while (current < limit);
             })();
         }
         (function() {
