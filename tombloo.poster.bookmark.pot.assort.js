@@ -1,6 +1,8 @@
 /**
  * Poster.Bookmark.Pot.Assort - Tombloo patches
  *
+ * https://github.com/polygonplanet/tombloo
+ *
  * Postersに「Bookmark」と「Audio」を追加するパッチ
  *
  * 機能:
@@ -29,9 +31,11 @@
  * - FirefoxBookmarkなどおすすめタグが無いサービスでもキーワードを表示する機能
  * - タグ名補完で読みが想定外なものを本来の読みに一部修正
  *
+ * - ほか
+ *
  * --------------------------------------------------------------------------
  *
- * @version  1.22
+ * @version  1.23
  * @date     2011-06-19
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
@@ -158,8 +162,9 @@ const POT_SCRIPT_DOCCOMMENT_SIZE = 1024 * 5;
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.22',
+    VERSION: '1.23',
     SYSTEM: 'Tombloo',
+    DEBUG: getPref('debug'),
     lang: (function(n) {
         return ((n && n.language || n.userLanguage || n.browserLanguage ||
                n.systemLanguage) || 'en').split('-').shift().toLowerCase();
@@ -374,6 +379,23 @@ Pot.extend({
      * @results  'a=foo.b=bar.'
      *
      *
+     * デフォルトは標準の for-in と変わらない速度で実行する
+     * ゆっくり実行する場合は、
+     *
+     * Pot.forEach.slow(obj, function(){...})
+     *
+     * 上のように forEach の後に slow などを付けて実行する
+     * 指定できるメソッドは以下
+     * ----------------------------------
+     *   名前   |  速度   |
+     * ----------------------------------
+     *   doze   :     0   : 最も遅い
+     *   slow   :     6   : 遅い
+     *   normal :    12   : 微妙
+     *   fast   :    36   : 速いつもり
+     *   rapid  : 60000   : デフォルト
+     * ----------------------------------
+     *
      * @param  {Array || Object}  object    対象のオブジェクト
      * @param  {Function}         callback  実行する関数
      *                                      function(value, key) this == object
@@ -381,172 +403,353 @@ Pot.extend({
      * @result {Object}                     第一引数のオブジェクトが返る
      */
     forEach: (function() {
-        var ForEach = function(object, callback, args) {
-            var i, len, result, iter;
-            if (object) {
-                len = object.length;
-                if (arguments.length === 1 && Pot.isFunction(object)) {
-                    // Pot.forEverメソッド用
-                    [callback, object] = [object, callback];
-                    iter = (function() {
-                        i = 0;
-                        while (true) {
-                            yield i;
-                            try {
-                                result = callback(i);
-                                if (Pot.isStopIter(result)) {
-                                    break;
-                                }
-                                try {
-                                    if (!isFinite(++i) || i >= Number.MAX_VALUE) {
-                                        throw i;
-                                    }
-                                } catch (er) {
-                                    i = 0;
-                                }
-                            } catch (e) {
-                                if (e == StopIteration || (e instanceof StopIteration) ||
-                                    e == Pot.StopIteration || (e instanceof Pot.StopIteration) ||
-                                    Pot.isStopIter(e)
-                                ) {
-                                    break;
-                                }
-                                throw e;
-                            }
-                        }
-                    })();
-                } else if (Pot.isNumber(object)) {
-                    // Pot.repeat用
-                    len = object;
-                    iter = (function() {
-                        for (i = 0; i < len; i++) {
-                            yield i;
-                            try {
-                                result = callback(i, i >= len - 1);
-                                if (Pot.isStopIter(result)) {
-                                    break;
-                                }
-                            } catch (e) {
-                                if (e == StopIteration || (e instanceof StopIteration) ||
-                                    e == Pot.StopIteration || (e instanceof Pot.StopIteration) ||
-                                    Pot.isStopIter(e)
-                                ) {
-                                    break;
-                                }
-                                throw e;
-                            }
-                        }
-                    })();
-                } else if (Pot.isIterable(object)) {
-                    iter = (function() {
-                        for (i = 0; i < len; i++) {
-                            yield i;
-                            try {
-                                result = callback.apply(object, args || [i, object[i], object]);
-                                if (Pot.isStopIter(result)) {
-                                    break;
-                                }
-                            } catch (e) {
-                                if (e == StopIteration || (e instanceof StopIteration) ||
-                                    e == Pot.StopIteration || (e instanceof Pot.StopIteration) ||
-                                    Pot.isStopIter(e)
-                                ) {
-                                    break;
-                                }
-                                throw e;
-                            }
-                        }
-                    })();
-                } else {
-                    iter = (function() {
-                        for (i in object) {
-                            yield i;
-                            try {
-                                result = callback.apply(object, args || [i, object[i], object]);
-                                if (Pot.isStopIter(result)) {
-                                    break;
-                                }
-                            } catch (e) {
-                                if (e == StopIteration || (e instanceof StopIteration) ||
-                                    e == Pot.StopIteration || (e instanceof Pot.StopIteration) ||
-                                    Pot.isStopIter(e)
-                                ) {
-                                    break;
-                                }
-                                throw e;
-                            }
-                        }
-                    })();
+        var ForEach = function(object, callback, options) {
+            return new arguments.callee.prototype.doit(object, callback, options);
+        };
+        Pot.extend(ForEach, {
+            speeds: {
+                doze   : 0,
+                slow   : 6,
+                normal : 12,
+                fast   : 36,
+                rapid  : 60000
+            }
+        });
+        ForEach.prototype = {
+            constructor: ForEach,
+            interval: 12,
+            speeds: ForEach.speeds,
+            iter: null,
+            result: null,
+            waiting: false,
+            doit: function(object, callback, options) {
+                this.setInterval(options);
+                this.execute(object, callback);
+                this.watch();
+                return this;
+            },
+            setInterval: function(options) {
+                let n = null;
+                if (options !== undefined) {
+                    if (Pot.isNumeric(options)) {
+                        n = options - 0;
+                    } else if (Pot.isNumeric(options.interval)) {
+                        n = options.interval - 0;
+                    }
                 }
+                if (n !== null && !isNaN(n)) {
+                    this.interval = n;
+                }
+                if (!Pot.isNumeric(this.interval)) {
+                    this.interval = this.speeds.normal;
+                }
+            },
+            watch: function() {
+                let self = this;
                 till(function() {
-                    var end = false, t = (new Date()).getTime();
-                    TILL: {
+                    return self.waiting !== true;
+                });
+            },
+            execute: function(object, callback) {
+                let d, self = this;
+                this.waiting = true;
+                if (!object) {
+                    this.result = {};
+                    this.waiting = false;
+                } else {
+                    d = new Deferred();
+                    d.addCallback(function() {
+                        if (!callback && Pot.isFunction(object)) {
+                            self.result = {};
+                            self.iter = self.forEver(object);
+                        } else if (Pot.isNumeric(object)) {
+                            self.result = {};
+                            self.iter = self.repeat(object - 0, callback);
+                        } else if (Pot.isIterable(object)) {
+                            self.result = object;
+                            self.iter = self.forLoop(object, callback);
+                        } else {
+                            self.result = object;
+                            self.iter = self.forInLoop(object, callback);
+                        }
+                    }).addCallback(function() {
+                        let d1, d2;
+                        d1 = new Deferred();
+                        d2 = new Deferred();
+                        d1.addCallback(function() {
+                            self.till();
+                            d2.callback();
+                        });
+                        d1.callback();
+                        return d2;
+                    }).addBoth(function() {
+                        self.waiting = false;
+                    });
+                    d.callback();
+                }
+            },
+            till: function() {
+                let self = this, end = false;
+                till(function() {
+                    let time = (new Date()).getTime();
+                    FETILL: {
                         do {
                             try {
-                                iter.next();
+                                self.iter.next();
                             } catch (e) {
                                 if (e == StopIteration || (e instanceof StopIteration) ||
                                     e == Pot.StopIteration || (e instanceof Pot.StopIteration) ||
                                     Pot.isStopIter(e)
                                 ) {
                                     end = true;
-                                    break TILL;
+                                    break FETILL;
                                 }
                                 throw e;
                             }
-                        } while ((new Date()).getTime() - t < 12);
+                        } while ((new Date()).getTime() - time < self.interval);
                     }
                     return end;
                 });
+            },
+            forEver: function(callback) {
+                let i = 0, result;
+                while (true) {
+                    yield i;
+                    try {
+                        result = callback(i);
+                        if (Pot.isStopIter(result)) {
+                            break;
+                        }
+                        try {
+                            if (!isFinite(++i) || i >= Number.MAX_VALUE) {
+                                throw 0;
+                            }
+                        } catch (er) {
+                            i = er;
+                        }
+                    } catch (e) {
+                        if (e == StopIteration || (e instanceof StopIteration) ||
+                            e == Pot.StopIteration || (e instanceof Pot.StopIteration) ||
+                            Pot.isStopIter(e)
+                        ) {
+                            break;
+                        }
+                        throw e;
+                    }
+                }
+            },
+            repeat: function(max, callback) {
+                let i, result, last = max - 1;
+                for (i = 0; i < max; i++) {
+                    yield i;
+                    try {
+                        result = callback(i, i >= last);
+                        if (Pot.isStopIter(result)) {
+                            break;
+                        }
+                    } catch (e) {
+                        if (e == StopIteration || (e instanceof StopIteration) ||
+                            e == Pot.StopIteration || (e instanceof Pot.StopIteration) ||
+                            Pot.isStopIter(e)
+                        ) {
+                            break;
+                        }
+                        throw e;
+                    }
+                }
+            },
+            forLoop: function(object, callback) {
+                let i, result, len;
+                len = object.length;
+                for (i = 0; i < len; i++) {
+                    yield i;
+                    try {
+                        result = callback.call(object, i, object[i], object);
+                        if (Pot.isStopIter(result)) {
+                            break;
+                        }
+                    } catch (e) {
+                        if (e == StopIteration || (e instanceof StopIteration) ||
+                            e == Pot.StopIteration || (e instanceof Pot.StopIteration) ||
+                            Pot.isStopIter(e)
+                        ) {
+                            break;
+                        }
+                        throw e;
+                    }
+                }
+            },
+            forInLoop: function(object, callback) {
+                let p, result;
+                for (p in object) {
+                    yield p;
+                    try {
+                        result = callback.call(object, p, object[p], object);
+                        if (Pot.isStopIter(result)) {
+                            break;
+                        }
+                    } catch (e) {
+                        if (e == StopIteration || (e instanceof StopIteration) ||
+                            e == Pot.StopIteration || (e instanceof Pot.StopIteration) ||
+                            Pot.isStopIter(e)
+                        ) {
+                            break;
+                        }
+                        throw e;
+                    }
+                }
             }
-            iter = null;
-            this.object = object;
-            return this;
         };
-        ForEach.prototype.execute = function() {
-            return this.object;
-        };
-        return function(object, callback, args) {
-            let result, args = arguments;
-            switch (args.length) {
-                case 0:
-                    break;
-                case 1:
-                    result = (new ForEach(object)).execute();
-                    break;
-                case 2:
-                    result = (new ForEach(object, callback)).execute();
-                    break;
-                case 3:
-                default:
-                    result = (new ForEach(object, callback, args)).execute();
-                    break;
+        ForEach.prototype.doit.prototype = ForEach.prototype;
+        Pot.extend(ForEach, {
+            process: function(object, callback, options) {
+                let ops = options || {};
+                ops.interval = ForEach.speeds.rapid;
+                return (new ForEach(object, callback, ops)).result;
             }
-            return result;
-        };
+        });
+        Pot.extend(ForEach.process, {
+            doze: function(object, callback, options) {
+                let ops = options || {};
+                ops.interval = ForEach.speeds.doze;
+                return (new ForEach(object, callback, ops)).result;
+            },
+            slow: function(object, callback, options) {
+                let ops = options || {};
+                ops.interval = ForEach.speeds.slow;
+                return (new ForEach(object, callback, ops)).result;
+            },
+            normal: function(object, callback, options) {
+                let ops = options || {};
+                ops.interval = ForEach.speeds.normal;
+                return (new ForEach(object, callback, ops)).result;
+            },
+            fast: function(object, callback, options) {
+                let ops = options || {};
+                ops.interval = ForEach.speeds.fast;
+                return (new ForEach(object, callback, ops)).result;
+            },
+            rapid: function(object, callback, options) {
+                let ops = options || {};
+                ops.interval = ForEach.speeds.rapid;
+                return (new ForEach(object, callback, ops)).result;
+            }
+        });
+        Pot.extend({
+            ForEach: ForEach
+        });
+        return ForEach.process;
     })(),
     /**
      * 指定回数ループ
      *
-     * @example var a = []; Pot.repeat(10, function(i) { a.push(i); }); a;
-     * @results [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] (a)
      *
-     * @param  {Number}   length    何回ループするかの値
+     * @example
+     * <code>
+     * var a = [];
+     * Pot.repeat(10, function(i) {
+     *   a.push(i);
+     * });
+     * debug(a);
+     * </code>
+     *
+     * @results [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+     *
+     *
+     * @param  {Number}   max       何回ループするかの最大値
      * @param  {Function} callback  実行する関数
-     *                              (止めるときは StopIteration を投げる)
+     *                              (止めるときは Pot.StopIteration を投げる)
      */
-    repeat: function(length, callback) {
-        Pot.forEach(length - 0, callback);
-    },
+    repeat: (function() {
+        var Repeat = function(max, callback, options) {
+            return Pot.forEach(max, callback, options);
+        };
+        Pot.extend(Repeat, {
+            doze: function(max, callback, options) {
+                let ops = options || {};
+                ops.interval = Pot.ForEach.speeds.doze;
+                return (new Pot.ForEach(max, callback, ops)).result;
+            },
+            slow: function(max, callback, options) {
+                let ops = options || {};
+                ops.interval = Pot.ForEach.speeds.slow;
+                return (new Pot.ForEach(max, callback, ops)).result;
+            },
+            normal: function(max, callback, options) {
+                let ops = options || {};
+                ops.interval = Pot.ForEach.speeds.normal;
+                return (new Pot.ForEach(max, callback, ops)).result;
+            },
+            fast: function(max, callback, options) {
+                let ops = options || {};
+                ops.interval = Pot.ForEach.speeds.fast;
+                return (new Pot.ForEach(max, callback, ops)).result;
+            },
+            rapid: function(max, callback, options) {
+                let ops = options || {};
+                ops.interval = Pot.ForEach.speeds.rapid;
+                return (new Pot.ForEach(max, callback, ops)).result;
+            }
+        });
+        return Repeat;
+    })(),
     /**
      * 永久ループ
+     * (適当に条件付けて Pot.StopIteration or StopIteration 投げる)
+     *
+     *
+     * @example
+     * <code>
+     * var s = '', a = 'abc*';
+     * Pot.forEver(function(i) {
+     *   s += i + ':' + a;
+     *   if (s.length > 50) {
+     *     throw Pot.StopIteration;
+     *   }
+     * });
+     * debug(s);
+     * </code>
+     *
+     * @results
+     *   '0:abc*1:abc*2:abc*3:abc*4:abc*5:abc*6:abc*7:abc*8:abc*'
+     *
      *
      * @param  {Function}  callback   実行する関数
-     *                                (止めるときは StopIteration を投げる)
+     *                                (止めるときは Pot.StopIteration を投げる)
      */
-    forEver: function(callback) {
-        Pot.forEach(callback);
-    }
+    forEver: (function() {
+        var ForEver = function(callback, options) {
+            return Pot.forEach(callback, null, options);
+        };
+        Pot.extend(ForEver, {
+            doze: function(callback, options) {
+                let ops = options || {};
+                ops.interval = Pot.ForEach.speeds.doze;
+                return (new Pot.ForEach(callback, null, ops)).result;
+            },
+            slow: function(callback, options) {
+                let ops = options || {};
+                ops.interval = Pot.ForEach.speeds.slow;
+                return (new Pot.ForEach(callback, null, ops)).result;
+            },
+            normal: function(callback, options) {
+                let ops = options || {};
+                ops.interval = Pot.ForEach.speeds.normal;
+                return (new Pot.ForEach(callback, null, ops)).result;
+            },
+            fast: function(callback, options) {
+                let ops = options || {};
+                ops.interval = Pot.ForEach.speeds.fast;
+                return (new Pot.ForEach(callback, null, ops)).result;
+            },
+            rapid: function(callback, options) {
+                let ops = options || {};
+                ops.interval = Pot.ForEach.speeds.rapid;
+                return (new Pot.ForEach(callback, null, ops)).result;
+            }
+        });
+        return ForEver;
+    })()
 });
 
 
@@ -787,9 +990,13 @@ Pot.extend({
             '&lambda;' : 'λ',
             '&omega;'  : 'ω',
             '&middot;' : '・',
-            '&Dagger;' : '‡'
+            '&Dagger;' : '‡',
+            '&quot;'   : '"',
+            '&apos;'   : "'",
+            '&lt;'     : '<',
+            '&gt;'     : '>'
         };
-        elem = Pot.getDocument().createElement('div');
+        elem = Pot.getCurrentDocument().createElement('div');
         decode = function(s) {
             var c = '';
             elem.innerHTML = String(s);
@@ -802,13 +1009,30 @@ Pot.extend({
             } catch (e) {
                 c = String(s);
             }
+            if (c && c.charAt(0) === '&' && c.slice(-1) === ';') {
+                if (maps[c]) {
+                    c = maps[c];
+                } else {
+                    c = c.slice(1, -1);
+                    if (c.charAt(0) === '#') {
+                        c = c.substring(1).toLowerCase();
+                        if (c.charAt(0) === 'x') {
+                            c = '0' + c;
+                        } else {
+                            c = c - 0;
+                        }
+                        c = String.fromCharCode(c);
+                    } else {
+                        c = '';
+                    }
+                }
+            }
             return c;
         };
         result = Pot.StringUtil.stringify(text).replace(re, function(m) {
-            let r = String(decode(m) || m);
-            return maps[r] || r;
+            return decode(m);
         });
-        return result;
+        return result.replace(/&amp;/g, '&').toString();
     },
     // Escape XPath Expression
     escapeXPathText: function(text) {
@@ -4250,7 +4474,7 @@ Pot.extend({
                 return this;
             },
             createDics: function() {
-                return new Pot.Hash();
+                return new MarkovChainer.Dictionary();
             },
             /**
              * 文章を要約
@@ -4322,9 +4546,9 @@ Pot.extend({
                     });
                     this.addTail(words);
                     result = this.joinWords(words);
-                    
-                    // これは1行で終わる学習の仕方じゃないので
-                    // 結果が空になることは滅多にないと思うので処理を省く
+                    //
+                    // これは1行で終わる学習方法じゃないので
+                    // 結果が空になることは滅多にないため処理を省く
                     //if (!result && this.dics.length > 6) {
                     //    return this.chain2();
                     //}
@@ -4398,10 +4622,10 @@ Pot.extend({
             rand: function(min, max) {
                 return Pot.rand(min, max);
             },
-            randKey: function(hash) {
+            randKey: function(dic) {
                 let key, keys;
-                if (hash && hash.isHash) {
-                    keys = hash.keys();
+                if (dic && dic.keys) {
+                    keys = dic.keys();
                     if (keys) {
                         key = keys[this.rand(0, keys.length - 1)];
                     }
@@ -4561,6 +4785,7 @@ Pot.extend({
                                     ]),
                                     '[FDULＦＤＵＬ]{0,2}'
                                 ], ''),
+                    b        : '\\b',
                     extra    : '[$#\'@:/=*+-]',
                     punct    : '[,，.．､、｡。!！?？]',
                     readable : '[^\\u0000-\\u0008\\s\\u3000]',
@@ -4575,6 +4800,7 @@ Pot.extend({
                         'まっ[たてと]',
                         'し[いく][み]?',
                         'かく',
+                        'け[らりるれろ]{1,3}',
                         'んぼ',
                         'が[っらりるれろ]う?',
                         'さ[せれ]',
@@ -4667,13 +4893,16 @@ Pot.extend({
                         enclose(re.polit + re.hiragana + '{1,2}' + re.adjectiverb)
                     ]),
                     enclose([
-                        enclose(re.numbers + '{1,32}'),
+                        enclose(re.b + re.numbers + '{1,32}' + re.b),
                         enclose(re.punct   + '{1,4}'),
                         enclose(re.polit + re.katakana + '{1,24}'),
                         enclose(re.polit + re.kanji    + '{1,4}'),
                         enclose(re.polit + re.hiragana + '{1,8}'),
                         enclose(re.word  + enclose([re.word, re.extra]) + '{1,12}'),
                         enclose(re.word    + '{1,24}'),
+                        enclose(re.number  + '{1,32}')
+                    ]),
+                    enclose([
                         enclose(re.graph   + '{1,12}'),
                         enclose(re.readable)
                     ])
@@ -4693,6 +4922,37 @@ Pot.extend({
             })()
         };
         MarkovChainer.prototype.init.prototype = MarkovChainer.prototype;
+        // Simple dictionary object
+        MarkovChainer.Dictionary = (function() {
+            const PREFIX = '.';
+            var Dictionary = function() {};
+            Dictionary.prototype = {
+                constructor: Dictionary,
+                isDictionary: true,
+                length: 0,
+                get: function(key) {
+                    return this[PREFIX + String(key)];
+                },
+                set: function(key, value) {
+                    this.length += this.has(key) ? 0 : 1;
+                    this[PREFIX + String(key)] = value;
+                    return this;
+                },
+                has: function(key) {
+                    return ((PREFIX + String(key)) in this);
+                },
+                keys: function() {
+                    let keys = [], p;
+                    for (p in this) {
+                        if (p.charAt(0) === PREFIX) {
+                            keys[keys.length] = p.substring(1);
+                        }
+                    }
+                    return keys;
+                }
+            };
+            return Dictionary;
+        })();
         return MarkovChainer;
     })()
 });
@@ -6030,7 +6290,7 @@ update(models.Yahoo, {
                 s = null;
                 len = chars.length;
                 i = 0;
-                // ジェネレータを生成
+                // ループのゆらぎを防ぐためジェネレータを生成
                 g = (function() {
                     while (i < len) {
                         yield i;
@@ -6415,20 +6675,15 @@ update(models.FirefoxBookmark, {
         d = Pot.DeferredUtil.repeat(allTags.length, function(i) {
             let tag = allTags[i];
             if (hash.has(tag)) {
-                hash.set(tag, Number(hash.get(tag) || 0) + 2);
-            } else {
                 hash.set(tag, -1);
-            }
-        }).addCallback(function() {
-            hash.forEach(function(tag, n) {
+            } else {
                 tags[tags.length] = {
                     name: tag,
-                    frequency: n
+                    frequency: -1
                 };
-            });
-            hash.clear();
-            hash = null;
+            }
         }).addCallback(function() {
+            hash = null;
             return Pot.BookmarkUtil.getKeywords(url).addCallback(function(keywords) {
                 return self.isBookmarked(url).addCallback(function(duplicated) {
                     return {
@@ -6439,7 +6694,7 @@ update(models.FirefoxBookmark, {
                 });
             });
         });
-        setTimeout(function() { d.callback(); }, 75);
+        setTimeout(function() { d.callback(); }, Pot.rand(60, 75));
         return d;
     }
 });
@@ -9022,6 +9277,7 @@ Pot.extend(Pot.SetupUtil, {
 });
 
 // インストール確認と実行
+//FIXME: もう少しインスコチェックを厳重にしたほうがいいかも(むしろアンインスコチェック)
 callLater(1, function() { Pot.SetupUtil.ensureInstall(); });
 
 
