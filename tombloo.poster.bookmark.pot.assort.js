@@ -35,8 +35,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.24
- * @date     2011-06-20
+ * @version  1.25
+ * @date     2011-06-21
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -162,15 +162,15 @@ const POT_SCRIPT_DOCCOMMENT_SIZE = 1024 * 5;
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.24',
+    VERSION: '1.25',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
-        return ((n && n.language || n.userLanguage || n.browserLanguage ||
-               n.systemLanguage) || 'en').split('-').shift().toLowerCase();
+        return ((n && (n.language  || n.userLanguage || n.browserLanguage ||
+                n.systemLanguage)) || 'en').split('-').shift().toLowerCase();
     })(navigator),
     os: (function(n) {
-        let r = {}, pf = 'platform', ua = 'userAgent', os;
+        let r = {}, pf = 'platform', ua = 'userAgent';
         [
             { r: /iphone/i,     s: 'iphone',     p: pf },
             { r: /ipod/i,       s: 'ipod',       p: pf },
@@ -398,7 +398,7 @@ Pot.extend({
      *
      * @param  {Array || Object}  object    対象のオブジェクト
      * @param  {Function}         callback  実行する関数
-     *                                      function(value, key) this == object
+     *                                      function(key, value) this == object
      *                                      (止める時は StopIteration を投げる)
      * @result {Object}                     第一引数のオブジェクトが返る
      */
@@ -6373,7 +6373,7 @@ update(models.YahooBookmarks, {
                     desc: desc,
                     tags: joinText(tags, ' '),
                     crumbs: fs.crumbs,
-                    visibility: (ps.private == null && !privateMode) ? fs.visibility :
+                    visibility: (ps.private == null && !privateMode) ? 1 :
                                         ((ps.private || privateMode) ? 0 : 1)
                 }
             });
