@@ -37,7 +37,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.29
+ * @version  1.30
  * @date     2011-06-26
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
@@ -167,7 +167,7 @@ const POT_SCRIPT_DOCCOMMENT_SIZE = 1024 * 5;
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.29',
+    VERSION: '1.30',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -9173,7 +9173,7 @@ Pot.extend(Pot.SetupUtil, {
                 let df, code, head, message, params, agree, result;
                 code = Pot.StringUtil.stringify(res.responseText);
                 try {
-                    code = String(code).convertToUnicode('utf-8');
+                    code = String(String(code).convertToUnicode() || code || '');
                 } catch (e) {}
                 head = String(code).slice(0, POT_SCRIPT_DOCCOMMENT_SIZE);
                 if (!re.version.test(head)) {
@@ -9320,7 +9320,10 @@ Pot.extend(Pot.SetupUtil, {
                     if (!res) {
                         throw new Error('Failed to download: ' + url);
                     }
-                    code = String(res.responseText).convertToUnicode();
+                    code = String(res.responseText);
+                    try {
+                        code = String(code.convertToUnicode() || code || '');
+                    } catch (e) {}
                     if (!Pot.SetupUtil.validateCode(code)) {
                         throw new Error('Invalid source code: ' + url);
                     }
