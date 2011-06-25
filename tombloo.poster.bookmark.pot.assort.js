@@ -30,13 +30,15 @@
  * - メニューからクリックするだけでパッチのアンインストールが可能
  * - FirefoxBookmarkなどおすすめタグが無いサービスでもキーワードを表示する機能
  * - タグ名補完で読みが想定外なものを本来の読みに一部修正
+ * - パッチの自動アップデート機能
+ * - ローマ字読みを編集できる機能
  *
  * - ほか
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.25
- * @date     2011-06-21
+ * @version  1.26
+ * @date     2011-06-26
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -153,6 +155,9 @@ const POT_BOOKMARK_PRIVATE       = 'bookmarkPrivate';
 // メディアファイル(Photo/Audio)をホスト名でフォルダ分けして保存する
 const POT_SEPARATE_USER_DATA_FOLDERS = 'separateUserDataFolders';
 
+// ローマ字入力のかな変換キーマップ
+const POT_ROMA_READING_KEYS      = 'userRomaReadingKeys';
+
 //
 // 先頭のコメント全てを取り込むのに必要なサイズ (internal only)
 const POT_SCRIPT_DOCCOMMENT_SIZE = 1024 * 5;
@@ -162,7 +167,7 @@ const POT_SCRIPT_DOCCOMMENT_SIZE = 1024 * 5;
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.25',
+    VERSION: '1.26',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -967,34 +972,43 @@ Pot.extend({
         re = /&(?:[a-z]\w{0,24}|#(?:x[0-9a-f]{1,8}|[0-9]{1,10}));/gi;
         maps = {
             // 一部DOMで変換できなかったもの
-            '&nbsp;'   : ' ',
-            '&hellip;' : '…',
-            '&deg;'    : '°',
-            '&Delta;'  : 'Δ',
-            '&nabla;'  : '∇',
-            '&laquo;'  : '≪',
-            '&raquo;'  : '≫',
-            '&ldquo;'  : '“',
-            '&rdquo;'  : '”',
-            '&lsquo;'  : '‘',
-            '&rsquo;'  : '’',
-            '&sum;'    : '∑',
-            '&Sigma;'  : 'Σ',
-            '&plusmn;' : '±',
-            '&para;'   : '¶',
-            '&equiv;'  : '≡',
-            '&dagger;' : '†',
-            '&forall;' : '∀',
-            '&beta;'   : 'β',
-            '&Lambda;' : 'Λ',
-            '&lambda;' : 'λ',
-            '&omega;'  : 'ω',
-            '&middot;' : '・',
-            '&Dagger;' : '‡',
-            '&quot;'   : '"',
-            '&apos;'   : "'",
-            '&lt;'     : '<',
-            '&gt;'     : '>'
+            '&nbsp;'   : '\u0020',
+            '&hellip;' : '\u2026',
+            '&bull;'   : '\u2022',
+            '&copy;'   : '\u00a9',
+            '&reg;'    : '\u00ae',
+            '&deg;'    : '\u00b0',
+            '&trade;'  : '\u2122',
+            '&euro;'   : '\u20ac',
+            '&permil;' : '\u2030',
+            '&Delta;'  : '\u0394',
+            '&nabla;'  : '\u2207',
+            '&laquo;'  : '\u226a',
+            '&raquo;'  : '\u226b',
+            '&ldquo;'  : '\u201c',
+            '&rdquo;'  : '\u201d',
+            '&lsquo;'  : '\u2018',
+            '&rsquo;'  : '\u2019',
+            '&ndash;'  : '\u2013',
+            '&mdash;'  : '\u2014',
+            '&sum;'    : '\u2211',
+            '&Sigma;'  : '\u03a3',
+            '&plusmn;' : '\u00b1',
+            '&para;'   : '\u00b6',
+            '&equiv;'  : '\u2261',
+            '&dagger;' : '\u2020',
+            '&Dagger;' : '\u2021',
+            '&forall;' : '\u2200',
+            '&beta;'   : '\u03b2',
+            '&Lambda;' : '\u039b',
+            '&lambda;' : '\u03bb',
+            '&omega;'  : '\u03c9',
+            '&middot;' : '\u30fb',
+            '&Dagger;' : '\u2021',
+            '&quot;'   : '\u0022',
+            '&apos;'   : '\u0027',
+            '&lt;'     : '\u003c',
+            '&gt;'     : '\u003e'
         };
         elem = Pot.getCurrentDocument().createElement('div');
         decode = function(s) {
@@ -7210,10 +7224,12 @@ QuickPostForm.descriptionContextMenus.push(
             name: '改行とホワイトスペースを詰める',
             execute: function(elmText, desc) {
                 var value, c, uris = [], restore, re = {
+                    nls: /[\r\n]+/g,
                     space: /[\s\u00A0\u3000]/g,
+                    spaces: /[\s\u00A0\u3000]+/g,
                     split: /([\s\S])[\s\u00A0\u3000]+([\s\S])/g,
                     bounds: /[$@#\w\\<>{}*+-]/,
-                    tail: /([\s\S]{76,260}(?:[,.､、，。！!？?]+|[；：…‥】」》）』”］〉〕｝]+|[\s\u3000;:?(){}[\]<>]+))/g
+                    tail: /([\s\S]{76,152}(?:[,.､、，。！!？?]+|[；：…‥】」》）』”］〉〕｝]+|[\s\u3000;:?(){}[\]<>]+))/g
                 };
                 value = Pot.StringUtil.stringify(desc.value);
                 if (value && value.length) {
@@ -7264,7 +7280,7 @@ QuickPostForm.descriptionContextMenus.push(
                             }
                         };
                     }
-                    value = value.replace(re.split, function(m0, left, right) {
+                    value = value.replace(re.nls, ' ').replace(re.spaces, ' ').replace(re.split, function(m0, left, right) {
                         return (re.bounds.test(left) && re.bounds.test(right)) ? left + ' ' + right : left + right;
                     }).replace(re.tail, '$1\n');
                     
@@ -7272,7 +7288,7 @@ QuickPostForm.descriptionContextMenus.push(
                         value = restore(value);
                     }
                     value = Pot.StringUtil.trim(
-                        value.split(/[\r\n]+/).map(function(line) {
+                        value.split(re.nls).map(function(line) {
                             return Pot.StringUtil.trim(line);
                         }).filter(function(line) {
                             return line && line.length > 0;
@@ -7995,6 +8011,240 @@ callLater(0, function() { Pot.QuickPostForm.switchTextItemHelper.call(); });
         shortcutkeys[key] = {
             execute: execute
         };
+    }
+});
+
+
+})();
+//-----------------------------------------------------------------------------
+// ローマ字入力変換 - タブ入力補完で使うキーボードマップを置換
+//-----------------------------------------------------------------------------
+(function() {
+
+Pot.RomaReadingUtil = {};
+Pot.extend(Pot.RomaReadingUtil, {
+    defaultKeymap: null,
+    opened: false,
+    openDialog: function(title, message, data) {
+        let args;
+        if (!Pot.RomaReadingUtil.opened) {
+            args = {
+                inputValue: Pot.StringUtil.stringify(data),
+                onInput: function(value, event) {
+                    return Pot.RomaReadingUtil.validateInput(value) !== false;
+                },
+                onAccept: function(value) {
+                    Pot.RomaReadingUtil.save(String(value));
+                },
+                onReset: function() {
+                    return Pot.RomaReadingUtil.getDefaultKeymap();
+                },
+                onClose: function() {
+                    Pot.RomaReadingUtil.opened = false;
+                }
+            };
+            Pot.RomaReadingUtil.opened = true;
+            openDialog(
+                // 頻繁に使用するダイアログじゃないのでキャッシュしない
+                Pot.RomaReadingUtil.generateXUL(title, message),
+                Pot.implode({
+                    chrome       : 'yes',
+                    alwaysRaised : 'yes',
+                    resizable    : 'yes',
+                    centerscreen : 'yes',
+                    dependent    : 'yes',
+                    titlebar     : 'yes',
+                    close        : 'yes'
+                }, '=', ','),
+                args
+            );
+        }
+    },
+    open: function(title, message) {
+        Pot.RomaReadingUtil.openDialog(
+            title || 'Tombloo - ローマ字入力かな変換キーマップ定義',
+            message || [
+                'タグ入力補完時のローマ字入力で、' +
+                '漢字の読みを変換する際に使用するキーを定義します。',
+                '普段使い慣れてるキーボード入力に修正できます。',
+                '',
+                'カタカナをスペースで区切って、' +
+                '右側のローマ字入力キーが変更可能です' +
+                '(アルファベット[a-z]のみ使用可)。',
+                '',
+                '・ スペースは全角スペースやタブも使用できます。',
+                '・ 次の文字への区切りは「改行」です。',
+                '・ シャープ「#」から改行まではコメントとして扱われます。',
+                '・ 同じ英文字列が存在すると誤判断するかもしれません。'
+            ].join('\n'),
+            Pot.RomaReadingUtil.load()
+        );
+    },
+    save: function(data) {
+        Pot.RomaReadingUtil.assign(data);
+        Pot.setPref(POT_ROMA_READING_KEYS, Pot.StringUtil.AlphamericString.encode(data));
+    },
+    load: function() {
+        let data;
+        data = Pot.getPref(POT_ROMA_READING_KEYS);
+        if (data === undefined) {
+            data = Pot.RomaReadingUtil.getDefaultKeymap();
+        } else {
+            data = Pot.StringUtil.AlphamericString.decode(Pot.StringUtil.stringify(data));
+        }
+        return data;
+    },
+    removeComment: function(data) {
+        return Pot.StringUtil.stringify(data).replace(/#+.*$/gm, '');
+    },
+    // 不正な文字がなければ修正後のテキストを返す or false
+    validateInput: function(data) {
+        let result, invalid;
+        invalid = /[^a-zA-Zァ-ヶ\s\u00A0\u3000]/;
+        result = Pot.StringUtil.toZenkanaCase(Pot.StringUtil.toKatakanaCase(
+                Pot.StringUtil.toHankakuCase(Pot.RomaReadingUtil.removeComment(
+                    Pot.StringUtil.trim(data)))));
+        if (invalid.test(result)) {
+            result = false;
+        }
+        return result;
+    },
+    // String.katakana に適応する
+    assign: function(data) {
+        let value, re, kanas;
+        try {
+            kanas = String.katakana;
+            // 不正なプロパティが設定されないようチェックする
+            value = Pot.RomaReadingUtil.validateInput(data);
+            if (value && value.length) {
+                re = /([ァ-ヶ]{1,2})[\s\u00A0\u3000]+([a-zA-Z]+)/;
+                Pot.StringUtil.mtrim(value).split(/[\r\n]+/).forEach(function(line) {
+                    let a, kana, roma, s = Pot.StringUtil.trim(line);
+                    if (s && s.length && re.test(s)) {
+                        [a, kana, roma] = s.match(re);
+                        // 既存のカタカナ表記のプロパティ以外は不可
+                        if (kana && roma && kana !== 'ッ' && (kana in kanas)) {
+                            kanas[kana] = roma;
+                        }
+                    }
+                });
+            }
+        } catch (e) {}
+    },
+    getDefaultKeymap: function() {
+        let maps = [], space, key, valid, kanas;
+        valid = /^[ァ-ヶ]{1,2}$/;
+        kanas = Pot.RomaReadingUtil.defaultKeymap || String.katakana;
+        for (key in kanas) {
+            if (valid.test(key) && key !== 'ッ') {
+                space = new Array((6 >> key.length) | 8).join(' ');
+                maps[maps.length] = key + space + kanas[key];
+            }
+        }
+        return maps.join('\n');
+    },
+    initDefaultKeymap: function() {
+        if (!Pot.RomaReadingUtil.defaultKeymap) {
+            Pot.RomaReadingUtil.defaultKeymap = update({}, String.katakana);
+        }
+    },
+    generateXUL: function(title, message) {
+        let xul, script, params;
+        xul = Pot.StringUtil.mtrim(<><![CDATA[
+            <?xml version="1.0" encoding="utf-8"?>
+            <?xml-stylesheet type="text/css" href="chrome://global/skin/"?>
+            <?xml-stylesheet type="text/css" href="chrome://global/skin/global.css"?>
+            <?xml-stylesheet type="text/css" href="data:text/css,
+            button {
+                cursor: pointer;
+                margin-top: 0.7em;
+                padding: 0.5em 0.7em 0.5em 0.4em;
+                height: 3.2em;
+                vertical-align: bottom;
+            }
+            .button-icon {
+                margin-right: 0.5em;
+            }
+            #submit-button, #cancel-button {
+                font-weight: bold;
+            }
+            #input {
+                font-family: monospace;
+            }
+            "?>
+            <dialog title="{TITLE}" buttons="accept,cancel"
+                    xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+                    xmlns:html="http://www.w3.org/1999/xhtml">
+                <hbox flex="1">
+                    <vbox style="margin: 0.2em;" flex="1">
+                        {MESSAGE}
+                        <spacer height="3"/>
+                        <label id="error" value="" style="color:red;"/>
+                        <textbox id="input" multiline="true" flex="15" rows="12" value=""/>
+                        <hbox flex="1">
+                            <hbox align="left" flex="1">
+                                <button id="reset" tooltiptext="初期状態に戻す"
+                                        style="margin-right: 0.2em;" label="Reset"/>
+                            </hbox>
+                            <hbox align="right" flex="1">
+                                <button id="submit-button" dlgtype="accept" tooltiptext="保存"
+                                        image="chrome://tombloo/skin/accept.png" label="OK"/>
+                                <button id="cancel-button" dlgtype="cancel"
+                                        tooltiptext="キャンセル" label="Cancel"/>
+                            </hbox>
+                        </hbox>
+                    </vbox>
+                </hbox>
+                <script>{SCRIPT}</script>
+            </dialog>
+        ]]></>);
+        script = ['<![CDATA[', ']]>'].join(Pot.StringUtil.mtrim(<><![CDATA[
+            var args = arguments[0], input, error, reset;
+            window.addEventListener('load', function() {
+                input = document.getElementById('input');
+                error = document.getElementById('error');
+                reset = document.getElementById('reset');
+                input.value = args.inputValue;
+                if (args.onInput) {
+                    input.addEventListener('input', function(event) {
+                        if (!args.onInput(input.value, event)) {
+                            error.value = 'Error: 不正な文字が使われています';
+                        } else {
+                            error.value = '';
+                        }
+                    }, true);
+                }
+                if (args.onReset) {
+                    reset.addEventListener('click', function() {
+                        input.value = args.onReset();
+                    }, true);
+                }
+                if (args.onClose) {
+                    window.addEventListener('unload', function(event) {
+                        args.onClose(event);
+                    }, true);
+                }
+            }, true);
+            
+            window.addEventListener('dialogaccept', function() {
+                args.onAccept(input.value);
+            }, true);
+        ]]></>).wrap('\n'));
+        
+        params = {
+            title: Pot.escapeHTML(Pot.StringUtil.stringify(title)),
+            message: Pot.escapeHTML(Pot.StringUtil.stringify(message)).
+                    split(/(?:\r\n|\r|\n)/).map(function(s) {
+                        return Pot.sprintf('<label value="%s"/>', s);
+                    }).join('\n'),
+            script: script
+        };
+        
+        'title message script'.split(' ').forEach(function(k) {
+            xul = xul.replace(Pot.sprintf('{%s}', k.toUpperCase()), params[k]);
+        });
+        params = null;
+        return Pot.toDataURI.encodeURI(Pot.StringUtil.trim(xul), 'xul', 'utf-8');
     }
 });
 
@@ -8868,7 +9118,7 @@ Pot.extend(Pot.SetupUtil, {
     /**
      * アップデートできるか確認して可能ならアップデートする
      */
-    isUpdatable: function() {
+    isUpdatable: function(silent) {
         let d, re, version;
         re = {
             version: /[*]\s*@version\s*([\d.abcr-]+)/i
@@ -8879,20 +9129,31 @@ Pot.extend(Pot.SetupUtil, {
         };
         d = request(PSU_BMA_SCRIPT_URL).addCallback(function(res) {
             let df, code, head, message, params, agree, result;
-            code = Pot.StringUtil.stringify(res.responseText).convertToUnicode();
+            code = Pot.StringUtil.stringify(res.responseText);
+            try {
+                code = String(code).convertToUnicode();
+            } catch (e) {}
             head = code.slice(0, POT_SCRIPT_DOCCOMMENT_SIZE);
             if (!re.version.test(head)) {
-                alert('エラーです');
+                if (!silent) {
+                    alert('エラーです');
+                }
             } else {
                 version.latest = head.match(re.version)[1];
                 if (version.latest <= version.current) {
-                    Pot.SetupUtil.openAlert(
-                        PSU_UPDATECHECK_TITLE,
-                        'すでに最新バージョンです',
-                        'そうですか'
-                    );
+                    if (!silent) {
+                        Pot.SetupUtil.openAlert(
+                            PSU_UPDATECHECK_TITLE,
+                            'すでに最新バージョンです',
+                            'そうですか'
+                        );
+                    }
                 } else {
-                    message = [
+                    message = '';
+                    if (silent) {
+                        message += '[Tomblooブックマークパッチ]\n'
+                    }
+                    message += [
                         '最新バージョンにアップデートできます。',
                         'アップデートしますか？',
                         '',
@@ -8908,6 +9169,11 @@ Pot.extend(Pot.SetupUtil, {
                     
                     if (result && result[agree]) {
                         df = Pot.SetupUtil.update(code);
+                    } else {
+                        // ユーザーがキャンセルした場合は再度表示しない
+                        if (!silent) {
+                            Pot.SetupUtil.autoUpdaterUserCanceled = true;
+                        }
                     }
                 }
             }
@@ -9329,6 +9595,52 @@ Pot.extend(Pot.SetupUtil, {
         }
         return file;
     },
+    // 自動アップデート
+    autoUpdaterSignal: null,
+    autoUpdaterConnected: null,
+    autoUpdaterUserCanceled: false,
+    autoUpdater: function() {
+        // 起動時に一度実行するので最低でも1時間の間隔をおく
+        const UPDATE_INTERVAL = 60 * 60 * 2;
+        const UPDATE_DELAY    = 10;
+        let called = false;
+        // ユーザーがキャンセルした場合は再度実行しない
+        if (!Pot.SetupUtil.autoUpdaterUserCanceled) {
+            if (Pot.SetupUtil.isInstalled()) {
+                if (Pot.SetupUtil.autoUpdaterConnected === null) {
+                    Pot.SetupUtil.autoUpdaterConnected = true;
+                    try {
+                        // リロード時に解除しないと大変なことに
+                        if (Pot.SetupUtil.autoUpdaterSignal === null) {
+                            Pot.SetupUtil.autoUpdaterSignal = connect(grobal, 'context-reload', function() {
+                                try {
+                                    Pot.SetupUtil.autoUpdaterConnected = false;
+                                    if (Pot.SetupUtil.autoUpdaterSignal !== null) {
+                                        disconnect(Pot.SetupUtil.autoUpdaterSignal);
+                                    }
+                                } catch (e) {}
+                            });
+                        }
+                    } catch (e) {}
+                }
+                // サイレントモードで実行する
+                callLater(UPDATE_DELAY + Pot.rand(5, 9), function() {
+                    Pot.SetupUtil.isUpdatable(true);
+                    // なるべく時間をあけて実行
+                    callLater(UPDATE_INTERVAL, function() {
+                        // その間にユーザーがキャンセルした場合は再度実行しない
+                        if (!Pot.SetupUtil.autoUpdaterUserCanceled) {
+                            if (Pot.SetupUtil.autoUpdaterConnected) {
+                                Pot.SetupUtil.autoUpdater.call();
+                            }
+                        }
+                    });
+                });
+                called = true;
+            }
+        }
+        return called;
+    },
     raiseError: function(e) {
         try {
             error(e);
@@ -9398,9 +9710,19 @@ Pot.extend(Pot.SetupUtil, {
     })()
 });
 
-// インストール確認と実行
-//FIXME: もう少しインスコチェックを厳重にしたほうがいいかも(むしろアンインスコチェック)
-callLater(1, function() { Pot.SetupUtil.ensureInstall(); });
+
+// ローマ字入力キーマップ初期化は先に実行する
+Pot.RomaReadingUtil.initDefaultKeymap();
+
+// インストール確認と実行と初期設定
+callLater(1, function() {
+    // ローマ字入力キーマップを初期化
+    Pot.RomaReadingUtil.assign(Pot.RomaReadingUtil.load());
+    // 自動アップデートを確認
+    Pot.SetupUtil.autoUpdater.call();
+    // インストール状況を確認
+    Pot.SetupUtil.ensureInstall();
+});
 
 
 })();
@@ -9418,6 +9740,10 @@ const POT_BOOKMARK_MENU_LABELS = {
     check: {
         ja: '最新のアップデート確認',
         en: 'Confirm the latest update'
+    },
+    roma: {
+        ja: 'ローマ字入力変換キー設定',
+        en: 'Roman keyboard input settings'
     },
     uninstall: {
         ja: 'Bookmarkパッチをアンインストール',
@@ -9460,6 +9786,21 @@ Tombloo.Service.actions.register({
             execute: function(ctx) {
                 Pot.SetupUtil.isUpdatable();
             }
+        },
+        {
+            // ローマ字入力変換キー設定
+            name: Pot.tmp.MENULABEL('roma'),
+            type: 'context,menu',
+            check: function(ctx) {
+                return true;
+            },
+            execute: function(ctx) {
+                Pot.RomaReadingUtil.open();
+            }
+        },
+        {
+            name: '----',
+            type: 'context,menu'
         },
         {
             // アンインストール
