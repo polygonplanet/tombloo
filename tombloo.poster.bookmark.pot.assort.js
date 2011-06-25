@@ -37,7 +37,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.27
+ * @version  1.28
  * @date     2011-06-26
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
@@ -167,7 +167,7 @@ const POT_SCRIPT_DOCCOMMENT_SIZE = 1024 * 5;
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.27',
+    VERSION: '1.28',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -8205,6 +8205,11 @@ Pot.extend(Pot.RomaReadingUtil, {
                 error = document.getElementById('error');
                 reset = document.getElementById('reset');
                 input.value = args.inputValue;
+                setTimeout(function() {
+                    try {
+                        document.getAnonymousElementByAttribute(input, 'anonid', 'input').scrollTop = 0;
+                    } catch (e) {}
+                }, 1);
                 if (args.onInput) {
                     input.addEventListener('input', function(event) {
                         if (!args.onInput(input.value, event)) {
