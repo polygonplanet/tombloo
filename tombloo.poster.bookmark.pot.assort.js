@@ -37,7 +37,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.28
+ * @version  1.29
  * @date     2011-06-26
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
@@ -167,7 +167,7 @@ const POT_SCRIPT_DOCCOMMENT_SIZE = 1024 * 5;
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.28',
+    VERSION: '1.29',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -9227,6 +9227,7 @@ Pot.extend(Pot.SetupUtil, {
                 } catch (e) {}
                 Pot.SetupUtil.raiseError(err);
             });
+            return dd;
         }).addBoth(function() {
             Pot.SetupUtil.blocked = false;
         });
@@ -9836,6 +9837,7 @@ Tombloo.Service.actions.register({
                 return true;
             },
             execute: function(ctx) {
+                Pot.SetupUtil.autoUpdaterUserCanceled = false;
                 Pot.SetupUtil.isUpdatable();
             }
         },
