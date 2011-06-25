@@ -37,7 +37,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.30
+ * @version  1.31
  * @date     2011-06-26
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
@@ -167,7 +167,7 @@ const POT_SCRIPT_DOCCOMMENT_SIZE = 1024 * 5;
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.30',
+    VERSION: '1.31',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -8205,11 +8205,7 @@ Pot.extend(Pot.RomaReadingUtil, {
                 error = document.getElementById('error');
                 reset = document.getElementById('reset');
                 input.value = args.inputValue;
-                setTimeout(function() {
-                    try {
-                        document.getAnonymousElementByAttribute(input, 'anonid', 'input').scrollTop = 0;
-                    } catch (e) {}
-                }, 1);
+                scrollTop();
                 if (args.onInput) {
                     input.addEventListener('input', function(event) {
                         if (!args.onInput(input.value, event)) {
@@ -8234,6 +8230,19 @@ Pot.extend(Pot.RomaReadingUtil, {
             window.addEventListener('dialogaccept', function() {
                 args.onAccept(input.value);
             }, true);
+            
+            function scrollTop() {
+                var i = 100, limit = 600, top = function() {
+                    try {
+                        var anon = document.getAnonymousElementByAttribute(input, 'anonid', 'input');
+                        anon.scrollTop = 0;
+                    } catch (e) {}
+                };
+                do {
+                    setTimeout(top, i);
+                    i += 100;
+                } while (i < limit);
+            }
         ]]></>).wrap('\n'));
         
         params = {
@@ -9168,7 +9177,7 @@ Pot.extend(Pot.SetupUtil, {
                     } catch (e) {}
                     Pot.SetupUtil.progress = {};
                 }
-                return res;
+                return succeed(res);
             }).addCallback(function(res) {
                 let df, code, head, message, params, agree, result;
                 code = Pot.StringUtil.stringify(res.responseText);
