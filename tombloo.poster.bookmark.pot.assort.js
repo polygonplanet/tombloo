@@ -37,7 +37,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.26
+ * @version  1.27
  * @date     2011-06-26
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
@@ -167,7 +167,7 @@ const POT_SCRIPT_DOCCOMMENT_SIZE = 1024 * 5;
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.26',
+    VERSION: '1.27',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -8531,6 +8531,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 
 Pot.SetupUtil = {};
 Pot.extend(Pot.SetupUtil, {
+    blocked: false,
     progress: {},
     progressLog: function() {
         let msg = '', args = Pot.ArrayUtil.toArray(arguments);
@@ -8577,8 +8578,12 @@ Pot.extend(Pot.SetupUtil, {
      */
     install: function() {
         let d;
+        if (Pot.SetupUtil.blocked) {
+            return;
+        }
         d = new Deferred();
         d.addCallback(function() {
+            Pot.SetupUtil.blocked = true;
             Pot.SetupUtil.progress = new Pot.ProgressDialog();
             Pot.SetupUtil.progress.open(PSU_INSTALL_TITLE, 'Installing...');
             return wait(2);
@@ -8940,6 +8945,8 @@ Pot.extend(Pot.SetupUtil, {
                     Pot.SetupUtil.progress = {};
                 });
             } catch (e) {}
+        }).addBoth(function() {
+            Pot.SetupUtil.blocked = false;
         });
         d.callback();
         return d;
@@ -8949,8 +8956,12 @@ Pot.extend(Pot.SetupUtil, {
      */
     uninstall: function(silentMode) {
         let d;
+        if (Pot.SetupUtil.blocked) {
+            return;
+        }
         d = new Deferred();
         d.addCallback(function() {
+            Pot.SetupUtil.blocked = true;
             Pot.SetupUtil.progress = new Pot.ProgressDialog();
             Pot.SetupUtil.progress.open(PSU_UNINSTALL_TITLE, 'Uninstalling...');
             return wait(2);
@@ -9066,6 +9077,8 @@ Pot.extend(Pot.SetupUtil, {
                     Pot.SetupUtil.progress = {};
                 });
             } catch (e) {}
+        }).addBoth(function() {
+            Pot.SetupUtil.blocked = false;
         });
         d.callback();
         return d;
@@ -9076,6 +9089,9 @@ Pot.extend(Pot.SetupUtil, {
     update: function(code) {
         let d;
         try {
+            if (Pot.SetupUtil.blocked) {
+                return;
+            }
             if (!Pot.SetupUtil.validateCode(code)) {
                 throw new Error('Failed to update');
             }
@@ -9120,6 +9136,9 @@ Pot.extend(Pot.SetupUtil, {
      */
     isUpdatable: function(silent) {
         let d, re, version;
+        if (Pot.SetupUtil.blocked) {
+            return;
+        }
         re = {
             version: /[*]\s*@version\s*([\d.abcr-]+)/i
         };
@@ -9127,62 +9146,86 @@ Pot.extend(Pot.SetupUtil, {
             current: Pot.VERSION,
             latest: null
         };
-        d = request(PSU_BMA_SCRIPT_URL).addCallback(function(res) {
-            let df, code, head, message, params, agree, result;
-            code = Pot.StringUtil.stringify(res.responseText);
-            try {
-                code = String(code).convertToUnicode();
-            } catch (e) {}
-            head = code.slice(0, POT_SCRIPT_DOCCOMMENT_SIZE);
-            if (!re.version.test(head)) {
+        d = new Deferred();
+        d.addCallback(function() {
+            Pot.SetupUtil.blocked = true;
+            if (!silent) {
+                Pot.SetupUtil.progress = new Pot.ProgressDialog();
+                Pot.SetupUtil.progress.open(PSU_INSTALL_TITLE, 'Checking for update...');
+            }
+            return wait(0);
+        }).addCallback(function() {
+            let dd;
+            dd = request(PSU_BMA_SCRIPT_URL).addCallback(function(res) {
                 if (!silent) {
-                    alert('エラーです');
+                    try {
+                        Pot.SetupUtil.progress.close();
+                    } catch (e) {}
+                    Pot.SetupUtil.progress = {};
                 }
-            } else {
-                version.latest = head.match(re.version)[1];
-                if (version.latest <= version.current) {
+                return res;
+            }).addCallback(function(res) {
+                let df, code, head, message, params, agree, result;
+                code = Pot.StringUtil.stringify(res.responseText);
+                try {
+                    code = String(code).convertToUnicode('utf-8');
+                } catch (e) {}
+                head = String(code).slice(0, POT_SCRIPT_DOCCOMMENT_SIZE);
+                if (!re.version.test(head)) {
                     if (!silent) {
-                        Pot.SetupUtil.openAlert(
-                            PSU_UPDATECHECK_TITLE,
-                            'すでに最新バージョンです',
-                            'そうですか'
-                        );
+                        alert('エラーです');
                     }
                 } else {
-                    message = '';
-                    if (silent) {
-                        message += '[Tomblooブックマークパッチ]\n'
-                    }
-                    message += [
-                        '最新バージョンにアップデートできます。',
-                        'アップデートしますか？',
-                        '',
-                        getMessage('message.install.warning')
-                    ].join('\n');
-                    agree = 'label.install.agree';
-                    
-                    params = {};
-                    params[message] = null;
-                    params[agree]   = false;
-                    
-                    result = input(params, PSU_UPDATECHECK_TITLE);
-                    
-                    if (result && result[agree]) {
-                        df = Pot.SetupUtil.update(code);
-                    } else {
-                        // ユーザーがキャンセルした場合は再度表示しない
+                    version.latest = head.match(re.version)[1];
+                    if (version.latest <= version.current) {
                         if (!silent) {
-                            Pot.SetupUtil.autoUpdaterUserCanceled = true;
+                            Pot.SetupUtil.openAlert(
+                                PSU_UPDATECHECK_TITLE,
+                                'すでに最新バージョンです',
+                                'そうですか'
+                            );
+                        }
+                    } else {
+                        message = '';
+                        if (silent) {
+                            message += '[Tomblooブックマークパッチ]\n'
+                        }
+                        message += [
+                            '最新バージョンにアップデートできます。',
+                            'アップデートしますか？',
+                            '',
+                            getMessage('message.install.warning')
+                        ].join('\n');
+                        agree = 'label.install.agree';
+                        
+                        params = {};
+                        params[message] = null;
+                        params[agree]   = false;
+                        
+                        result = input(params, PSU_UPDATECHECK_TITLE);
+                        
+                        if (result && result[agree]) {
+                            Pot.SetupUtil.blocked = false;
+                            df = Pot.SetupUtil.update(code);
+                        } else {
+                            // ユーザーがキャンセルした場合は再度表示しない
+                            if (!silent) {
+                                Pot.SetupUtil.autoUpdaterUserCanceled = true;
+                            }
                         }
                     }
                 }
-            }
-            return maybeDeferred(df);
-        }).addErrback(function(err) {
-            try {
-                d.cancel(err);
-            } catch (e) {}
+                return maybeDeferred(df);
+            }).addErrback(function(err) {
+                try {
+                    dd.cancel(err);
+                } catch (e) {}
+                Pot.SetupUtil.raiseError(err);
+            });
+        }).addBoth(function() {
+            Pot.SetupUtil.blocked = false;
         });
+        d.callback();
         return d;
     },
     /**
@@ -9623,20 +9666,24 @@ Pot.extend(Pot.SetupUtil, {
                         }
                     } catch (e) {}
                 }
-                // サイレントモードで実行する
-                callLater(UPDATE_DELAY + Pot.rand(5, 9), function() {
-                    Pot.SetupUtil.isUpdatable(true);
-                    // なるべく時間をあけて実行
-                    callLater(UPDATE_INTERVAL, function() {
-                        // その間にユーザーがキャンセルした場合は再度実行しない
-                        if (!Pot.SetupUtil.autoUpdaterUserCanceled) {
-                            if (Pot.SetupUtil.autoUpdaterConnected) {
-                                Pot.SetupUtil.autoUpdater.call();
-                            }
+                if (Pot.SetupUtil.autoUpdaterConnected === true) {
+                    // サイレントモードで実行する
+                    callLater(UPDATE_DELAY + Pot.rand(5, 9), function() {
+                        if (Pot.SetupUtil.autoUpdaterConnected === true) {
+                            Pot.SetupUtil.isUpdatable(true);
+                            // なるべく時間をあけて実行
+                            callLater(UPDATE_INTERVAL, function() {
+                                // その間にユーザーがキャンセルした場合は再度実行しない
+                                if (!Pot.SetupUtil.autoUpdaterUserCanceled) {
+                                    if (Pot.SetupUtil.autoUpdaterConnected) {
+                                        Pot.SetupUtil.autoUpdater.call();
+                                    }
+                                }
+                            });
                         }
                     });
-                });
-                called = true;
+                    called = true;
+                }
             }
         }
         return called;
