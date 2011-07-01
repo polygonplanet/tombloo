@@ -18,8 +18,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.11
- * @date     2011-06-19
+ * @version  1.12
+ * @date     2011-07-01
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -283,11 +283,15 @@ update(FormPanel.prototype.types, {
                             if (menu.check && !menu.check(ps, type)) {
                                 return;
                             }
+                            // イベントが設定されてたら実行
+                            if (menu.beforeShow) {
+                                menu.beforeShow(ps, type, window);
+                            }
                             elmItem = appendMenuItem(parent, menu.name, menu.icon, !!menu.children);
                             self.customMenus.push(elmItem);
                             if (menu.execute) {
                                 elmItem.addEventListener('command', function() {
-                                    var d = menu.execute(self.elmCompletion, desc, self, ps, type);
+                                    var d = menu.execute(self.elmCompletion, desc, self, ps, type, window);
                                     // 非同期処理の場合、カーソルを砂時計にする
                                     if (d instanceof Deferred) {
                                         self.elmInput.style.cursor = 'wait';
@@ -355,11 +359,15 @@ update(FormPanel.prototype.types, {
                             if (menu.check && !menu.check(ps, type)) {
                                 return;
                             }
+                            // イベントが設定されてたら実行
+                            if (menu.beforeShow) {
+                                menu.beforeShow(ps, type, window);
+                            }
                             elmItem = appendMenuItem(parent, menu.name, menu.icon, !!menu.children);
                             self.customMenus.push(elmItem);
                             if (menu.execute) {
                                 elmItem.addEventListener('command', function() {
-                                    var d = menu.execute(self.elmDescription || self.elmTextbox, self, self, ps, type);
+                                    var d = menu.execute(self.elmDescription || self.elmTextbox, self, self, ps, type, window);
                                     // 非同期処理の場合、カーソルを砂時計にする
                                     if (d instanceof Deferred) {
                                         self.elmInput.style.cursor = 'wait';
@@ -546,11 +554,15 @@ update(FormPanel.prototype.types, {
                             if (menu.check && !menu.check(ps, type)) {
                                 return;
                             }
+                            // イベントが設定されてたら実行
+                            if (menu.beforeShow) {
+                                menu.beforeShow(ps, type, window);
+                            }
                             elmItem = appendMenuItem(parent, menu.name, menu.icon, !!menu.children);
                             self.customMenus.push(elmItem);
                             if (menu.execute) {
                                 elmItem.addEventListener('command', function() {
-                                    var d = menu.execute(self.elmDescription, self, self, ps, type);
+                                    var d = menu.execute(self.elmDescription, self, self, ps, type, window);
                                     // 非同期処理の場合、カーソルを砂時計にする
                                     if (d instanceof Deferred) {
                                         self.elmInput.style.cursor = 'wait';
@@ -692,11 +704,15 @@ update(FormPanel.prototype.types, {
                                 if (menu.check && !menu.check(ps, self.type)) {
                                     return;
                                 }
+                                // イベントが設定されてたら実行
+                                if (menu.beforeShow) {
+                                    menu.beforeShow(ps, self.type, window);
+                                }
                                 elmItem = appendMenuItem(parent, menu.name, menu.icon, !!menu.children);
                                 self.customMenus.push(elmItem);
                                 if (menu.execute) {
                                     elmItem.addEventListener('command', function() {
-                                        var d = menu.execute(self.elmTextBox, self.elmTextBox, self, ps, self.type);
+                                        var d = menu.execute(self.elmTextBox, self.elmTextBox, self, ps, self.type, window);
                                         // 非同期処理の場合、カーソルを砂時計にする
                                         if (d instanceof Deferred) {
                                             self.elmInput.style.cursor = 'wait';
