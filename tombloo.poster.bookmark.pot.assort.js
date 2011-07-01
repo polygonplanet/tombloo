@@ -7931,7 +7931,12 @@ QuickPostForm.descriptionContextMenus.push(
                         (?:
                             (?:このエントリー?を|)
                             [\u0020\u3000]*
-                            (?:(?:はてな|Yahoo!)ブックマーク|del\.?icio\.?us|livedoorクリップ|Buzzurl)に(?:追加|登録)
+                            (?: (?:(?:はてな|Yahoo!)ブックマーク|del\.?icio\.?us|livedoorクリップ|Buzzurl)に(?:追加|登録)
+                              | (?:Twitterで?つぶやく|Facebookで?シェアする
+                                  |mixiチェック[\u0020\u3000]*はてなブックマーク[\u0020\u3000]*
+                                  |Evernoteでクリップする|印刷する([\u0020\u3000]*ヘルプ|)
+                                )
+                            )
                             [\u0020\u3000]*
                         )+
                     ]]></>), 'gi'),
