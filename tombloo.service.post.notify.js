@@ -10,8 +10,8 @@
  * ※通知はウザイ可能性があるのでその場合はパッチ削除
  *
  *
- * @version  1.04
- * @date     2011-05-22
+ * @version  1.05
+ * @date     2011-07-01
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -46,6 +46,17 @@ var retryErrors = [
             ]]></>),
         limit: 2,
         defaultLimit: 2
+    },
+    {
+        // ソースコード変化で効かなくなるけど一応
+        pattern: toSimpleRegExp(<><![CDATA[
+                Tumblr: 
+                  message : 
+                  fileName : chrome://tombloo/content/eval.js?file=20_Tumblr.js
+                  lineNumber : 299
+            ]]></>),
+        limit: 1,
+        defaultLimit: 1
     }
     /*
     ,
