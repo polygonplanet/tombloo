@@ -37,8 +37,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.31
- * @date     2011-06-26
+ * @version  1.32
+ * @date     2011-07-01
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -162,12 +162,31 @@ const POT_ROMA_READING_KEYS      = 'userRomaReadingKeys';
 // 先頭のコメント全てを取り込むのに必要なサイズ (internal only)
 const POT_SCRIPT_DOCCOMMENT_SIZE = 1024 * 5;
 
+//
+// Constants for Setup
+const PSU_PATCH_TITLE       = 'Tombloo - Bookmarkパッチ';
+const PSU_INSTALL_TITLE     = PSU_PATCH_TITLE + 'のインストール';
+const PSU_UNINSTALL_TITLE   = PSU_PATCH_TITLE + 'のアンインストール';
+const PSU_UPDATECHECK_TITLE = PSU_PATCH_TITLE + 'のアップデート確認';
+const PSU_UPDATE_TITLE      = PSU_PATCH_TITLE + 'のアップデート';
+const PSU_BACKUP_SUFFIX     = '-bookmark.pot.assort.bk';
+const PSU_BACKUP_DIR_NAME   = 'chrome';
+const PSU_BMA_SCRIPT_NAME   = 'tombloo.poster.bookmark.pot.assort.js';
+const PSU_QPF_SCRIPT_NAME   = 'tombloo.poster.bookmark.pot.assort.quickpostform.js';
+const PSU_QPF_XUL_FILE      = 'quickPostForm.xul';
+const PSU_PREFS_XUL_FILE    = 'prefs.xul';
+const PSU_COMP_XML_FILE     = 'completion.xml';
+const PSU_DTD_JA_FILE       = 'ja-JP/tombloo.dtd';
+const PSU_DTD_EN_FILE       = 'en-US/tombloo.dtd';
+const PSU_BMA_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/master/' + PSU_BMA_SCRIPT_NAME;
+const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/master/bookmark/' + PSU_QPF_SCRIPT_NAME;
+
 //-----------------------------------------------------------------------------
 // 独自拡張用オブジェクト/ライブラリ
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.31',
+    VERSION: '1.32',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -205,8 +224,18 @@ var Pot = {
                     break;
             }
         }
+        r.toString = function() {
+            let s = [], p;
+            for (p in r) {
+                if (p !== 'toString' && r[p]) {
+                    s.push(p);
+                }
+            }
+            return s.join('/');
+        };
         return r;
     })(navigator),
+    Const: {},
     tmp: {}
 };
 
@@ -334,18 +363,14 @@ Pot.extend({
                     throw o;
                 }
                 if ((o instanceof Array) || o.isArray || Pot.isArray(o) ||
-                    o.constructor === Array || isFunction(o.callee) ||
+                    o.constructor === Array || Pot.isFunction(o.callee) ||
                     /List|Collection/i.test(toString.call(o))
                 ) {
                     result = true;
-                } else if (o) {
-                    if (typeof o.item === 'function' ||
-                        typeof o.nextNode === 'function') {
-                        result = true;
-                    } else if (o[0] !== undefined &&
-                                o[o.length - 1] !== undefined) {
-                        result = true;
-                    }
+                } else if (o &&
+                            (typeof o.item === 'function' ||
+                            typeof o.nextNode === 'function')) {
+                    result = true;
                 }
             } catch (e) {
                 result = false;
@@ -376,15 +401,15 @@ Pot.extend({
      * <code>
      *  var a = '';
      *  Pot.forEach({a:'foo', b:'bar'}, function(key, value) {
-     *    a += key + '=' + value + '.';
+     *    a += key + '=' + value + ',';
      *  });
      *  debug(a);
      * </code>
      *
-     * @results  'a=foo.b=bar.'
+     * @results  'a=foo,b=bar,'
      *
      *
-     * デフォルトは標準の for-in と変わらない速度で実行する
+     * デフォルトは標準の for-in と殆ど同じ速度で実行する
      * ゆっくり実行する場合は、
      *
      * Pot.forEach.slow(obj, function(){...})
@@ -398,13 +423,14 @@ Pot.extend({
      *   slow   :     6   : 遅い
      *   normal :    12   : 微妙
      *   fast   :    36   : 速いつもり
-     *   rapid  : 60000   : デフォルト
+     *   rapid  :    60   : やや速い
+     *   ninja  :   100   : デフォルト
      * ----------------------------------
      *
      * @param  {Array || Object}  object    対象のオブジェクト
      * @param  {Function}         callback  実行する関数
      *                                      function(key, value) this == object
-     *                                      (止める時は StopIteration を投げる)
+     *                                      (止める時は Pot.StopIteration を投げる)
      * @result {Object}                     第一引数のオブジェクトが返る
      */
     forEach: (function() {
@@ -417,7 +443,8 @@ Pot.extend({
                 slow   : 6,
                 normal : 12,
                 fast   : 36,
-                rapid  : 60000
+                rapid  : 60,
+                ninja  : 100
             }
         });
         ForEach.prototype = {
@@ -451,9 +478,11 @@ Pot.extend({
             },
             watch: function() {
                 let self = this;
-                till(function() {
-                    return self.waiting !== true;
-                });
+                if (this.waiting === true) {
+                    till(function() {
+                        return self.waiting !== true;
+                    });
+                }
             },
             execute: function(object, callback) {
                 let d, self = this;
@@ -482,8 +511,9 @@ Pot.extend({
                         d1 = new Deferred();
                         d2 = new Deferred();
                         d1.addCallback(function() {
-                            self.till();
-                            d2.callback();
+                            return self.revolve().addCallback(function() {
+                                d2.callback();
+                            });
                         });
                         d1.callback();
                         return d2;
@@ -493,28 +523,85 @@ Pot.extend({
                     d.callback();
                 }
             },
-            till: function() {
-                let self = this, end = false;
-                till(function() {
-                    let time = (new Date()).getTime();
-                    FETILL: {
-                        do {
-                            try {
-                                self.iter.next();
-                            } catch (e) {
-                                if (e == StopIteration || (e instanceof StopIteration) ||
-                                    e == Pot.StopIteration || (e instanceof Pot.StopIteration) ||
-                                    Pot.isStopIter(e)
-                                ) {
-                                    end = true;
-                                    break FETILL;
+            revolve: function() {
+                let self = this, d, de, df, dr, waiting = true, time = {
+                    total: Pot.mtime(),
+                    loop: null
+                };
+                d = new Deferred();
+                df = new Deferred();
+                dr = new Deferred();
+                d.addCallback(function() {
+                    let dd, de;
+                    dd = new Deferred();
+                    de = new Deferred();
+                    dd.addCallback(function() {
+                        let that = arguments.callee;
+                        time.loop = Pot.mtime();
+                        REVOLVE: {
+                            do {
+                                try {
+                                    self.iter.next();
+                                } catch (e) {
+                                    if (e == StopIteration || (e instanceof StopIteration) ||
+                                        e == Pot.StopIteration || (e instanceof Pot.StopIteration) ||
+                                        Pot.isStopIter(e)
+                                    ) {
+                                        break REVOLVE;
+                                    }
+                                    throw e;
                                 }
-                                throw e;
-                            }
-                        } while ((new Date()).getTime() - time < self.interval);
-                    }
-                    return end;
+                                if (Pot.mtime() - time.total >= 100) {
+                                    till(0);
+                                    time.total = Pot.mtime();
+                                }
+                            } while (Pot.mtime() - time.loop < self.interval);
+                            return self.flush(that);
+                        }
+                        de.callback();
+                    });
+                    dd.callback();
+                    return de;
+                }).addBoth(function() {
+                    waiting = false;
                 });
+                dr.addCallback(function() {
+                    d.callback();
+                }).addCallback(function() {
+                    let d1, d2;
+                    d1 = new Deferred();
+                    d2 = new Deferred();
+                    d1.addCallback(function() {
+                        if (waiting) {
+                            return self.flush(arguments.callee);
+                        }
+                        d2.callback();
+                        df.callback();
+                    });
+                    self.flush(d1);
+                    return d2;
+                });
+                this.flush(dr);
+                return df;
+            },
+            flush: function(callback) {
+                let d, args = Array.prototype.slice.call(arguments, 1);
+                d = new Deferred();
+                d.addCallback(function() {
+                    if (callback instanceof Deferred) {
+                        callback.callback();
+                    } else {
+                        callback.apply(null, args);
+                    }
+                });
+                if (this.interval >= this.speeds.ninja) {
+                    d.callback();
+                } else {
+                    callLater(0, function() {
+                        d.callback();
+                    });
+                }
+                return d;
             },
             forEver: function(callback) {
                 let i = 0, result;
@@ -530,7 +617,7 @@ Pot.extend({
                                 throw 0;
                             }
                         } catch (er) {
-                            i = er;
+                            i = 0;
                         }
                     } catch (e) {
                         if (e == StopIteration || (e instanceof StopIteration) ||
@@ -607,38 +694,28 @@ Pot.extend({
         };
         ForEach.prototype.doit.prototype = ForEach.prototype;
         Pot.extend(ForEach, {
-            process: function(object, callback, options) {
-                let ops = options || {};
-                ops.interval = ForEach.speeds.rapid;
-                return (new ForEach(object, callback, ops)).result;
-            }
-        });
-        Pot.extend(ForEach.process, {
-            doze: function(object, callback, options) {
-                let ops = options || {};
-                ops.interval = ForEach.speeds.doze;
-                return (new ForEach(object, callback, ops)).result;
-            },
-            slow: function(object, callback, options) {
-                let ops = options || {};
-                ops.interval = ForEach.speeds.slow;
-                return (new ForEach(object, callback, ops)).result;
-            },
-            normal: function(object, callback, options) {
-                let ops = options || {};
-                ops.interval = ForEach.speeds.normal;
-                return (new ForEach(object, callback, ops)).result;
-            },
-            fast: function(object, callback, options) {
-                let ops = options || {};
-                ops.interval = ForEach.speeds.fast;
-                return (new ForEach(object, callback, ops)).result;
-            },
-            rapid: function(object, callback, options) {
-                let ops = options || {};
-                ops.interval = ForEach.speeds.rapid;
-                return (new ForEach(object, callback, ops)).result;
-            }
+            process: (function() {
+                let methods, construct, name, create = function(speed) {
+                    let interval;
+                    if (ForEach.speeds[speed] === undefined) {
+                        interval = ForEach.speeds.ninja;
+                    } else {
+                        interval = ForEach.speeds[speed];
+                    }
+                    return function(object, callback, options) {
+                        let ops = options || {};
+                        ops.interval = interval;
+                        return (new ForEach(object, callback, ops)).result;
+                    };
+                };
+                construct = create();
+                methods = {};
+                for (name in ForEach.speeds) {
+                    methods[name] = create(name);
+                }
+                create = null;
+                return Pot.extend(construct, methods);
+            })()
         });
         Pot.extend({
             ForEach: ForEach
@@ -646,7 +723,7 @@ Pot.extend({
         return ForEach.process;
     })(),
     /**
-     * 指定回数ループ
+     * 非ブロックで指定回数ループ
      *
      *
      * @example
@@ -660,46 +737,50 @@ Pot.extend({
      *
      * @results [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
      *
+     * callback関数の第二引数にはループの最後のみ true になる値が渡される
+     *
+     * @example
+     * <code>
+     * var s = '', a = 'abcdef'.split('');
+     * Pot.repeat(a.length, function(i, last) {
+     *   s += a[i] + '=' + i + (last ? ';' : ',');
+     * });
+     * debug(s);
+     * </code>
+     *
+     * @results 'a=0,b=1,c=2,d=3,e=4,f=5;'
+     *
      *
      * @param  {Number}   max       何回ループするかの最大値
      * @param  {Function} callback  実行する関数
      *                              (止めるときは Pot.StopIteration を投げる)
      */
     repeat: (function() {
-        var Repeat = function(max, callback, options) {
+        let methods, construct, name, create = function(speed) {
+            let interval;
+            if (Pot.ForEach.speeds[speed] === undefined) {
+                interval = Pot.ForEach.speeds.ninja;
+            } else {
+                interval = Pot.ForEach.speeds[speed];
+            }
+            return function(max, callback, options) {
+                let ops = options || {};
+                ops.interval = interval;
+                return (new Pot.ForEach(max, callback, ops)).result;
+            };
+        };
+        construct = function(max, callback, options) {
             return Pot.forEach(max, callback, options);
         };
-        Pot.extend(Repeat, {
-            doze: function(max, callback, options) {
-                let ops = options || {};
-                ops.interval = Pot.ForEach.speeds.doze;
-                return (new Pot.ForEach(max, callback, ops)).result;
-            },
-            slow: function(max, callback, options) {
-                let ops = options || {};
-                ops.interval = Pot.ForEach.speeds.slow;
-                return (new Pot.ForEach(max, callback, ops)).result;
-            },
-            normal: function(max, callback, options) {
-                let ops = options || {};
-                ops.interval = Pot.ForEach.speeds.normal;
-                return (new Pot.ForEach(max, callback, ops)).result;
-            },
-            fast: function(max, callback, options) {
-                let ops = options || {};
-                ops.interval = Pot.ForEach.speeds.fast;
-                return (new Pot.ForEach(max, callback, ops)).result;
-            },
-            rapid: function(max, callback, options) {
-                let ops = options || {};
-                ops.interval = Pot.ForEach.speeds.rapid;
-                return (new Pot.ForEach(max, callback, ops)).result;
-            }
-        });
-        return Repeat;
+        methods = {};
+        for (name in Pot.ForEach.speeds) {
+            methods[name] = create(name);
+        }
+        create = null;
+        return Pot.extend(construct, methods);
     })(),
     /**
-     * 永久ループ
+     * 非ブロックで永久ループ
      * (適当に条件付けて Pot.StopIteration or StopIteration 投げる)
      *
      *
@@ -723,44 +804,33 @@ Pot.extend({
      *                                (止めるときは Pot.StopIteration を投げる)
      */
     forEver: (function() {
-        var ForEver = function(callback, options) {
+        let methods, construct, name, create = function(speed) {
+            let interval;
+            if (Pot.ForEach.speeds[speed] === undefined) {
+                interval = Pot.ForEach.speeds.ninja;
+            } else {
+                interval = Pot.ForEach.speeds[speed];
+            }
+            return function(callback, options) {
+                let ops = options || {};
+                ops.interval = interval;
+                return (new Pot.ForEach(callback, null, ops)).result;
+            };
+        };
+        construct = function(callback, options) {
             return Pot.forEach(callback, null, options);
         };
-        Pot.extend(ForEver, {
-            doze: function(callback, options) {
-                let ops = options || {};
-                ops.interval = Pot.ForEach.speeds.doze;
-                return (new Pot.ForEach(callback, null, ops)).result;
-            },
-            slow: function(callback, options) {
-                let ops = options || {};
-                ops.interval = Pot.ForEach.speeds.slow;
-                return (new Pot.ForEach(callback, null, ops)).result;
-            },
-            normal: function(callback, options) {
-                let ops = options || {};
-                ops.interval = Pot.ForEach.speeds.normal;
-                return (new Pot.ForEach(callback, null, ops)).result;
-            },
-            fast: function(callback, options) {
-                let ops = options || {};
-                ops.interval = Pot.ForEach.speeds.fast;
-                return (new Pot.ForEach(callback, null, ops)).result;
-            },
-            rapid: function(callback, options) {
-                let ops = options || {};
-                ops.interval = Pot.ForEach.speeds.rapid;
-                return (new Pot.ForEach(callback, null, ops)).result;
-            }
-        });
-        return ForEver;
+        methods = {};
+        for (name in Pot.ForEach.speeds) {
+            methods[name] = create(name);
+        }
+        create = null;
+        return Pot.extend(construct, methods);
     })()
 });
 
-
-// Define Hash object
 /**
- *  Hash:
+ * Hash:
  *
  * とりあえずどんなキー名でも入れられるオブジェクト
  * ES5 の機能をつかえば getter/setter でもっとオブジェクトぽい扱いができそう
@@ -815,11 +885,11 @@ Pot.extend({
             },
             set: function(key, value) {
                 let self = this;
-                if (key && key.isHash) {
+                if (key && key.isHash && key.each) {
                     key.each(function(k, v) {
                         self.set(k, v);
                     });
-                } else if (key && Pot.isObject(key) || Pot.isIterable(key)) {
+                } else if (key && Pot.isObject(key)) {
                     Pot.forEach(key, function(k, v) {
                         self.set(k, v);
                     });
@@ -913,7 +983,7 @@ Pot.extend({
                 }
                 return Pot.sprintf('{%s}', Pot.implode(json, ':', ','));
             },
-            // 調整中 (hasOwnProperty, __iterator__ 等があると壊れる)
+            //FIXME: 要調整 (hasOwnProperty, __iterator__ 等があると壊れる)
             toObject: function() {
                 let object, p, key, val;
                 try {
@@ -963,94 +1033,120 @@ Pot.extend({
 Pot.extend({
     // escape/unescape HTML entities
     escapeHTML: function(text) {
-        var doc = Pot.getDocument(), elem = doc.createElement('div');
-        elem.appendChild(doc.createTextNode(Pot.StringUtil.stringify(text)));
-        return elem.innerHTML;
+        let self = arguments.callee, s;
+        if (!self.ENTITIES) {
+            Pot.extend(self, {
+                ENTITIES: [
+                    {by: /&/g, to: '&amp;' },
+                    {by: /</g, to: '&lt;'  },
+                    {by: />/g, to: '&gt;'  },
+                    {by: /"/g, to: '&quot;'},
+                    {by: /'/g, to: '&#039;'}
+                ]
+            });
+        }
+        s = Pot.StringUtil.stringify(text);
+        if (s) {
+            self.ENTITIES.forEach(function(o) {
+                s = s.replace(o.by, o.to);
+            });
+        }
+        return s;
     },
     unescapeHTML: function(text) {
-        var result = '', elem, decode, re, maps;
-        re = /&(?:[a-z]\w{0,24}|#(?:x[0-9a-f]{1,8}|[0-9]{1,10}));/gi;
-        maps = {
-            // 一部DOMで変換できなかったもの
-            '&nbsp;'   : '\u0020',
-            '&hellip;' : '\u2026',
-            '&bull;'   : '\u2022',
-            '&copy;'   : '\u00a9',
-            '&reg;'    : '\u00ae',
-            '&deg;'    : '\u00b0',
-            '&trade;'  : '\u2122',
-            '&euro;'   : '\u20ac',
-            '&permil;' : '\u2030',
-            '&Delta;'  : '\u0394',
-            '&nabla;'  : '\u2207',
-            '&laquo;'  : '\u226a',
-            '&raquo;'  : '\u226b',
-            '&ldquo;'  : '\u201c',
-            '&rdquo;'  : '\u201d',
-            '&lsquo;'  : '\u2018',
-            '&rsquo;'  : '\u2019',
-            '&ndash;'  : '\u2013',
-            '&mdash;'  : '\u2014',
-            '&sum;'    : '\u2211',
-            '&Sigma;'  : '\u03a3',
-            '&plusmn;' : '\u00b1',
-            '&para;'   : '\u00b6',
-            '&equiv;'  : '\u2261',
-            '&dagger;' : '\u2020',
-            '&Dagger;' : '\u2021',
-            '&forall;' : '\u2200',
-            '&beta;'   : '\u03b2',
-            '&Lambda;' : '\u039b',
-            '&lambda;' : '\u03bb',
-            '&omega;'  : '\u03c9',
-            '&middot;' : '\u30fb',
-            '&Dagger;' : '\u2021',
-            '&quot;'   : '\u0022',
-            '&apos;'   : '\u0027',
-            '&lt;'     : '\u003c',
-            '&gt;'     : '\u003e'
-        };
-        elem = Pot.getCurrentDocument().createElement('div');
-        decode = function(s) {
-            var c = '';
-            elem.innerHTML = String(s);
-            try {
-                c = elem.childNodes[0].nodeValue;
-                elem.removeChild(elem.firstChild);
-                if (!c || String(s).length > String(c).length) {
-                    throw c;
-                }
-            } catch (e) {
-                c = String(s);
-            }
-            if (c && c.charAt(0) === '&' && c.slice(-1) === ';') {
-                if (maps[c]) {
-                    c = maps[c];
-                } else {
-                    c = c.slice(1, -1);
-                    if (c.charAt(0) === '#') {
-                        c = c.substring(1).toLowerCase();
-                        if (c.charAt(0) === 'x') {
-                            c = '0' + c;
-                        } else {
-                            c = c - 0;
+        let self = arguments.callee, result = '';
+        if (!self.RE) {
+            Pot.extend(self, {
+                RE: /&(?:[a-z]\w{0,24}|#(?:x[0-9a-f]{1,8}|[0-9]{1,10}));/gi,
+                ENTITIES: {
+                    // 一部DOMで変換できなかったもの
+                    // ホワイトスペースは厳密に変換しないで他の処理のため統一する
+                    '&nbsp;'   : '\u0020', // U+00A0
+                    '&ensp;'   : '\u0020', // U+2002
+                    '&emsp;'   : '\u0020', // U+2003
+                    '&thinsp;' : '\u0020', // U+2009
+                    '&hellip;' : '\u2026',
+                    '&bull;'   : '\u2022',
+                    '&copy;'   : '\u00a9',
+                    '&reg;'    : '\u00ae',
+                    '&deg;'    : '\u00b0',
+                    '&trade;'  : '\u2122',
+                    '&euro;'   : '\u20ac',
+                    '&permil;' : '\u2030',
+                    '&Delta;'  : '\u0394',
+                    '&nabla;'  : '\u2207',
+                    '&laquo;'  : '\u226a',
+                    '&raquo;'  : '\u226b',
+                    '&ldquo;'  : '\u201c',
+                    '&rdquo;'  : '\u201d',
+                    '&lsquo;'  : '\u2018',
+                    '&rsquo;'  : '\u2019',
+                    '&ndash;'  : '\u2013',
+                    '&mdash;'  : '\u2014',
+                    '&sum;'    : '\u2211',
+                    '&Sigma;'  : '\u03a3',
+                    '&plusmn;' : '\u00b1',
+                    '&para;'   : '\u00b6',
+                    '&equiv;'  : '\u2261',
+                    '&dagger;' : '\u2020',
+                    '&Dagger;' : '\u2021',
+                    '&forall;' : '\u2200',
+                    '&beta;'   : '\u03b2',
+                    '&Lambda;' : '\u039b',
+                    '&lambda;' : '\u03bb',
+                    '&omega;'  : '\u03c9',
+                    '&middot;' : '\u30fb',
+                    '&Dagger;' : '\u2021',
+                    '&quot;'   : '\u0022',
+                    '&apos;'   : '\u0027',
+                    '&lt;'     : '\u003c',
+                    '&gt;'     : '\u003e'
+                },
+                decode: function(s) {
+                    let c = '';
+                    self.elem.innerHTML = String(s);
+                    try {
+                        c = self.elem.childNodes[0].nodeValue;
+                        self.elem.removeChild(self.elem.firstChild);
+                        if (!c || String(s).length > String(c).length) {
+                            throw c;
                         }
-                        c = String.fromCharCode(c);
-                    } else {
-                        c = '';
+                    } catch (e) {
+                        c = String(s);
                     }
+                    if (c && c.charAt(0) === '&' && c.slice(-1) === ';') {
+                        if (self.ENTITIES[c]) {
+                            c = self.ENTITIES[c];
+                        } else {
+                            c = c.slice(1, -1);
+                            if (c.charAt(0) === '#') {
+                                c = c.substring(1).toLowerCase();
+                                if (c.charAt(0) === 'x') {
+                                    c = '0' + c;
+                                } else {
+                                    c = c - 0;
+                                }
+                                c = String.fromCharCode(c);
+                            } else {
+                                c = '';
+                            }
+                        }
+                    }
+                    return c;
                 }
-            }
-            return c;
-        };
-        result = Pot.StringUtil.stringify(text).replace(re, function(m) {
-            return decode(m);
-        });
-        return result.replace(/&amp;/g, '&').toString();
+            });
+        }
+        try {
+            self.elem = Pot.getCurrentDocument().createElement('div');
+            result = Pot.StringUtil.stringify(text).replace(self.RE, self.decode);
+            return result.replace(/&amp;/g, '&').toString();
+        } finally {
+            self.elem = null;
+        }
     },
     // Escape XPath Expression
     escapeXPathText: function(text) {
-        var i, result, re, matches, len, esc, sq, wq;
+        let i, result, re, matches, len, esc, sq, wq;
         re = /[^"]+|"/g;
         wq = '"';
         sq = "'";
@@ -1091,7 +1187,7 @@ Pot.extend({
      * Based: Tombloo.validateFileName
      */
     escapeFileName: function(fileName) {
-        var s, re;
+        let s, re;
         s = Pot.StringUtil.stringify(fileName);
         if (s) {
             re = [{from: /[\u0000-\u0008]+/g, to: ''}];
@@ -1120,7 +1216,7 @@ Pot.extend({
      * DOM XULWindow
      */
     getWindow: function() {
-        var win;
+        let win;
         try {
             win = getMostRecentWindow().content;
         } catch (e) {
@@ -1132,7 +1228,7 @@ Pot.extend({
      * DOM XULDocument
      */
     getDocument: function() {
-        var doc;
+        let doc;
         try {
             doc = Pot.getWindow().document;
             if (!doc) {
@@ -1151,13 +1247,22 @@ Pot.extend({
      * DOM Window DocumentWindow
      */
     getCurrentWindow: function() {
-        return Pot.getDocument().defaultView;
+        let win;
+        try {
+            win = Pot.getDocument().defaultView;
+            if (!win) {
+                throw win;
+            }
+        } catch (e) {
+            win = Pot.getWindow();
+        }
+        return win;
     },
     /**
      * DOM HTMLDocument
      */
     getCurrentDocument: function() {
-        var doc;
+        let doc;
         try {
             doc = Pot.getCurrentWindow().document;
             if (!doc) {
@@ -1198,6 +1303,31 @@ Pot.extend({
             }
         }
         return Pot.StringUtil.stringify(result);
+    },
+    /**
+     * 指定のXULWindowを取得
+     *
+     * @param  {String}  uri  取得するURI (指定なしはブラウザウィンドウ)
+     * @return {Object}       XULWindow
+     */
+    getChromeWindow: function(uri) {
+        let result, win, wins, pref;
+        pref = uri || 'chrome://browser/content/browser.xul';
+        wins = WindowMediator.getXULWindowEnumerator(null);
+        while (wins.hasMoreElements()) {
+            try {
+                win = wins.getNext().
+                    QueryInterface(Ci.nsIXULWindow).docShell.
+                    QueryInterface(Ci.nsIInterfaceRequestor).
+                    getInterface(Ci.nsIDOMWindow);
+                if (win && win.location &&
+                    (win.location.href == pref || win.location == pref)) {
+                    result = win;
+                    break;
+                }
+            } catch (e) {}
+        }
+        return result;
     },
     /**
      * 値が"数えられるか"調べる
@@ -1330,7 +1460,7 @@ Pot.extend({
      * Pot.DateUtil参照
      */
     date: function() {
-        var args = Pot.ArrayUtil.toArray(arguments);
+        let args = Pot.ArrayUtil.toArray(arguments);
         return Pot.DateUtil.format.apply(Pot.DateUtil, args);
     },
     /**
@@ -1359,6 +1489,16 @@ Pot.extend({
                 return Pot.mtime() - time >= msec;
             });
         }
+    },
+    /**
+     * 遅延実行
+     */
+    callLazy: function(callback) {
+        let func, o = {}, args = Array.prototype.slice.call(arguments, 1);
+        func = callback || function() {};
+        callLater(0, function() {
+            func.apply(o, args);
+        });
     },
     /**
      * sprintf
@@ -1598,8 +1738,8 @@ Pot.extend({
      * @return {String}          結合された文字列
      */
     implode: function(object, glue, sep, tail) {
-        var result = '', ins = [], defs, p, g, s, o, t;
-        var args = arguments, len = args.length, i;
+        let result = '', ins = [], defs, p, g, s, o, t;
+        let args = arguments, len = args.length, i;
         defs = {
             glue: ':',
             sep: ','
@@ -1692,7 +1832,7 @@ Pot.extend({
      * @return {String}             取得したテキスト
      */
     getTextContent: function(context, xpath) {
-        var text = '', doc, ids, node, found, names, expr;
+        let text = '', doc, ids, node, found, names, expr, alpha, format;
         if (context && Pot.isString(context)) {
             [doc, expr] = [xpath, context];
         }
@@ -1705,43 +1845,55 @@ Pot.extend({
                 } catch (e) {}
             }
             if (!text) {
+                alpha = {
+                    up: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+                };
+                alpha.low = alpha.up.toLowerCase();
                 ids = Pot.StringUtil.trim(<>
-                    Head-Line
-                    Entry-Content
-                    Article-Body
-                    Article
-                    Blog-Body
-                    Body
-                    H-Entry
-                    Entry
-                    Main-Content
-                    Main-Contents
-                    Block-Contents
-                    Contents-Block
-                    Block-Content
-                    Content-Block
-                    Main
-                    Content
-                    Contents
-                    Section
-                    Posts
-                    Post
-                    Container
+                    autopagerize_page_element
+                    head-line
+                    entry-content
+                    article-body
+                    article
+                    blog-body
+                    body
+                    h-entry
+                    entry
+                    main-content
+                    block-content
+                    contents-block
+                    content-block
+                    main
+                    content
+                    section
+                    post
+                    container
                 </>).split(/\s+/);
                 node = null;
                 found = false;
                 ids.forEach(function(id) {
                     if (!found) {
                         if (id) {
-                            names = [id, id.toLowerCase()];
+                            names = [id];
                             if (id.indexOf('-') !== -1) {
-                                names.push(id.split('-').join(''), id.split('-').join('').toLowerCase());
+                                names.push(id.replace(/-/g, ''), id.replace(/-/g, '_'));
                             }
+                            Pot.ArrayUtil.toArray(names).forEach(function(name) {
+                                let tail = name.slice(-1).toLowerCase();
+                                names.push(name + 's');
+                                if (tail === 'y') {
+                                    names.push(name.slice(0, -1) + 'ies');
+                                } else if (tail === 's') {
+                                    names.push(name.slice(0, -1) + 'es');
+                                }
+                            });
                             names.forEach(function(name) {
                                 if (!found) {
-                                    node = $x(Pot.sprintf('//*[@id="%s"]', name), doc);
+                                    format = '//*[contains(translate(@id,"%s","%s"),"%s")]';
+                                    node = $x(Pot.sprintf(format, alpha.up, alpha.low, name), doc);
                                     if (!node) {
-                                        node = $x(Pot.sprintf('//*[contains(@class,"%s")]', name), doc);
+                                        format = '//*[contains(translate(@class,"%s","%s"),"%s")]';
+                                        node = $x(Pot.sprintf(format, alpha.up, alpha.low, name), doc);
                                     }
                                     if (node && Pot.StringUtil.trimAll(node.textContent).length > 256) {
                                         found = true;
@@ -1944,6 +2096,166 @@ Pot.extend(Pot.toDataURI, {
             true,
             charset
         );
+    }
+});
+
+
+})();
+//-----------------------------------------------------------------------------
+// Deferred 拡張 (JSDeferred の機能相当のメソッドを実装)
+//-----------------------------------------------------------------------------
+(function() {
+
+
+Pot.DeferredUtil = {};
+Pot.extend(Pot.DeferredUtil, {
+    /**
+     * 関数を実行する
+     * JSDeferred.call と同じに扱える(若干違う)。実装はTombloo/MochiKit仕様
+     *
+     * @param  {Function}   func   実行する関数
+     * @return {Deferred}          callback済みのDeferred
+     */
+    call: function(func) {
+        let args = Array.prototype.slice.call(arguments, 1);
+        return (new Deferred()).addCallback(function() {
+            return func.apply(this, args);
+        }).callback();
+    },
+    /**
+     * 非同期で実行
+     */
+    callLazy: function(func) {
+        let d, args = Array.prototype.slice.call(arguments, 1);
+        d = new Deferred();
+        d.addCallback(function() {
+            return func.apply(this, args);
+        });
+        callLater(0, function() {
+            d.callback();
+        });
+        return d;
+    },
+    /**
+     * 指定回数ループ
+     * JSDeferred.loop と同じに扱える。実装はTombloo仕様
+     *
+     * @param  {Number}     n      ループする回数
+     * @param  {Function}   func   実行する関数
+     * @return {Deferred}          callbackしてないDeferred
+     */
+    //XXX: いちおう動くけど変な実装になったから直さないと…
+    loop: function(n, func) {
+        var result, step, o, d, i, waiting, time;
+        o = {
+            begin: n.begin || 0,
+            end: Pot.isNumber(n.end) ? n.end : n - 1,
+            step: n.step || 1,
+            last: false,
+            prev: null
+        };
+        step = o.step;
+        d = new Deferred();
+        d.addCallback(function() {
+            i = o.begin;
+            till(function() {
+                let end = false;
+                if (i > o.end) {
+                    end = true;
+                } else {
+                    if (i + step > o.end) {
+                        o.last = true;
+                        o.step = o.end - i + 1;
+                    }
+                    o.prev = result;
+                    try {
+                        result = func.call(this, i, o);
+                    } catch (e) {
+                        if (e == StopIteration || (e instanceof StopIteration) ||
+                            e == Pot.StopIteration || (e instanceof Pot.StopIteration) ||
+                            Pot.isStopIter(e)
+                        ) {
+                            end = true;
+                        } else {
+                            throw e;
+                        }
+                    }
+                    if (result instanceof Deferred) {
+                        waiting = true;
+                        try {
+                            result.addCallback(function(res) {
+                                result = res;
+                                waiting = false;
+                            });
+                            if (!result.canceller || !(result.canceller.toString) ||
+                                !/\b(?:clearTimeout)\b/.test(result.canceller.toString())) {
+                                // wait(n) の場合は遅延実行される
+                                result.callback();
+                            }
+                        } catch (e) {
+                            waiting = false;
+                        }
+                    }
+                    if (waiting) {
+                        time = Pot.time();
+                        till(function() {
+                            if (Pot.time() - time >= 10) {
+                                waiting = false;
+                            }
+                            return !waiting;
+                        });
+                    }
+                    i++;
+                }
+                return end;
+            });
+            return result;
+        });
+        return d;
+    },
+    /**
+     * 指定回数ループ
+     * JSDeferred.repeat と同じに扱える。実装はTombloo仕様
+     *
+     * @param  {Number}     max    ループする回数
+     * @param  {Function}   func   実行する関数
+     * @return {Deferred}          callbackしてないDeferred
+     */
+    repeat: function(max, func) {
+        let result = null, d = new Deferred(), i = 0, last = max - 1, time = {
+            total: Pot.mtime(),
+            loop: null
+        };
+        d.addCallback(function() {
+            let self = arguments.callee;
+            time.loop = Pot.mtime();
+            DREPEAT: {
+                do {
+                    if (i >= max) {
+                        break DREPEAT;
+                    }
+                    try {
+                        result = func(i, i++ >= last);
+                    } catch (e) {
+                        if (e == StopIteration || (e instanceof StopIteration) ||
+                            e == Pot.StopIteration || (e instanceof Pot.StopIteration) ||
+                            Pot.isStopIter(e)
+                        ) {
+                            break DREPEAT;
+                        }
+                        throw e;
+                    }
+                } while (Pot.mtime() - time.loop < 20);
+                
+                if (Pot.mtime() - time.total >= 100) {
+                    till(0);
+                    time.total = Pot.mtime();
+                }
+                return Pot.DeferredUtil.call(self);
+            }
+            return null;
+        });
+        return d;
     }
 });
 
@@ -2213,142 +2525,6 @@ Pot.extend(Pot.DateUtil, {
 
 })();
 //-----------------------------------------------------------------------------
-// Deferred 拡張 (JSDeferred の機能相当のメソッドを実装)
-//-----------------------------------------------------------------------------
-(function() {
-
-
-Pot.DeferredUtil = {};
-Pot.extend(Pot.DeferredUtil, {
-    /**
-     * 関数を実行する
-     * JSDeferred.call と同じに扱える。実装はTombloo/MochiKit仕様
-     *
-     * @param  {Function}   func   実行する関数
-     * @return {Deferred}          callback済みのDeferred
-     */
-    call: function(func) {
-        var args = Array.prototype.slice.call(arguments, 1);
-        return (new Deferred()).addCallback(function() {
-            return func.apply(this, args);
-        }).callback();
-    },
-    /**
-     * 指定回数ループ
-     * JSDeferred.loop と同じに扱える。実装はTombloo仕様
-     *
-     * @param  {Number}     n      ループする回数
-     * @param  {Function}   func   実行する関数
-     * @return {Deferred}          callbackしてないDeferred
-     */
-    loop: function(n, func) {
-        var result, step, o, d, i, waiting, time;
-        o = {
-            begin: n.begin || 0,
-            end: Pot.isNumber(n.end) ? n.end : n - 1,
-            step: n.step || 1,
-            last: false,
-            prev: null
-        };
-        step = o.step;
-        d = new Deferred();
-        d.addCallback(function() {
-            i = o.begin;
-            till(function() {
-                let end = false;
-                if (i > o.end) {
-                    end = true;
-                } else {
-                    if (i + step > o.end) {
-                        o.last = true;
-                        o.step = o.end - i + 1;
-                    }
-                    o.prev = result;
-                    try {
-                        result = func.call(this, i, o);
-                    } catch (e) {
-                        if (e == StopIteration || (e instanceof StopIteration) ||
-                            e == Pot.StopIteration || (e instanceof Pot.StopIteration) ||
-                            Pot.isStopIter(e)
-                        ) {
-                            end = true;
-                        } else {
-                            throw e;
-                        }
-                    }
-                    if (result instanceof Deferred) {
-                        waiting = true;
-                        try {
-                            result.addCallback(function(res) {
-                                result = res;
-                                waiting = false;
-                            });
-                            if (!result.canceller || !(result.canceller.toString) ||
-                                !/\b(?:clearTimeout)\b/.test(result.canceller.toString())) {
-                                // wait(n) の場合は遅延実行される
-                                result.callback();
-                            }
-                        } catch (e) {
-                            waiting = false;
-                        }
-                    }
-                    if (waiting) {
-                        time = Pot.time();
-                        till(function() {
-                            if (Pot.time() - time >= 10) {
-                                waiting = false;
-                            }
-                            return !waiting;
-                        });
-                    }
-                    i++;
-                }
-                return end;
-            });
-            return result;
-        });
-        return d;
-    },
-    /**
-     * 指定回数ループ
-     * JSDeferred.repeat と同じに扱える。実装はTombloo仕様
-     *
-     * @param  {Number}     max    ループする回数
-     * @param  {Function}   func   実行する関数
-     * @return {Deferred}          callbackしてないDeferred
-     */
-    repeat: function(max, func) {
-        var i = 0, result = null, d = new Deferred();
-        d.addCallback(function() {
-            var self = arguments.callee, time = Pot.mtime();
-            DREPEAT: {
-                do {
-                    if (i >= max) {
-                        break DREPEAT;
-                    }
-                    try {
-                        result = func(i++);
-                    } catch (e) {
-                        if (e == StopIteration || (e instanceof StopIteration) ||
-                            e == Pot.StopIteration || (e instanceof Pot.StopIteration) ||
-                            Pot.isStopIter(e)
-                        ) {
-                            break DREPEAT;
-                        }
-                        throw e;
-                    }
-                } while (Pot.mtime() - time < 20);
-                return Pot.DeferredUtil.call(self);
-            }
-            return null;
-        });
-        return d;
-    }
-});
-
-
-})();
-//-----------------------------------------------------------------------------
 // Pot - ファイル操作オブジェクト
 //-----------------------------------------------------------------------------
 (function() {
@@ -2485,7 +2661,7 @@ Pot.extend(Pot.FileUtil, {
      * @return {Boolean}                         存在すれば true
      */
     exists: function(fileName) {
-        return  Pot.SetupUtil.assignLocalFile(fileName).exists();
+        return  Pot.FileUtil.assignLocalFile(fileName).exists();
     },
     /**
      * ファイルサイズを取得する
@@ -2534,7 +2710,7 @@ Pot.extend(Pot.FileUtil, {
      *
      *
      * @example assignLocalFile('tombloo://chrome/content/prefs.xul').path;
-     * @results 'C:/.../extensions/tombloo@.../chrome/content/prefs.xul' (省略)
+     * @results 'C:/.../extensions/tombloo@.../chrome/content/prefs.xul' (中略)
      *
      *
      * @param  {String || ILocalFile ||
@@ -2544,11 +2720,11 @@ Pot.extend(Pot.FileUtil, {
     assignLocalFile: function(filePath) {
         let file, path, re, names;
         re = {
-            tombloo: /^Tombloo:\/{0,}/i,
-            data: /^(?:Tombloo[.]|)data(?:es|):\/{0,}/i,
-            patch: /^(?:Tombloo[.]|)patch(?:es|):\/{0,}/i,
-            defs: /^[{]([^{}]+?)[}]:\/{0,}/,
-            sep: /[\/\\]/g
+            tombloo : /^Tombloo:\/{0,}/i,
+            data    : /^(?:Tombloo[.]|)data(?:e?s|):\/{0,}/i,
+            patch   : /^(?:Tombloo[.]|)patch(?:es|):\/{0,}/i,
+            defs    : /^[{]([^{}]+?)[}]:\/{0,}/,
+            sep     : /[\/\\]/g
         };
         if (filePath instanceof ILocalFile) {
             file = filePath;
@@ -2622,29 +2798,32 @@ Pot.extend(Pot.StringUtil, {
      * @return {String}      文字列としての値
      */
     stringify: function(x) {
-        var result = '';
+        var result = '', c;
         if (x !== null) {
             switch (typeof x) {
                 case 'string':
-                    result = x;
-                    break;
-                case 'xml':
                 case 'number':
-                    result = x.toString();
+                case 'xml':
+                    result = x;
                     break;
                 case 'boolean':
                     result = x ? 1 : '';
                     break;
                 case 'object':
-                    if (x && x.constructor === String) {
-                        result = x;
+                    if (x) {
+                        c = x.constructor;
+                        if (c === String || c === Number) {
+                            result = x;
+                        } else if (c === Boolean) {
+                            result = x ? 1 : '';
+                        }
                     }
                     break;
                 default:
                     break;
             }
         }
-        return String(result);
+        return result.toString();
     },
     // Shortcut of String.fromCharCode() / charCodeAt(0)
     chr: function() {
@@ -2790,7 +2969,7 @@ Pot.extend(Pot.StringUtil, {
      */
     utf8: {
         encode: function(string) {
-            var codes = [], len, c, s;
+            let codes = [], len, c, s;
             s = new String(Pot.StringUtil.stringify(string));
             Pot.repeat(s.length, function(i) {
                 c = s.charCodeAt(i);
@@ -2812,7 +2991,7 @@ Pot.extend(Pot.StringUtil, {
             return String.fromCharCode.apply(null, codes);
         },
         decode: function(string) {
-            var codes = [], i, len, s, n, c, c2, c3;
+            let codes = [], i, len, s, n, c, c2, c3;
             s = new String(Pot.StringUtil.stringify(string));
             i = 0;
             len = s.length;
@@ -2846,7 +3025,7 @@ Pot.extend(Pot.StringUtil, {
         var encode, decode, map;
         map = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
         encode = function(text) {
-            var t = new String(''), s, p = -6, a = 0, i = 0, v = 0, c, n;
+            let t = new String(''), s, p = -6, a = 0, i = 0, v = 0, c, n;
             s = Pot.StringUtil.utf8.encode(Pot.StringUtil.stringify(text));
             if (s) {
                 n = s.length;
@@ -2873,7 +3052,7 @@ Pot.extend(Pot.StringUtil, {
             return t.toString();
         };
         decode = function(text) {
-            var t = new String(''), s, p = -8, a = 0, c, d, n;
+            let t = new String(''), s, p = -8, a = 0, c, d, n;
             s = Pot.StringUtil.stringify(text);
             if (s) {
                 n = s.length;
@@ -2896,7 +3075,7 @@ Pot.extend(Pot.StringUtil, {
         };
         return {
             encode: function(text) {
-                var result = '', s;
+                let result = '', s;
                 s = Pot.StringUtil.stringify(text);
                 if (s) {
                     try {
@@ -2910,7 +3089,7 @@ Pot.extend(Pot.StringUtil, {
                 return result;
             },
             decode: function(text) {
-                var result = '', s;
+                let result = '', s;
                 s = Pot.StringUtil.stringify(text);
                 if (s) {
                     try {
@@ -2937,7 +3116,7 @@ Pot.extend(Pot.StringUtil, {
         const ALPHAMERIC_BASE63TBL = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_';
         return {
             encode: function(s) {
-                var a = new String(''), c, i = 1014, j, K, k, L, l = -1, p, t = ' ', A, n;
+                let a = new String(''), c, i = 1014, j, K, k, L, l = -1, p, t = ' ', A, n;
                 A = ALPHAMERIC_BASE63TBL.split(a);
                 for (; i < 1024; i++) {
                     t += t;
@@ -2987,7 +3166,7 @@ Pot.extend(Pot.StringUtil, {
                 return a.toString();
             },
             decode: function(a) {
-                var C = {}, c, i = 0, j, k, l, m, p, s = new String('    '), w, t = Pot.StringUtil.stringify(a);
+                let C = {}, c, i = 0, j, k, l, m, p, s = new String('    '), w, t = Pot.StringUtil.stringify(a);
                 for (; i < 63; i++) {
                     C[ALPHAMERIC_BASE63TBL.charAt(i)] = i;
                 }
@@ -3066,7 +3245,7 @@ Pot.extend(Pot.StringUtil, {
             B3667A2E C4614AB8 5D681B02 2A6F2B94 B40BBE37 C30C8EA1 5A05DF1B 2D02EF8D
         </>.toString().trim().split(/\s+/);
         return function(string) {
-            var s, crc, x, y, i, x0, f, len;
+            let s, crc, x, y, i, x0, f, len;
             s = Pot.StringUtil.utf8.encode(Pot.StringUtil.stringify(string));
             f = -1;
             crc = x = y = 0;
@@ -3091,7 +3270,7 @@ Pot.extend(Pot.StringUtil, {
      * @return {String}          変換された文字列
      */
     escapeSequence: function(text) {
-        var s, re, meta, rep;
+        let s, re, meta, rep;
         re = /[^\w!#$()*+,.:;=?@[\]^`|~-]/gi;
         meta = {
             '\u0008': '\\b',  // 後退             <BS>
@@ -3106,7 +3285,7 @@ Pot.extend(Pot.StringUtil, {
             '\u002F': '\\/'   // スラッシュ
         };
         rep = function(a) {
-            var c = meta[a];
+            let c = meta[a];
             return typeof c === 'string' ? c :
                 '\\u' + ('0000' + a.charCodeAt(0).toString(16)).slice(-4);
         };
@@ -3124,11 +3303,11 @@ Pot.extend(Pot.StringUtil, {
      * @return {String}          変換された文字列
      */
     unescapeSequence: function(text) {
-        var s, re, meta, rep, chr;
+        let s, re, meta, rep, chr;
         re = {
-            seq: /\\([btnvfr'"\\\/]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|.|[\s\S])/g,
-            quote: /^\s*(?:"(?:\\.|[^"\n\\])*"|'(?:\\.|[^'\n\\])*')\s*$/,
-            bs: /[\u005C]{2}/g
+            seq   : /\\([btnvfr'"\\\/]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|.|[\s\S])/g,
+            quote : /^\s*(?:"(?:\\.|[^"\n\\])*"|'(?:\\.|[^'\n\\])*')\s*$/,
+            bs    : /[\u005C]{2}/g
         };
         meta = {
             'b' : '\u0008',
@@ -3144,7 +3323,7 @@ Pot.extend(Pot.StringUtil, {
         };
         chr = String.fromCharCode;
         rep = function(m, a) {
-            var r, c = meta[a];
+            let r, c = meta[a];
             if (typeof c === 'string') {
                 r = c;
             } else if (a.length === 3 && a.charAt(0) === 'x') {
@@ -3168,31 +3347,39 @@ Pot.extend(Pot.StringUtil, {
      * 文字列のByte数を取得
      *
      * @param  {String}   string   対象の文字列
+     * @param  {Boolean}  loose    テキトウに数える場合 = true
      * @return {Number}            文字列のバイト数
      */
-    getByteSize: function(string) {
-        var size, i, s = Pot.StringUtil.stringify(string);
+    getByteSize: function(string, loose) {
+        let size, i, s = Pot.StringUtil.stringify(string);
         try {
+            if (loose) {
+                throw loose;
+            }
             size = Pot.StringUtil.utf8.encode(s).length;
         } catch (e) {
             // URIエラー回避
             try {
-                size = s.split('').map(function(c) {
-                    return c.charCodeAt(0) > 0xff ? 3 : 1;
-                }).reduce(function(a, b) {
-                    return a + b;
-                });
+                size = s.replace(/[\u0100-\uFFFF]/g, '...').length;
             } catch (e) {
                 try {
-                    size = 0;
-                    for (i = 0; i < s.length; ++i) {
-                        size += s.charCodeAt(i) > 0xff ? 3 : 1;
-                    }
+                    size = s.split('').map(function(c) {
+                        return c.charCodeAt(0) > 0xff ? 3 : 1;
+                    }).reduce(function(a, b) {
+                        return a + b;
+                    });
                 } catch (e) {
                     try {
-                        size = encodeURIComponent(s).replace(/%../g, '?').length;
+                        size = 0;
+                        for (i = 0; i < s.length; ++i) {
+                            size += s.charCodeAt(i) > 0xff ? 3 : 1;
+                        }
                     } catch (e) {
-                        size = s && s.length || 0;
+                        try {
+                            size = encodeURIComponent(s).replace(/%../g, '?').length;
+                        } catch (e) {
+                            size = s && s.length || 0;
+                        }
                     }
                 }
             }
@@ -3469,7 +3656,8 @@ Pot.extend(Pot.StringUtil, {
             'if': 'いふ', on: 'おん', 'in': 'いん', so: 'そー', your: 'ゆあ', not: 'のっと',
             at: 'あっと', 'for': 'ふぉー', to: 'とぅー', it: 'いっと', "it's": 'いっつ',
             "i'm": 'あいむ', "don't": 'どんと', of: 'おぶ', 'do': 'どぅー', lol: 'わら',
-            fuck: 'ふぁっく', shit: 'しっと', be: 'びー',
+            fuck: 'ふぁっく', shit: 'しっと', be: 'びー', 'this': 'でぃす',
+            a: 'あ', an: 'あん',
             google: 'ぐーぐる', yahoo: 'やふー', twitter: 'ついったー', tumblr: 'たんぶらー',
             facebook: 'ふぇいすぶっく', amazon: 'あまぞん'
         };
@@ -3616,80 +3804,82 @@ Pot.extend(Pot.StringUtil, {
      * @return {String}           本来の読みor読みをそのまま返す
      */
     precedeReading: function(reading, tag) {
-        var maps, lists;
-        maps = new Pot.Hash();
-        lists = {
-            'ニジ'                           : /^[二2]次$/,
-            'サンジ'                         : /^[三3]次$/,
-            'ハツネミク'                     : '初音ミク',
-            'カガミネリン'                   : '鏡音リン',
-            'カガミネレン'                   : '鏡音レン',
-            'メグリネルカ'                   : '巡音ルカ',
-            'バケモノガタリ'                 : '化物語',
-            'カタナガタリ'                   : '刀語',
-            'シャクガンノシャナ'             : '灼眼のシャナ',
-            'イニシャルd'                    : /^頭文字D$/i,
-            'イレブンアイズ'                 : /^11eyes$/i,
-            'オウランコウコウホストクラブ'   : '桜蘭高校ホスト部',
-            'ナツメユウジンチョウ'           : '夏目友人帳',
-            'ソラヲカケルショウジョ'         : '宇宙をかける少女',
-            'シンレイガリ'                   : '神霊狩',
-            'ドットハック'                   : /^[.．]hack$/i,
-            'コウキョウシヘンエウレカセブン' : '交響詩篇エウレカセブン',
-            'コウカクキドウタイ'             : '攻殻機動隊',
-            'ツクヨミ'                       : '月詠',
-            'ハイバネレンメイ'               : '灰羽連盟',
-            'トウホウ'                       : '東方',
-            'コウマキョウ'                   : '紅魔郷',
-            'ヨウヨウム'                     : '妖々夢',
-            'エイヤショウ'                   : '永夜抄',
-            'カエイヅカ'                     : '花映塚',
-            'ブンカチョウ'                   : '文花帖',
-            'フウジンロク'                   : '風神録',
-            'チレイデン'                     : '地霊殿',
-            'セイレンセン'                   : '星蓮船',
-            'レイム'                         : '霊夢',
-            'マリサ'                         : '魔理沙',
-            'サクヤ'                         : '咲夜',
-            'シンザン'                       : '新参',
-            'コサン'                         : '古参',
-            'ハゲドウ'                       : '禿同',
-            'チショウ'                       : '池沼',
-            'トツリ'                         : '凸り',
-            'ヘコミ'                         : '凹み',
-            'サンカッケー'                   : '△'
-        };
-        forEach(lists, function([k, v]) {
-            let roma;
-            try {
-                roma = k.toRoma();
-                if (!roma) {
-                    throw roma;
-                }
-                maps.set(roma, v);
-            } catch (e) {}
-        });
-        lists = null;
-        return (Pot.StringUtil.precedeReading = function(reading, tag) {
-            let result = reading;
-            maps.forEach(function(read, val) {
+        let self = arguments.callee, result, lists;
+        if (!self.maps) {
+            self.maps = new Pot.Hash();
+            lists = {
+                'ニジ'                           : /^[二2]次$/,
+                'サンジ'                         : /^[三3]次$/,
+                'ハツネミク'                     : '初音ミク',
+                'カガミネリン'                   : '鏡音リン',
+                'カガミネレン'                   : '鏡音レン',
+                'メグリネルカ'                   : '巡音ルカ',
+                'バケモノガタリ'                 : '化物語',
+                'オトリモノガタリ'               : '囮物語',
+                'カタナガタリ'                   : '刀語',
+                'シャクガンノシャナ'             : '灼眼のシャナ',
+                'イニシャルd'                    : /^頭文字D$/i,
+                'イレブンアイズ'                 : /^11eyes$/i,
+                'オウランコウコウホストクラブ'   : '桜蘭高校ホスト部',
+                'ナツメユウジンチョウ'           : '夏目友人帳',
+                'ソラヲカケルショウジョ'         : '宇宙をかける少女',
+                'シンレイガリ'                   : '神霊狩',
+                'ドットハック'                   : /^[.．]hack$/i,
+                'コウキョウシヘンエウレカセブン' : '交響詩篇エウレカセブン',
+                'コウカクキドウタイ'             : '攻殻機動隊',
+                'ツクヨミ'                       : '月詠',
+                'ハイバネレンメイ'               : '灰羽連盟',
+                'トウホウ'                       : '東方',
+                'コウマキョウ'                   : '紅魔郷',
+                'ヨウヨウム'                     : '妖々夢',
+                'エイヤショウ'                   : '永夜抄',
+                'カエイヅカ'                     : '花映塚',
+                'ブンカチョウ'                   : '文花帖',
+                'フウジンロク'                   : '風神録',
+                'チレイデン'                     : '地霊殿',
+                'セイレンセン'                   : '星蓮船',
+                'レイム'                         : '霊夢',
+                'マリサ'                         : '魔理沙',
+                'サクヤ'                         : '咲夜',
+                'ヨウジョ'                       : /^ょぅι[ﾞ゛]ょ$/,
+                'シンザン'                       : '新参',
+                'コサン'                         : '古参',
+                'ハゲドウ'                       : '禿同',
+                'チショウ'                       : '池沼',
+                'トツリ'                         : '凸り',
+                'ヘコミ'                         : '凹み',
+                'サンカッケー'                   : '△'
+            };
+            Pot.forEach(lists, function(read, expr) {
                 try {
-                    if ((Pot.isString(val) && tag === val) ||
-                        (Pot.isRegExp(val) && val.test(tag))) {
-                        result = read;
-                        throw Pot.StopIteration;
+                    roma = String(read).toRoma();
+                    if (!roma) {
+                        throw roma;
                     }
-                } catch (e) {
-                    if (e == StopIteration || (e instanceof StopIteration) ||
-                        e == Pot.StopIteration || (e instanceof Pot.StopIteration) ||
-                        Pot.isStopIter(e)
-                    ) {
-                        throw e;
-                    }
-                }
+                    self.maps.set(roma, expr);
+                } catch (e) {}
             });
-            return result;
-        })(reading, tag);
+        }
+        lists = null;
+        result = reading;
+        self.maps.forEach(function(read, expr) {
+            try {
+                if (tag === expr ||
+                    (expr.test && expr.test(tag))
+                ) {
+                    result = read;
+                    throw Pot.StopIteration;
+                }
+            } catch (e) {
+                if (e == StopIteration || (e instanceof StopIteration) ||
+                    e == Pot.StopIteration || (e instanceof Pot.StopIteration) ||
+                    Pot.isStopIter(e)
+                ) {
+                    throw e;
+                }
+            }
+        });
+        return result;
     },
     /**
      * 2ch系のログテキストの名前/IDの行を除去して返す
@@ -3715,10 +3905,10 @@ Pot.extend(Pot.StringUtil, {
         };
         s = Pot.StringUtil.stringify(text);
         tpls = [{
-            format: '^ %s{0,3} %s %s %s %s{3}/%s{2}/%s{2} %s %s %s %s{2}:%s{2}:%s{2}(?:[.]%s{1,2}|) %s%s$',
+            format: '^ %s{0,3} %s? %s %s? %s{3}/%s{2}/%s{2} %s %s %s %s{2}:%s{2}:%s{2}(?:[.]%s{1,2}|) (?:%s|)%s$',
             flags: 'gim'
         }, {
-            format: '(?:\\b|) %s{0,3} %s %s %s %s{3}/%s{2}/%s{2} %s %s %s %s{2}:%s{2}:%s{2}(?:[.]%s{1,2}|) %s%s?' +
+            format: '(?:\\b|) %s{0,3} %s? %s %s? %s{3}/%s{2}/%s{2} %s %s %s %s{2}:%s{2}:%s{2}(?:[.]%s{1,2}|) (?:%s|)%s?' +
                     '(?=[\\u0100-\\uFFFF]|[\\r\\n]|\\b|$|)',
             flags: 'gi'
         }];
@@ -3745,20 +3935,39 @@ Pot.extend(Pot.StringUtil, {
      * @return {String}        タグが除去された文字列
      */
     stripTags: function(text) {
-        var s, prev, limit = 5;
-        while (--limit >= 0) {
-            s = Pot.StringUtil.stringify(text).
-                replace(/<([%?])[\s\S]*?\1>/g, '').
-                replace(/<!--[\s\S]*?-->/g, '').
-                replace(/<!-*\[CDATA\[[\s\S]*?\]\]-*>/gi, '').
-                replace(/<!\s*\w+[^>]*>/g, '').
-                replace(/<\s*(\w+)\b[^>]*>([\s\S]*?)<\s*\/\s*\1\s*>/g, ' $2 ').
-                replace(/<\s*\/?\s*\w+\b[^>]*>/g, ' ').
-                replace(/<[^>]*>/g, ' ');
-            if (prev === s) {
-                break;
-            }
-            prev = s;
+        let s, prev, limit = 5, patterns = [{
+            by: /<([%?])[\s\S]*?\1>/g,
+            to: ''
+        }, {
+            by: /<!--[\s\S]*?-->/g,
+            to: ''
+        }, {
+            by: /<!-*\[CDATA\[[\s\S]*?\]\]-*>/gi,
+            to: ''
+        }, {
+            by: /<!\s*\w+[^>]*>/g,
+            to: ''
+        }, {
+            by: /<\s*(\w+)\b[^>]*>([\s\S]*?)<\s*\/\s*\1\s*>/g,
+            to: ' $2 '
+        }, {
+            by: /<\s*\/?\s*\w+\b[^>]*>/g,
+            to: ' '
+        }, {
+            by: /<[^>]*>|<[![\]-]*|[-[\]]*>/g,
+            to: ' '
+        }];
+        s = Pot.StringUtil.stringify(text);
+        if (s) {
+            Pot.repeat(limit, function() {
+                Pot.forEach(patterns, function(i, re) {
+                    s = s.replace(re.by, re.to);
+                });
+                if (prev === s) {
+                    throw Pot.StopIteration;
+                }
+                prev = s;
+            });
         }
         return s;
     },
@@ -3787,28 +3996,36 @@ Pot.extend(Pot.StringUtil, {
      * ホワイトスペースで区切って適度に改行を入れる
      *
      * @param  {String}  text      対象の文字列
-     * @param  {Number}  lineSize  1行の長さ (default=79～120)
+     * @param  {Number}  lineSize  1行の長さ (default=79～158) (この数値より長くなる時もある)
      * @return {String}            変換された文字列
      */
     wrapBySpace: function(text, lineSize) {
-        var result, line, lines = [], size, getSize, re;
+        let result = '', s, size, len, re, nl;
+        nl = '\n';
         size = Number((Pot.isNumeric(lineSize) && Number(lineSize) > 0) ? lineSize - 0 : -1);
-        getSize = function() {
-            return size <= 0 ? Pot.rand(79, 120) : size;
+        len = function() {
+            return size <= 0 ? Pot.rand(79, 158) : size;
         };
         re = {
-            div: /[\s\u00A0\u3000]+/g,
+            fix: /[\r\n]+/g,
+            len: /[\u0100-\uFFFF]/g,
+            div: /[\u0009\u000B\u000C\u0020\u00A0\u2000-\u200B\u2028\u2029\u3000]+/g,
             end: /(?:[,，.．､、｡。!！?？]|\b|)$/g
         };
-        result = Pot.StringUtil.stringify(text).split(re.div).reduce(function(a, b) {
-            var space = ' ';
-            // なるべく行末で区切る(単語の途中で切らない)
-            if (Pot.StringUtil.getByteSize(a.split('\n').pop()) > getSize() && re.end.test(a)) {
-                space = '\n';
-            }
-            return [a, b].join(space);
-        });
-        return Pot.StringUtil.trim(result);
+        s = Pot.StringUtil.stringify(text);
+        if (s) {
+            Pot.forEach(s.replace(re.fix, nl).split(re.div), function(i, v) {
+                let sep = ' ';
+                // なるべく行末で区切る(単語の途中で切らない)
+                if (re.end.test(v) &&
+                    v.split(nl).pop().replace(re.len, '..').length >= len()
+                ) {
+                    sep = nl;
+                }
+                result += v + sep;
+            });
+        }
+        return result && Pot.StringUtil.trim(result) || '';
     },
     /**
      * URI/Entity/Esc等を除去
@@ -3817,92 +4034,147 @@ Pot.extend(Pot.StringUtil, {
      * @return {String}        ノイズを除去した文字列
      */
     removeNoise: function(text) {
-        return Pot.StringUtil.stringify(text).
+        let s, patterns = [{
             // URIをドメイン名のみに変換
-            replace(/(?:h?ttp|ftp|rsync|nntp)s?:\/{0,}([\w.-]+)/gi, '$1').
+            by: /(?:h?ttp|ftp|rsync|nntp)s?:\/{0,}([\w.-]+)[-_.!~*'()a-z0-9;\/?:@&=+$,%#]*/gi,
+            to: '$1'
+        }, {
             // 他のURIは除去
-            replace(/[a-zA-Z]\w*:\/+[-_.!~*'()a-zA-Z0-9;\/?:@&=+$,%#]+/g, ' ').
-            replace(/[a-zA-Z]\w*:\/+[\u0021-\u007E]{0,256}/g, ' ').
-            replace(/[a-zA-Z]\w*:(?:\s{1}|[\u0021-\u007E]{0,256})/g, ' ').
-            replace(/[%\\](?:u[a-f0-9]{4}|x?[a-f0-9]{2})/gi, ' ').
-            replace(/&(?:[a-z]|#x?)\w+;/gi, ' ').
-            replace(/[\u0000-\u0008]/g, ' ');
+            by: /[a-z]\w*:(?:[\u0020](?=\S)|[\u0021-\u007E]){0,260}/gi,
+            to: ' '
+        }, {
+            by: /[%\\](?:u[a-f0-9]{4}|x?[a-f0-9]{2})/gi,
+            to: ' '
+        }, {
+            by: /&(?:[a-z]|#x?)\w+;/gi,
+            to: ' '
+        }, {
+            by: /[\u0000-\u0008]+/g,
+            to: ' '
+        }];
+        s = Pot.StringUtil.stringify(text);
+        if (s) {
+            patterns.forEach(function(re) {
+                s = s.replace(re.by, re.to);
+            });
+        }
+        return s;
     },
     /**
      * AA(アスキーアート)を除去。他にも顔文字やソースコードなどを除去する
      *
      * @param  {String}  text  対象の文字列
+     * @param  {Number}  gain  どのくらいまで許可するか (0(通常) ～ 70(ほぼ除去))
      * @return {String}        AAなどが除去された文字列
      */
-    removeAA: function(text) {
-        var patterns, func;
+    removeAA: function(text, gain) {
+        let patterns, callback, clean, merge, extract, remove;
         patterns = {
-            replace: /^([^\r\n]+)$/igm,
-            space: /[\u0009\u0020\u3000]{2,}/g,
-            word: /[\w一-龠々〆ヵヶぁ-んァ-ヴｦ-ｯｱ-ﾝﾞ゛ﾟ゜ａ-ｚＡ-Ｚ,，.．､、｡。!！?？\u301Cー～－ｰ-]/,
-            text: /[a-zA-Zぁ-んァ-ヴｦ-ｯｱ-ﾝﾞ゛ﾟ゜・･\u301Cー～－ｰ-]/,
-            hira: /[ぁ-ん]/
+            replace  : /^(.+)$/gm,
+            space    : /[\u0009\u0020\u3000]{2,}/g,
+            word     : /[\w一-龠々〆ヵヶぁ-んァ-ヴｦ-ｯｱ-ﾝﾞ゛ﾟ゜ａ-ｚＡ-Ｚ,，.．､、｡。!！?？\u301Cー～－ｰ-]/,
+            symbols  : /[^\w一-龠々〆ヵヶぁ-んァ-ヴｦ-ｯｱ-ﾝﾞ゛ﾟ゜ａ-ｚＡ-Ｚ,，.．､、｡。!！?？\u301Cー～－ｰ-]+/g,
+            punct    : /[ﾞ゛ﾟ゜,，.．､、｡。!！?？\u301Cー～－ｰ-]/,
+            text     : /[a-zA-Zぁ-んァ-ヴｦ-ｯｱ-ﾝﾞ゛ﾟ゜・･\u301Cー～－ｰ-]/,
+            hira     : /[ぁ-ん]/,
+            ascii    : /[a-zA-Z0-9_\s,.'"!?()+-]/,
+            readable : /[一-龠々〆ヵヶぁ-んァ-ヴｦ-ｯｱ-ﾝa-zA-Zａ-ｚＡ-Ｚ]/,
+            textable : /[一-龠々〆ヵヶぁ-んァ-ヴｦ-ｯｱ-ﾝa-zA-Zａ-ｚＡ-Ｚ]{2,}/g
         };
-        func = function(m0, m1) {
-            var result, s, words, prev, wc, chars, per, meas, items, clean;
-            clean = function(a) {
-                var r = [];
-                (' ' + a).split(patterns.space).forEach(function(v) {
-                    if (v.length >= 2 && patterns.text.test(v)) {
-                        r.push(v);
-                    }
-                });
-                return r.join(' ');
-            };
-            s = String(m1);
-            if (patterns.space.test(s)) {
-                // 空白が多い(AA): 50% 以上単語がなければ AA or 顔文字 or コード等とする
-                meas = 50;
-                s = s.replace(patterns.space, ' ');
-            } else {
-                // 通常のテキスト: 30% 以上単語がなければ ソースコードなどとする
-                meas = 30;
-            }
-            chars = s.split('');
-            prev = null;
-            idx = 0;
-            words = [];
-            // AA の中のセリフを抽出する。スペースや記号を挟んで複数ある場合も考慮
-            words[idx] = [];
-            wc = 0;
-            chars.forEach(function(v, i) {
-                if (patterns.word.test(v)) {
-                    wc++;
-                    if (prev === null || prev === i - 1) {
-                        words[idx].push(v);
-                        prev = i;
-                    } else if (words[idx].length > 0) {
-                        idx++;
-                        words[idx] = [];
-                        prev = null;
-                    }
+        clean = function(a) {
+            let r = [];
+            Pot.forEach((' ' + a).split(patterns.space), function(i, v) {
+                if (v && v.length >= 2 && patterns.text.test(v)) {
+                    r[r.length] = v;
                 }
             });
-            // 単語の割合が一定数以上なら通常テキスト。それ以外は AA or 顔文字 or コード とする
-            per = Math.floor(wc / chars.length * 100);
-            if (per > meas) {
-                // 通常のテキスト (記号のみの顔文字らしき文字列は除去する)
-                result = clean(String(m1));
-            } else {
-                // AA もしくは顔文字、ソースコード等。
-                // 記号として用いられるひらがなや漢字、英字が残る可能性がある
-                items = [];
-                words.forEach(function(v) {
-                    var uniqLen = v.length >= 5 ? 5 : Math.max(1, Math.floor(v.length / 2));
-                    if (v.length >= 2 && patterns.hira.test(v.join('')) && Pot.ArrayUtil.unique(v).length > uniqLen) {
-                        items.push(v.join(''));
+            return r.join(' ');
+        };
+        merge = function(pins, subs) {
+            let len, uniqLen, joined;
+            len = subs.length;
+            uniqLen = len >= 5 && 5 || Math.max(1, Math.floor(len / 2));
+            joined = subs.join('');
+            if ((len > 2 ||
+                (len === 2 && !patterns.punct.test(joined))) &&
+                patterns.hira.test(joined) &&
+                Pot.ArrayUtil.unique(subs).length > uniqLen
+            ) {
+                pins[pins.length] = joined;
+            }
+            return pins;
+        };
+        // AA の中のセリフを抽出する。スペースや記号を挟んで複数ある場合も考慮
+        extract = function(s) {
+            let words = [], stuffs = [], prev = -1, chars = s.split('');
+            try {
+                Pot.forEach(chars, function(i, v) {
+                    if (patterns.word.test(v)) {
+                        if (prev < 0 || prev === i - 1) {
+                            words[words.length] = v;
+                            prev = i;
+                        } else if (words && words.length) {
+                            stuffs = merge(stuffs, words);
+                            words = [v];
+                            prev = -1;
+                        }
                     }
                 });
-                result = clean(items.join(' '));
+                return stuffs;
+            } finally {
+                chars = words = null;
             }
-            return result;
         };
-        return Pot.StringUtil.stringify(text).replace(patterns.replace, func);
+        callback = function(all, match) {
+            let result = '', per, measure, word, s = new String(match);
+            try {
+                if (patterns.space.test(s)) {
+                    // 空白が多い(AA): 50% 以上単語がなければ AA or 顔文字 or コード等とする
+                    measure = 50;
+                    s = s.replace(patterns.space, ' ');
+                } else {
+                    // 通常のテキスト: 30% 以上単語がなければ ソースコードなどとする
+                    measure = 30;
+                }
+                measure += Number(gain) || 0;
+                word = s.replace(patterns.symbols, '');
+                if (word && word.length >= 2 && patterns.textable.test(word)) {
+                    // 記号以外の文字の割合
+                    per = Math.floor(s.split(patterns.readable).length / s.length * 100);
+                    //FIXME: この数値は 20 ～ 30 がちょうどいいけど要調整
+                    //       (YYYYYYYWYWY とか ☆三ミミミミミ) のようなのを単語として成り立っちゃうのを防ぐ
+                    if (per > 25) {
+                        // 単語の割合が一定数以上なら通常テキスト。それ以外は AA or 顔文字, コード 等とする
+                        per = Math.floor(word.length / s.length * 100);
+                        if (per > measure) {
+                            // 通常のテキスト (記号のみの顔文字らしき文字列は除去する)
+                            result = clean(match);
+                        } else {
+                            // AA もしくは顔文字、ソースコード等。
+                            // 記号として用いられるひらがなや漢字、英字が残る可能性がある
+                            result = clean((extract(s) || []).join(' '));
+                        }
+                    }
+                }
+                return result;
+            } finally {
+                s = word = null;
+            }
+        };
+        remove = function(text) {
+            let s, per;
+            s = Pot.StringUtil.stringify(text);
+            if (s) {
+                // 英語の比率を調べる
+                per = Math.floor(s.split(patterns.ascii).length / s.length * 100);
+                if (per < 92) {
+                    // 日本語のテキストのみ対象
+                    s = s.replace(patterns.replace, callback);
+                }
+            }
+            return s;
+        };
+        return remove(text);
     }
 });
 
@@ -3961,25 +4233,20 @@ Pot.extend(Pot.ArrayUtil, {
      * @return {Array}           an array which has only one dimension
      */
     flatten: function(array) {
-        var result = [], self = arguments.callee, i, len, item, items,
-            toString = Object.prototype.toString, isIterable = function(v) {
-            return (v instanceof Array) ||
-                    v.callee || /List|Collection/i.test(toString.call(v)) ||
-                    ((v.nextNode || v.item) &&
-                    toString.call(v.length) === '[object Number]');
-        };
-        if (!isIterable(array)) {
+        let result = [], self = arguments.callee, i, len, item, items, push;
+        push = Array.prototype.push;
+        if (!Pot.isIterable(array)) {
             result.push(array);
         } else {
-            items = Array.prototype.slice.call(array, 0);
+            items = Pot.ArrayUtil.toArray(array);
             i = 0;
             len = items.length;
             do {
                 item = items[i];
-                if (isIterable(item)) {
-                    Array.prototype.push.apply(result, self.call(self, item));
+                if (Pot.isIterable(item)) {
+                    push.apply(result, self.call(self, item));
                 } else {
-                    result.push(item);
+                    result[result.length] = item;
                 }
             } while (++i < len);
         }
@@ -3994,7 +4261,7 @@ Pot.extend(Pot.ArrayUtil, {
      * @return {Array}                ユニークな値を持つ配列
      */
     unique: function(array, loose, ignoreCase) {
-        var result = [], i, j, len, dups = [], ia, ja, strict;
+        let result = [], i, j, len, dups = [], ia, ja, strict;
         if (Pot.isArray(array)) {
             len = array.length;
             strict = ignoreCase ? true : !loose;
@@ -4012,7 +4279,7 @@ Pot.extend(Pot.ArrayUtil, {
                     }
                 }
                 if (!(i in dups)) {
-                    result.push(array[i]);
+                    result[result.length] = array[i];
                 }
             }
         }
@@ -4025,7 +4292,7 @@ Pot.extend(Pot.ArrayUtil, {
      * @return {Array}       マージされた配列
      */
     merge: function() {
-        var args = Pot.ArrayUtil.toArray(arguments);
+        let args = Pot.ArrayUtil.toArray(arguments);
         return Array.prototype.concat.apply([], args);
     },
     uniqueMerge: function() {
@@ -4082,7 +4349,7 @@ Pot.extend(Pot.ArrayUtil, {
      * @return {Array}                     ソートされた配列 (引数そのもの)
      */
     alphanumSort: function(array, caseInsensitive) {
-        var z, t, x, y, n, i, j, m, h;
+        let z, t, x, y, n, i, j, m, h;
         if (array && Pot.isArray(array)) {
             for (z = 0; t = array[z]; z++) {
                 array[z] = [];
@@ -4098,7 +4365,7 @@ Pot.extend(Pot.ArrayUtil, {
                 }
             }
             array.sort(function(a, b) {
-                var x, aa, bb, c, d;
+                let x, aa, bb, c, d;
                 for (x = 0; (aa = a[x]) && (bb = b[x]); x++) {
                     if (caseInsensitive) {
                         aa = aa.toLowerCase();
@@ -4157,6 +4424,7 @@ Pot.extend({
                         break;
                     }
                 }
+                // navigator.mimeTypesはあまりアテにしない
                 if (!r && window.navigator && window.navigator.mimeTypes) {
                     o = window.navigator.mimeTypes[t];
                     if (o && o.suffixes) {
@@ -4470,6 +4738,7 @@ Pot.extend({
         const MARKOV_START = '\u0000';
         const MARKOV_END   = '\u0001';
         const MARKOV_SYMBOL_PATTERN = /[\u0000-\u0008]+/g;
+        const MARKOV_LOOP_MAX = 1000;
         var MarkovChainer = function() {
             return new arguments.callee.prototype.init();
         };
@@ -4477,6 +4746,7 @@ Pot.extend({
             constructor: MarkovChainer,
             isMarkovChainer: true,
             dics: null,
+            morphLen: 0,
             START: MARKOV_START,
             END: MARKOV_END,
             SYMBOL_PATTERN: MARKOV_SYMBOL_PATTERN,
@@ -4526,9 +4796,11 @@ Pot.extend({
                     cr = this.randKey(this.dics.get(c1).get(c2));
                     c3 = this.dics.get(c1).get(c2).get(cr);
                     words = [];
-                    max = this.dics.length * 3;
+                    max = Math.min(MARKOV_LOOP_MAX,
+                        Math.max(this.dics.length, Math.floor(this.morphLen * 2 / 5))
+                    );
                     this.loop(max, function(i) {
-                        if (c3 === self.END) {
+                        if (c3 === self.END && words && words.length) {
                             throw Pot.StopIteration;
                         }
                         if (i === 0) {
@@ -4545,7 +4817,7 @@ Pot.extend({
                                     }
                                 });
                             }
-                            words.push(c3);
+                            words[words.length] = c3;
                         }
                         c1 = c2;
                         c2 = c3;
@@ -4578,7 +4850,9 @@ Pot.extend({
                 let self = this, s, segs, len, c, c1, c2;
                 s = this.removeSymbols(this.stringify(text));
                 if (s) {
+                    //FIXME: ここでYahoo!形態素解析にするべき(?)
                     segs = this.morphemize(s);
+                    this.morphLen = segs.length;
                     this.addTail(segs);
                     segs.unshift(this.START);
                     segs.push(this.END);
@@ -4683,9 +4957,11 @@ Pot.extend({
                 }).addBoth(function(err) {
                     waiting = false;
                 }).callback();
-                till(function() {
-                    return waiting !== true;
-                });
+                if (waiting) {
+                    till(function() {
+                        return waiting !== true;
+                    });
+                }
             },
             /**
              * 簡易形態素解析
@@ -4778,7 +5054,7 @@ Pot.extend({
                     s = s.split(new RegExp(re.clean));
                     self.loop(s.length, function(n) {
                         if (s[n]) {
-                            matches.push(s[n]);
+                            matches[matches.length] = s[n];
                         }
                     });
                     return matches;
@@ -4909,10 +5185,10 @@ Pot.extend({
                     enclose([
                         enclose(re.b + re.numbers + '{1,32}' + re.b),
                         enclose(re.punct   + '{1,4}'),
-                        enclose(re.polit + re.katakana + '{1,24}'),
-                        enclose(re.polit + re.kanji    + '{1,4}'),
-                        enclose(re.polit + re.hiragana + '{1,8}'),
-                        enclose(re.word  + enclose([re.word, re.extra]) + '{1,12}'),
+                        enclose(re.polit   + re.katakana + '{1,24}'),
+                        enclose(re.polit   + re.kanji    + '{1,4}'),
+                        enclose(re.polit   + re.hiragana + '{1,8}'),
+                        enclose(re.word    + enclose([re.word, re.extra]) + '{1,12}'),
                         enclose(re.word    + '{1,24}'),
                         enclose(re.number  + '{1,32}')
                     ]),
@@ -4937,6 +5213,7 @@ Pot.extend({
         };
         MarkovChainer.prototype.init.prototype = MarkovChainer.prototype;
         // Simple dictionary object
+        // Pot.Hashを軽量化したオブジェクト
         MarkovChainer.Dictionary = (function() {
             const PREFIX = '.';
             var Dictionary = function() {};
@@ -4983,7 +5260,7 @@ Pot.BookmarkUtil = {};
 Pot.extend(Pot.BookmarkUtil, {
     checkPattern: /(?:photo|quote|link|conversation|video|bookmark)/,
     check: function(ps) {
-        var result = true, uri = ps.itemUrl;
+        let result = true, uri = ps.itemUrl;
         if (Pot.BookmarkUtil.isDisableURI(uri)) {
             result = false;
         } else {
@@ -4998,13 +5275,13 @@ Pot.extend(Pot.BookmarkUtil, {
      * 「abc123.jpg」のようなページタイトルは画像とみなしURLをドメインに変換
      * それ以外は一つ上のディレクトリのURLに変換する
      *
-     * (場合によっては余計な機能かもしれないので調節中)
+     * (場合によっては余計な機能かもしれないので要調節)
      *
      * GoogleBookmarksなど一部のサービスによっては
      * ブクマ数が大量になると不安定になるのでその考慮のためのメソッド
      */
     fixURI: function(ps) {
-        var ok = true;
+        let ok = true;
         if (Pot.BookmarkUtil.isImageURI(ps.itemUrl)) {
             if (Pot.BookmarkUtil.isImageTitle(ps.item)) {
                 ps.itemUrl = Pot.BookmarkUtil.toDomainURI(ps.itemUrl);
@@ -5014,7 +5291,7 @@ Pot.extend(Pot.BookmarkUtil, {
             ok = false;
         }
         return ok ? succeed(ps) : request(ps.itemUrl).addCallback(function(res) {
-            var title, doc = convertToHTMLDocument(res.responseText);
+            let title, doc = convertToHTMLDocument(res.responseText);
             title = doc && doc.title || '';
             if (title && title.length >= 3 &&
                 (/\b(?:404|Not\s*Found|Error|Fail[a-z]*)\b/i.test(title) && /^[\u0000-\u0080]+$/.test(title))) {
@@ -5027,12 +5304,12 @@ Pot.extend(Pot.BookmarkUtil, {
         });
     },
     toParentURI: function(url) {
-        var uri = String(url || '').split('/');
+        let uri = Pot.StringUtil.stringify(url).split('/');
         uri.pop();
         return uri.join('/');
     },
     toDomainURI: function(url) {
-        var result, uri = Pot.StringUtil.stringify(url);
+        let result, uri = Pot.StringUtil.stringify(url);
         try {
             result = uri.match(/^(\w+:\/*[^\/]+\/?)/)[1];
         } catch (e) {
@@ -5044,7 +5321,7 @@ Pot.extend(Pot.BookmarkUtil, {
         return /^\s*[\/=+!?#%~()|{}\[\]@*`<>&'"^$:;,.\w-]+?\.(?:jpe?g|png|gif|svg|bmp|ico|tif)\s*$/i.test(title);
     },
     isImageURI: function(url) {
-        var result, uri = Pot.StringUtil.stringify(url), ext = uri.split('.').pop();
+        let result, uri = Pot.StringUtil.stringify(url), ext = uri.split('.').pop();
         switch (ext.toLowerCase()) {
             case 'jpg':
             case 'jpeg':
@@ -5062,11 +5339,12 @@ Pot.extend(Pot.BookmarkUtil, {
         }
         return result;
     },
+    //FIXME: このメソッドは勝手にユーザーのブックマークを抑制してるので邪魔な機能かも
     isDisableURI: function(url) {
-        var result = false, disables = {
+        let result = false, disables = {
             // TumblrはReBlogにチェックしてた場合ものすごい数になるのでブックマークしない
             tumblr: function(url) {
-                var disable = true, pattern, sub, dir, matches;
+                let disable = true, pattern, sub, dir, matches;
                 pattern = /^https?:\/\/([\w-]*[.])*?tumblr[.]com\/(.+)/i;
                 try {
                     if (!pattern.test(url)) {
@@ -5078,7 +5356,7 @@ Pot.extend(Pot.BookmarkUtil, {
                         if (/^(?:www|staff)[.]$/.test(sub)) {
                             disable = false;
                             dir = dir.replace(/^[^a-z]+|[^a-z]+$|[!#?].*$/g, '');
-                            // ダッシュボード以外は許可する
+                            // ダッシュボード以外は通常通りにする
                             if (!dir || /^(?:dashboard|photo|text|quote|link|chat|audio|video)/.test(dir)) {
                                 disable = true;
                             }
@@ -5093,13 +5371,12 @@ Pot.extend(Pot.BookmarkUtil, {
             local: /^https?:\/\/(?:192\.168\.\d{1,2}\.\d{1,2}|127\.0\.0\.\d|localhost)\/.+/i,
             file: /^file:\/+\S+/i
         };
-        forEach(disables, function([name, check]) {
-            if (!result) {
-                if (Pot.isRegExp(check) && check.test(url)) {
-                    result = true;
-                } else if (Pot.isFunction(check) && check(url)) {
-                    result = true;
-                }
+        Pot.forEach(disables, function(name, check) {
+            if ((Pot.isRegExp(check) && check.test(url)) ||
+                (Pot.isFunction(check) && check(url))
+            ) {
+                result = true;
+                throw Pot.StopIteration;
             }
         });
         return result;
@@ -5149,7 +5426,7 @@ Pot.extend(Pot.BookmarkUtil, {
             return hasOwnProperty.call(object, prop);
         };
         hasProp = function(object, prop) {
-            var has = false, name;
+            let has = false, name;
             for (name in object) {
                 if (name == prop) {
                     has = true;
@@ -5159,7 +5436,7 @@ Pot.extend(Pot.BookmarkUtil, {
             return has;
         };
         hasIteratorProp = function(object) {
-            var has = false, k, msg;
+            let has = false, k, msg;
             try {
                 if (Pot.isObject(object)) {
                     for (k in object) {
@@ -5190,7 +5467,7 @@ Pot.extend(Pot.BookmarkUtil, {
                 return this.replaceSubs(this.replaceImportants(tags));
             },
             replaceImportants: function(tags) {
-                var result;
+                let result;
                 if (hasIteratorProp(tags)) {
                     result = this.replaceAll(tags, specials.importants, hasOwnProp);
                 } else {
@@ -5202,7 +5479,7 @@ Pot.extend(Pot.BookmarkUtil, {
                 return this.replaceAll(tags, specials.subs, hasProp);
             },
             replaceAll: function(tags, specials, hasOwn) {
-                var self = this, special, uniq, exists;
+                let self = this, special, uniq, exists;
                 if (specials && tags && Pot.isObject(tags)) {
                     exists = false;
                     specials.forEach(function(special) {
@@ -5225,7 +5502,7 @@ Pot.extend(Pot.BookmarkUtil, {
             },
             // はてブ用
             restoreHatena: function(tags) {
-                var self = this, result;
+                let self = this, result;
                 result = tags.map(function(item) {
                     item.name = self.restoreName(item.name);
                     return item;
@@ -5233,7 +5510,7 @@ Pot.extend(Pot.BookmarkUtil, {
                 return result;
             },
             restore: function(object) {
-                var i, len, tag;
+                let i, len, tag;
                 if (Pot.isObject(object)) {
                     len = this.orgTags.length;
                     for (i = 0; i < len; i++) {
@@ -5249,7 +5526,7 @@ Pot.extend(Pot.BookmarkUtil, {
                 return object;
             },
             restoreName: function(name) {
-                var result = name, i, len, tag;
+                let result = name, i, len, tag;
                 len = this.orgTags.length;
                 for (i = 0; i < len; i++) {
                     tag = this.orgTags[i];
@@ -5274,11 +5551,11 @@ Pot.extend(Pot.BookmarkUtil, {
      * タグ/ラベルを正規化
      */
     normalizeTags: function(tags) {
-        var result = [], skip, prop, i, item, explode = function(tag) {
-            var r = [];
+        let result = [], skip, prop, i, item, explode = function(tag) {
+            let r = [];
             Pot.StringUtil.stringify(tag).split(/[,\s\u3000]+/).forEach(function(t) {
                 if (t && t.length) {
-                    r.push(t);
+                    r[r.length] = t;
                 }
             });
             return r;
@@ -5310,7 +5587,7 @@ Pot.extend(Pot.BookmarkUtil, {
             (Pot.isArray(tags) ? tags : []).forEach(function(tag) {
                 explode(tag).forEach(function(t) {
                     if (t && t.length) {
-                        result.push(t);
+                        result[result.length] = t;
                     }
                 });
             });
@@ -5320,7 +5597,7 @@ Pot.extend(Pot.BookmarkUtil, {
     },
     // 自動で付加するタグを付ける
     appendConstantTags: function(tags) {
-        var result = [], appendTags;
+        let result = [], appendTags;
         if (tags && Pot.isArray(tags)) {
             result = Pot.ArrayUtil.toArray(tags);
             appendTags = Pot.StringUtil.trim(Pot.getPref(POT_AUTO_APPEND_TAGS));
@@ -5337,12 +5614,12 @@ Pot.extend(Pot.BookmarkUtil, {
     },
     // 指定文字数で丸める
     truncateFields: function(service, field, value) {
-        var result = '', max, unit, len, cnt, cutText, isTag = false;
+        let result = '', max, unit, len, cnt, cutText, isTag = false;
         if (!(service in MAX_LENGTH) || !(field in MAX_LENGTH[service])) {
             result = value;
         } else {
             cutText = function(s) {
-                var ret, sizes, chars, size, text = Pot.StringUtil.stringify(s);
+                let ret, sizes, chars, size, text = Pot.StringUtil.stringify(s);
                 switch (unit) {
                     case 'byte':
                         chars = text.split('');
@@ -5382,7 +5659,7 @@ Pot.extend(Pot.BookmarkUtil, {
                         ((value && Pot.isArray(value)) ? value : []).forEach(function(val) {
                             val = cutText(val);
                             if (val && val.length && result.length < cnt) {
-                                result.push(val);
+                                result[result.length] = val;
                             }
                         });
                         result = Pot.BookmarkUtil.normalizeTags(result);
@@ -5433,7 +5710,7 @@ Pot.extend(Pot.BookmarkUtil, {
         }).addCallback(function(s) {
             let dd = Yahoo.Pot.keywordize(s).addCallback(function(res) {
                 let result, filters = [
-                    // 'Ao8U8heogP4HgUEi89r4g4g8' のような文字列を除外する
+                    // 'Ao8U8heogP4HgUEi89r4g4g8' のような非単語を除外する
                     function(a) {
                         return !/\w/.test(a) ||
                             (a.split(/\d+/).length <= 2 &&
@@ -5441,7 +5718,7 @@ Pot.extend(Pot.BookmarkUtil, {
                     },
                     // 1文字のみを除外
                     function(a) {
-                        return a.length > 1 || /^[c-j]$/i.test(a);
+                        return a.length > 1 || /^[c-jlms]$/i.test(a);
                     },
                     function(a) {
                         return /^[^\s,[\]]+$/.test(a);
@@ -5454,16 +5731,15 @@ Pot.extend(Pot.BookmarkUtil, {
                     },
                     function(a) {
                         let result = true, ignores = [
-                            // 除外する単語
-                            'the', 'are', 'does', 'not', /^ads?$/i, 'its',
+                            // 除外する単語 (随時追加)
+                            'the', 'are', 'does', 'not', /^(?:ad|pr)s?$/i, 'its',
                             'おすすめ', 'エントリー', '広告', /^\d*users?$/i
                         ];
-                        ignores.forEach(function(k) {
-                            if (result) {
-                                if ((Pot.isRegExp(k) && k.test(a)) ||
-                                    String(k).toLowerCase() === String(a).toLowerCase()) {
-                                    result = false;
-                                }
+                        Pot.forEach(ignores, function(i, k) {
+                            if ((Pot.isRegExp(k) && k.test(a)) ||
+                                String(k).toLowerCase() === String(a).toLowerCase()) {
+                                result = false;
+                                throw Pot.StopIteration;
                             }
                         });
                         return result;
@@ -5499,11 +5775,12 @@ Pot.extend(Pot.BookmarkUtil, {
 (function() {
 
 var patterns = {
-    rpqlcvab: /(?:regular|photo|quote|link|conversation|video|audio|bookmark)/,
-    rpqlcvb: /(?:regular|photo|quote|link|conversation|video|bookmark)/,
-    rpqlb: /(?:regular|photo|quote|link|bookmark)/,
-    rqlcvb: /(?:regular|quote|link|conversation|video|bookmark)/,
-    pqlcvb: /(?:photo|quote|link|conversation|video|bookmark)/
+    rpqlcvab : /(?:regular|photo|quote|link|conversation|video|audio|bookmark)/,
+    rpqlcvb  : /(?:regular|photo|quote|link|conversation|video|bookmark)/,
+    rpqlb    : /(?:regular|photo|quote|link|bookmark)/,
+    rqlcvb   : /(?:regular|quote|link|conversation|video|bookmark)/,
+    pqlcvb   : /(?:photo|quote|link|conversation|video|bookmark)/,
+    pqlvb    : /(?:photo|quote|link|video|bookmark)/
 };
 
 //
@@ -5535,7 +5812,22 @@ forEach({
     HatenaBookmark: function(ps) {
         return patterns.pqlcvb.test(ps.type) && !ps.file;
     },
+    HatenaDiary: function(ps) {
+        return patterns.rpqlb.test(ps.type) && !ps.file;
+    },
     LivedoorClip: function(ps) {
+        return patterns.pqlcvb.test(ps.type) && !ps.file;
+    },
+    Twitter: function(ps) {
+        return patterns.rpqlcvb.test(ps.type) && !ps.file;
+    },
+    Clipp: function(ps) {
+        return patterns.pqlvb.test(ps.type) && !ps.file;
+    },
+    Faves: function(ps) {
+        return patterns.pqlcvb.test(ps.type) && !ps.file;
+    },
+    FriendFeed: function(ps) {
         return patterns.pqlcvb.test(ps.type) && !ps.file;
     }
 }, function([name, check]) {
@@ -5557,6 +5849,7 @@ update(models.GoogleBookmarks, {
         return Pot.BookmarkUtil.check(ps);
     },
     privateCache: {
+        // ブックマーク済みか迅速に表示するためのキャッシュ
         bookmarked: {
             data: {},
             has: function(url) {
@@ -5571,7 +5864,7 @@ update(models.GoogleBookmarks, {
         },
         tags: {
             normalize: function(tags) {
-                var result = [];
+                let result = [];
                 //
                 // 増えたタグの解析を行うようにする
                 //
@@ -5585,8 +5878,9 @@ update(models.GoogleBookmarks, {
             }
         }
     },
+    //TODO: APIから取得
     isBookmarked: function(url) {
-        var self = this, findUrl = 'https://www.google.com/bookmarks/find';
+        let self = this, findUrl = 'https://www.google.com/bookmarks/find';
         return self.privateCache.bookmarked.has(url) ? succeed(true) : request(findUrl, {
             queryString: {
                 start: 0,
@@ -5595,7 +5889,7 @@ update(models.GoogleBookmarks, {
                 q: url
             }
         }).addCallback(function(res) {
-            var uris, result, xpath, doc = convertToHTMLDocument(res.responseText);
+            let uris, result, xpath, doc = convertToHTMLDocument(res.responseText);
             if (doc.getElementById('gaia_loginform')) {
                 throw new Error(getMessage('error.notLoggedin'));
             }
@@ -5612,7 +5906,7 @@ update(models.GoogleBookmarks, {
         });
     },
     getBookmarkTagsByURI: function(uri) {
-        var url = 'https://www.google.com/bookmarks/find';
+        let url = 'https://www.google.com/bookmarks/find';
         return request(url, {
             queryString: {
                 start: 0,
@@ -5621,7 +5915,7 @@ update(models.GoogleBookmarks, {
                 q: uri
             }
         }).addCallback(function(res) {
-            var labels, xp, result, doc = convertToHTMLDocument(res.responseText);
+            let labels, xp, result, doc = convertToHTMLDocument(res.responseText);
             xp = '//bookmark//url[text()=' + Pot.escapeXPathText(uri) + ']/../labels//label//text()';
             labels = $x(xp, doc, true);
             if (labels && Pot.isArray(labels)) {
@@ -5635,7 +5929,7 @@ update(models.GoogleBookmarks, {
         });
     },
     getBookmarkDescriptionByURI: function(uri) {
-        var url = 'https://www.google.com/bookmarks/find', fixRSS = {
+        let url = 'https://www.google.com/bookmarks/find', fixRSS = {
             //
             // --------------------------------------------------------------
             //XXX: convertToHTMLDocument で変換すると、
@@ -5660,7 +5954,7 @@ update(models.GoogleBookmarks, {
                 q: uri
             }
         }).addCallback(function(res) {
-            var desc = null, items, doc, text;
+            let desc = null, items, doc, text;
             text = fixRSS.execute(res.responseText);
             doc = convertToHTMLDocument(text);
             items = Pot.ArrayUtil.toArray(doc.getElementsByTagName('item') || []);
@@ -5675,7 +5969,7 @@ update(models.GoogleBookmarks, {
         });
     },
     getAnnotation: function(ps) {
-        var annotation = joinText([ps.body, ps.description], ' ', true);
+        let annotation = joinText([ps.body, ps.description], ' ', true);
         if (!annotation) {
             annotation = [ps.item, ps.itemUrl].join(' ');
         }
@@ -5695,7 +5989,7 @@ update(models.GoogleBookmarks, {
                         op: 'add'
                     }
                 }).addCallback(function(res) {
-                    var url, action, tags, fs, doc = convertToHTMLDocument(res.responseText);
+                    let url, action, tags, fs, doc = convertToHTMLDocument(res.responseText);
                     if (doc.getElementById('gaia_loginform')) {
                         throw new Error(getMessage('error.notLoggedin'));
                     }
@@ -5740,7 +6034,7 @@ update(models.GoogleBookmarks, {
         return this.isBookmarked(url).addCallback(function(bookmarked) {
             return Pot.BookmarkUtil.getKeywords(url).addCallback(function(keywords) {
                 return request(LIST_LABELS_URL).addCallback(function(res) {
-                    let tags = [], d, pop, json = JSON.parse(res.responseText);
+                    let tags = [], d, json = JSON.parse(res.responseText);
                     json.labels.pop();
                     json.counts.pop();
                     d = Pot.DeferredUtil.repeat(json.labels.length, function(i) {
@@ -5803,7 +6097,7 @@ update(models.HatenaBookmark, {
         },
         tags: {
             normalize: function(tags) {
-                var result = [];
+                let result = [];
                 //
                 // 増えたタグの解析を行うようにする
                 //
@@ -5822,7 +6116,7 @@ update(models.HatenaBookmark, {
      */
     validateTags: function(tags) {
         // 仕方なく全角にする
-        var result = [], marks = {
+        let result = [], marks = {
             '?': '？',
             '/': '／',
             '%': '％',
@@ -5846,10 +6140,10 @@ update(models.HatenaBookmark, {
         return result;
     },
     isBookmarked: function(url) {
-        var self = this;
+        let self = this;
         return self.privateCache.bookmarked.has(url) ? succeed(true) : 
                self.getEntry(url).addCallback(function(data) {
-                    var result = false;
+                    let result = false;
                     try {
                         if ((data.url && data.url === url) ||
                             (data.original_url && data.original_url === url)) {
@@ -5867,7 +6161,6 @@ update(models.HatenaBookmark, {
                });
     },
     getEntry: function(url) {
-        var self = this;
         return request('http://b.hatena.ne.jp/my.entry', {
             queryString : {
                 url: url
@@ -5878,7 +6171,7 @@ update(models.HatenaBookmark, {
     },
     getUserTags: function(user) {
         return request('http://b.hatena.ne.jp/' + user + '/tags.json').addCallback(function(res) {
-            var fixTags, tags = JSON.parse(res.responseText)['tags'];
+            let fixTags, tags = JSON.parse(res.responseText)['tags'];
             // ----------------------------------------------------------------
             //FIXME: __iterator__ というタグ名を付けると常に TypeError
             //       タグ名に限らずObjectをHashとして使ってるコード全て懸念.
@@ -5907,6 +6200,7 @@ update(models.HatenaBookmark, {
         });
     },
     addBookmark: function(url, title, tags, description) {
+        let privateMode = Pot.getPref(POT_BOOKMARK_PRIVATE);
         return Hatena.getToken().addCallback(function(token) {
             return request('http://b.hatena.ne.jp/bookmarklet.edit', {
                 redirectionLimit: 0,
@@ -5916,7 +6210,9 @@ update(models.HatenaBookmark, {
                         return s.toUpperCase();
                     }),
                     title: title,
-                    comment: Hatena.reprTags(tags) + description.replace(/[\n\r]+/g, ' ')
+                    comment: Hatena.reprTags(tags) + description.replace(/[\r\n]+/g, ' '),
+                    // plusのみ有効
+                    private: (privateMode ? 1 : 0).toString()
                 }
             });
         });
@@ -5929,14 +6225,14 @@ update(models.HatenaBookmark, {
      * @return {Object}
      */
     getSuggestions: function(url) {
-        var self = this;
+        let self = this;
         return Hatena.getCurrentUser().addCallback(function(user) {
             return new DeferredHash({
                 tags: self.getUserTags(user),
                 entry: self.getEntry(url)
             });
         }).addCallback(function(ress) {
-            var entry, tags, duplicated, endpoint, form;
+            let entry, tags, duplicated, endpoint, form;
             entry = ress.entry[1];
             tags = ress.tags[1] || [];
             tags = self.privateCache.tags.normalize(tags);
@@ -6132,7 +6428,7 @@ update(models.Yahoo, {
          * 形態素解析
          */
         morphemize: function(string) {
-            var self = this, result = [],  d, df;
+            let self = this, result = [],  d, df;
             df = new Deferred();
             d = this.explode(string, 'parse');
             d.addCallback(function(chars) {
@@ -6142,7 +6438,7 @@ update(models.Yahoo, {
                             sentence: Pot.StringUtil.stringify(s),
                             response: 'surface,pos'
                         }).addCallback(function(res) {
-                            var surface;
+                            let surface;
                             surface = list(res.ma_result.word_list.word.surface);
                             list(res.ma_result.word_list.word.pos).forEach(function(p, i) {
                                 result.push({
@@ -6169,7 +6465,7 @@ update(models.Yahoo, {
          */
         keywordize: function(string) {
             const url = 'http://jlp.yahooapis.jp/KeyphraseService/V1/extract';
-            var self = this, result = [], d, df;
+            let self = this, result = [], d, df;
             df = new Deferred();
             d = this.explode(string, 'keyword');
             d.addCallback(function(chars) {
@@ -6183,7 +6479,7 @@ update(models.Yahoo, {
                                 sentence: Pot.StringUtil.stringify(s)
                             }
                         }).addCallback(function(res) {
-                            var words = JSON.parse(res.responseText);
+                            let words = JSON.parse(res.responseText);
                             forEach(words, function([name, score]) {
                                 var i = parseInt(score) || 50;
                                 while (typeof result[i] === 'string') {
@@ -6196,7 +6492,7 @@ update(models.Yahoo, {
                     });
                 });
                 df.addCallback(function() {
-                    var results = [], item, clean, invalid, dp;
+                    let results = [], item, clean, invalid, dp;
                     clean = /[,\s\u00A0\u3000]+/g;
                     // 数字/記号だけorマルチバイト1文字だけはダメ
                     invalid = /^[!-@[-`\]{-~}\s]+$|^[\u0100-\uFFFF]$/;
@@ -6227,7 +6523,7 @@ update(models.Yahoo, {
          * かな読みに変換
          */
         getKanaReadings: function(string) {
-            var self = this, result = [],  d, df;
+            let self = this, result = [],  d, df;
             df = new Deferred();
             d = this.explode(string, 'parse');
             d.addCallback(function(chars) {
@@ -6254,7 +6550,7 @@ update(models.Yahoo, {
         },
         getRomaReadings: function(string) {
             return this.getKanaReadings(string).addCallback(function(res) {
-                var sep = Pot.StringUtil.chr(0);
+                let sep = Pot.StringUtil.chr(0);
                 return res.join(sep).toRoma().split(sep);
             });
         },
@@ -6262,7 +6558,7 @@ update(models.Yahoo, {
          * 最大文字(Byte)数を超えてる場合は分割する(できるだけ単語の途中で切らない)
          */
         explode: function(string, type) {
-            var d, result = [], c, size, chars, s, subs, sub, max, re, g, i, len;
+            let d, result = [], c, size, chars, s, subs, sub, max, re, g, i, len;
             d = new Deferred();
             switch (type) {
                 case 'parse':
@@ -6276,12 +6572,12 @@ update(models.Yahoo, {
                     break;
             }
             re = {
-                gexp: null,
-                space: '[\\s\\u00A0\\u3000]',
-                graph: '[^一-龠々〆ァ-ヴｦ-ｯｱ-ﾝぁ-んﾞ゛ﾟ゜\\wａ-ｚＡ-Ｚ０-９Α-ωⅠ-Ⅹⅰ-ⅹ☆★♪\\u301Cー～－ｰ-]',
-                bounds: '\\b',
-                chars: '[\\s\\S]',
-                remove: /[\u0000-\u0008]+/g
+                gexp   : null,
+                space  : '[\\s\\u00A0\\u3000]',
+                graph  : '[^一-龠々〆ァ-ヴｦ-ｯｱ-ﾝぁ-んﾞ゛ﾟ゜\\wａ-ｚＡ-Ｚ０-９Α-ωⅠ-Ⅹⅰ-ⅹ☆★♪\\u301Cー～－ｰ-]',
+                bounds : '\\b',
+                chars  : '[\\s\\S]',
+                remove : /[\u0000-\u0008]+/g
             };
             re.gexp = new RegExp(Pot.sprintf('^(%s*)(%s|%s)(%s{%d,%d}?(?:%s|%s|))$',
                 re.chars,
@@ -6449,7 +6745,7 @@ update(models.FirefoxBookmark, {
         return Pot.BookmarkUtil.check(ps);
     },
     addBookmark: function(uri, title, tags, description) {
-        var self = this, ps, folder, bs = NavBookmarksService, index = bs.DEFAULT_INDEX;
+        let self = this, ps, folder, bs = NavBookmarksService, index = bs.DEFAULT_INDEX;
         
         // ハッシュタイプの引数か?
         if (typeof(uri) === 'object' && !(uri instanceof IURI)) {
@@ -6515,7 +6811,7 @@ update(models.FirefoxBookmark, {
         });
     },
     post: function(ps) {
-        var self = this, title, tags, comment;
+        let self = this, title, tags, comment;
         // POSTボタン押したあと硬直するのでwaitをいれる
         return wait(0).addCallback(function() {
             title = Pot.BookmarkUtil.truncateFields(self.name, 'title', ps.item);
@@ -6534,8 +6830,9 @@ update(models.FirefoxBookmark, {
         });
     },
     getBookmark: function(uri) {
+        let item;
         uri = createURI(uri);
-        var item = this.getBookmarkId(uri);
+        item = this.getBookmarkId(uri);
         if (item) {
             return {
                 title: NavBookmarksService.getItemTitle(item),
@@ -6545,7 +6842,7 @@ update(models.FirefoxBookmark, {
         }
     },
     isBookmarked: function(uri) {
-        var bookmarked = this.getBookmarkId(uri) != null;
+        let bookmarked = this.getBookmarkId(uri) != null;
         return succeed(bookmarked);
         
         // 存在しなくてもtrueが返ってくるようになり利用できない
@@ -6653,7 +6950,7 @@ update(models.FirefoxBookmark, {
                 }
             }).callback();
             
-            // Deferredループが終わるまで非ブロックで待機
+            // 非ブロックで待機
             // (本当は他のメソッドと共にDeferredで返すようにしたい)
             if (++i % 3 === 0 || result === null) {
                 till(function() {
@@ -6672,19 +6969,19 @@ update(models.FirefoxBookmark, {
      * @return {Object}  Deferred
      */
     getBookmarkTagsByURI: function(uri) {
-        var tags = PlacesUtils.tagging.getTagsForURI(PlacesUtils._uri(uri), {});
+        let tags = PlacesUtils.tagging.getTagsForURI(PlacesUtils._uri(uri), {});
         return succeed().addCallback(function() {
             return Pot.BookmarkUtil.normalizeTags(tags);
         });
     },
     getBookmarkDescriptionByURI: function(uri) {
-        var self = this;
+        let self = this;
         return succeed().addCallback(function() {
             return self.getDescription(uri);
         });
     },
     getSuggestions: function(url) {
-        var self = this, d, tags = [], dups = [], hash, allTags = PlacesUtils.tagging.allTags;
+        let self = this, d, tags = [], dups = [], hash, allTags = PlacesUtils.tagging.allTags;
         hash = new Pot.Hash();
         d = Pot.DeferredUtil.repeat(allTags.length, function(i) {
             let tag = allTags[i];
@@ -6735,72 +7032,95 @@ Pot.extend({
 (function() {
 
 // Bookmark メニューを一番下に追加
-Tombloo.Service.extractors.register([{
-    name: 'Bookmark',
-    ICON: 'chrome://tombloo/skin/star.png',
-    check: function(ctx) {
-        this.changeICON(ctx.href);
-        return ctx.href && ctx.href.length > 0;
-    },
-    iconCache: {
-        org: null,
-        gray: null
-    },
-    // コンテキストメニューを開いたときにブックマーク済みなら色好きアイコン
-    // 未ブックマークならグレーのアイコンを表示する
-    //
-    // ローカル(FirefoxBookmark)以外は非同期通信が間に合わない可能性アリ
-    // その場合たぶんメニューを2回目に開いたときに反映されてる
-    // (無駄な通信な気もするので処理を検討中)
-    //
-    changeICON: function(url) {
-        var self = this;
-        if (Pot.tagProvider && Pot.tagProvider.isBookmarked && url) {
-            Pot.tagProvider.isBookmarked(url).addCallback(function(bookmarked) {
-                self.ICON = bookmarked ? self.iconCache.org : self.iconCache.gray;
+// 他のパッチが登録する可能性があるためディレイを設定して先に譲る
+callLater(1.25, function() {
+    Tombloo.Service.extractors.register([{
+        name: 'Bookmark',
+        ICON: 'chrome://tombloo/skin/star.png',
+        check: function(ctx) {
+            let self = this;
+            Pot.callLazy(function() {
+                self.changeICON(ctx);
             });
-        }
-    },
-    initIcon: function() {
-        var d, self = this;
-        if (!this.iconCache.org) {
-            this.iconCache.org = this.ICON;
-            d = toGrayScale(this.ICON).addCallback(function(src) {
-                return self.iconCache.gray = src;
-            });
-        }
-    },
-    extract: function(ctx) {
-        var d, ps = {
-            type: 'bookmark',
-            item: ctx.title,
-            itemUrl: ctx.href
-        };
-        if (ctx.date) {
-            ps.date = ctx.date;
-        }
-        if (Pot.tagProvider && Pot.tagProvider.getBookmarkTagsByURI) {
-            d = Pot.tagProvider.getBookmarkTagsByURI(ps.itemUrl).addCallback(function(tags) {
-                ps.tags = Pot.BookmarkUtil.normalizeTags(tags);
-                return ps;
-            });
-        } else {
-            d = succeed(ps);
-        }
-        if (Pot.tagProvider && Pot.tagProvider.getBookmarkDescriptionByURI) {
-            d = d.addCallback(function(ps) {
-                return Pot.tagProvider.getBookmarkDescriptionByURI(ps.itemUrl).addCallback(function(desc) {
-                    ps.description = desc || '';
+            return ctx.href && ctx.href.length > 0;
+        },
+        iconCache: {
+            org: null,
+            gray: null
+        },
+        /**
+         * コンテキストメニューを開いたときにブックマーク済みならカラーのアイコン
+         * 未ブックマークならグレーのアイコンを表示する
+         * (isBookmarked を実装してるmodelのみ)
+         */
+        changeICON: function(ctx) {
+            let self = this;
+            try {
+                if (ctx && ctx.href && Pot.tagProvider && Pot.tagProvider.isBookmarked) {
+                    // ブックマーク済みか確認 (キャッシュがあれば使う)
+                    Pot.tagProvider.isBookmarked(ctx.href).addCallback(function(bookmarked) {
+                        let newIcon = bookmarked ? self.iconCache.org : self.iconCache.gray;
+                        // 通信ラグが生じるためアイコン変更は間に合わない
+                        self.ICON = self.iconCache.gray;
+                        // メニュー表示中にBookmarkメニューアイテムを探してアイコンを変更する
+                        Pot.callLazy(function() {
+                            let cwin, doc, selector, menuShare, menuBookmark;
+                            try {
+                                cwin = Pot.getChromeWindow();
+                                selector = Pot.sprintf('menuitem[label="%s"][image="%s"]', self.name, self.ICON);
+                                doc = cwin.document;
+                                menuShare = doc.getElementById('tombloo-menu-share');
+                                menuBookmark = menuShare.parentNode.querySelector(selector);
+                                if (menuBookmark) {
+                                    menuBookmark.setAttribute('image', newIcon);
+                                }
+                            } catch (e) {}
+                        });
+                    });
+                }
+            } catch (e) {}
+        },
+        initIcon: function() {
+            let d, self = this;
+            if (!this.iconCache.org) {
+                this.iconCache.org = this.ICON;
+                d = toGrayScale(this.ICON).addCallback(function(src) {
+                    return self.iconCache.gray = src;
+                });
+            }
+        },
+        extract: function(ctx) {
+            let d, ps = {
+                type: 'bookmark',
+                item: ctx.title,
+                itemUrl: ctx.href
+            };
+            if (ctx.date) {
+                ps.date = ctx.date;
+            }
+            if (Pot.tagProvider && Pot.tagProvider.getBookmarkTagsByURI) {
+                d = Pot.tagProvider.getBookmarkTagsByURI(ps.itemUrl).addCallback(function(tags) {
+                    ps.tags = Pot.BookmarkUtil.normalizeTags(tags);
                     return ps;
                 });
-            });
+            } else {
+                d = succeed(ps);
+            }
+            if (Pot.tagProvider && Pot.tagProvider.getBookmarkDescriptionByURI) {
+                d = d.addCallback(function(ps) {
+                    return Pot.tagProvider.getBookmarkDescriptionByURI(ps.itemUrl).addCallback(function(desc) {
+                        ps.description = desc || '';
+                        return ps;
+                    });
+                });
+            }
+            return d;
         }
-        return d;
-    }
-}]);
+    }]);
+    // アイコンを初期化
+    Pot.callLazy(function() { Tombloo.Service.extractors.Bookmark.initIcon(); });
+});
 
-// アイコンを初期化
-callLater(0, function() { Tombloo.Service.extractors.Bookmark.initIcon(); });
 
 })();
 //-----------------------------------------------------------------------------
@@ -6862,8 +7182,8 @@ update(QuickPostForm.dialog, {
  * メニューの checkbox, radio を有効にする
  */
 addAround(grobal, 'appendMenuItem', function(proceed, args) {
-    var result, type, checked, attrs;
-    var [menu, label, image, hasChildren] = args;
+    let result, type, checked, attrs;
+    let [menu, label, image, hasChildren] = args;
     
     if (image) {
         // 第三引数 image が String で渡されたら checkbox or radio か調べる
@@ -6918,7 +7238,7 @@ Pot.extend({
          * @return {Object}              メニューアイテム or undefined
          */
         getMenuItemByCaller: function(caller, name, count) {
-            var result, menu, menus, cnt, i, len;
+            let result, menu, menus, cnt, i, len;
             cnt = Pot.isNumeric(count) ? Number(count) : 0;
             menus = caller.customMenus.filter(function(menu) {
                 return menu && (menu.name === name || menu.label === name);
@@ -6949,7 +7269,7 @@ Pot.extend({
          * @return {Mixed}          結果の値
          */
         callDescriptionContextMenu: function(name, value) {
-            var item, desc, d;
+            let item, desc, d;
             item = Pot.QuickPostForm.getDescriptionContextMenu(name);
             if (item && item.execute && Pot.isFunction(item.execute)) {
                 desc = {value: value};
@@ -6968,7 +7288,7 @@ Pot.extend({
          * @return {Object}              メニューアイテム or undefined
          */
         getDescriptionContextMenu: function(name, count, callback) {
-            var result, item, func, cnt, t;
+            let result, item, func, cnt, t;
             if (Pot.isFunction(count)) {
                 t = callback;
                 func = count;
@@ -6981,7 +7301,7 @@ Pot.extend({
             cnt = Pot.isNumeric(cnt) ? Number(cnt) : 0;
             try {
                 (function(m) {
-                    var i = 0;
+                    let i = 0;
                     for each (item in m) {
                         if (item && item.name) {
                             if (item.children && item.children.length) {
@@ -7011,7 +7331,7 @@ Pot.extend({
          * @return {Boolean}  result     成功 or 失敗
          */
         insertBeforeMenuItem: function(menu, name, count, after) {
-            var result = false;
+            let result = false;
             if (menu && Pot.isObject(menu)) {
                 Pot.QuickPostForm.getDescriptionContextMenu(name, count, function(menus, item, idx) {
                     menus.splice(idx + (after ? 1 : 0), 0, menu);
@@ -7028,7 +7348,7 @@ Pot.extend({
          * @return {Boolean}   result    成功 or 失敗
          */
         removeMenuItem: function(name, count) {
-            var result = false;
+            let result = false;
             Pot.QuickPostForm.getDescriptionContextMenu(name, count, function(menus, item, idx) {
                 menus.splice(idx, 1);
                 result = true;
@@ -7048,60 +7368,111 @@ QuickPostForm.descriptionContextMenus.push(
     {
         // flavors設定時のみ適応のメニュー
         name: 'テキストとHTMLを切り替え',
-        icon: 'data:image/png,0',
+        // icon: http://www.famfamfam.com/
+        icon: Pot.toDataURI(Pot.StringUtil.trimAll(<>
+            iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6
+            QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAHUSURBVDjLxZ
+            M7a1RhEIafc3J2z6qJkIuCKChItBNSBQ0iIlZiK4gWItj6HwRbC7FRf4CVnSCIkH9
+            gJVjYiCDximCyZ7/zfXOz2A0I2qVwmmFg3rm870wVEezFavZoey7Q3Hv+/Z87qDsi
+            TlZFBJIGKStZlFSCTpyUlAZgfXXfH9BAPTCberVANBB3RAJRR8wp6jzd/DotALA9U
+            cyZgZxis2QNijpZjSJBVqeIszTfkMY65cAjuHxmgSzGlbUFrp1d5ObGErcuLLNxep
+            5hU3H93AqjYcXti4cZZ2OSDU9CnVURddqmIovTDmoev/5GVcGDF585tjzg1JGWo0t
+            DDgxrThxq6XojieOd0nRZ6dVpBxU3zi/T1BVdViKCcTbcYX11ngB6cca9MSlGlpro
+            jHqcglycVJyHL79Q1Jn0TgBdb1gEbz9OeL81IYsRAakYvQSeC/WvVOiLE8GsM4xnv
+            suGe/Do1RY/dpRenIP753hyZxURJ3JQXbr/Lq6uLfLpZ6aIk9XJssv8VK5dNcQcmc
+            l7fKVl89kHmu0dJRVjYTRHGVSMpELaQLVCtEY8EAvMHHUwn067+0LVybtvok9KSOD
+            ZiaKEOJENihPm01gD3P+62Oq/f+Nv2d9y2D8jLUEAAAAASUVORK5CYII=
+        </>), 'image/png', true),
+        icons: {
+            html: null,
+            plain: null
+        },
         check: function(ps, type) {
             return ps && type && ps[type] !== undefined &&
                    ps[type].flavors && ps[type].flavors.html !== undefined;
         },
+        // 複数のクイックポストフォームが開かれても対応できるよう
+        // いくつかプロパティを拡張している
+        beforeShow: function(ps, type, win) {
+            if (win && this.check(ps, type)) {
+                this.trigger.register(win, this);
+                switch (win[this.trigger.key]) {
+                    case 'html':
+                        this.icon = this.icons.html;
+                        break;
+                    case 'plain':
+                        this.icon = this.icons.plain;
+                        break;
+                    default:
+                        this.trigger.toggleIcon(this, win, true);
+                        break;
+                }
+            }
+        },
+        trigger: {
+            key: 'TomblooPotContextMenuToggleTextHTML',
+            menu: {},
+            toggleIcon: function(menu, win, reset) {
+                if (reset) {
+                    menu.icon = menu.icons.plain;
+                    win[this.key] = 'plain';
+                } else if (win[this.key] === 'plain') {
+                    menu.icon = menu.icons.html;
+                    win[this.key] = 'html';
+                } else {
+                    menu.icon = menu.icons.plain;
+                    win[this.key] = 'plain';
+                }
+            },
+            register: function(win, menu) {
+                let that = this;
+                if (win && menu) {
+                    if (!(this.key in win)) {
+                        this.toggleIcon(menu, win, true);
+                        if (!this.menu) {
+                            this.menu = menu;
+                        }
+                        win.addEventListener('unload', function() {
+                            try {
+                                delete win[that.key];
+                                win.removeEventListener('unload', arguments.callee, true);
+                            } catch (e) {}
+                        }, true);
+                    }
+                }
+            }
+        },
         execute: (function() {
-            var toDataURI, toggleIcon, icons = {text: null, html: null};
-            toDataURI = function(s, type) {
-                return Pot.sprintf('data:image/%s;base64,%s', type || 'png', s);
-            };
-            toggleIcon = function(menu) {
-                menu.icon = menu.icon === icons.text ? icons.html : icons.text;
-            };
-            // icon: http://www.famfamfam.com/
-            icons.text = icons.html = toDataURI(Pot.StringUtil.trimAll(<>
-                iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6
-                QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAHUSURBVDjLxZ
-                M7a1RhEIafc3J2z6qJkIuCKChItBNSBQ0iIlZiK4gWItj6HwRbC7FRf4CVnSCIkH9
-                gJVjYiCDximCyZ7/zfXOz2A0I2qVwmmFg3rm870wVEezFavZoey7Q3Hv+/Z87qDsi
-                TlZFBJIGKStZlFSCTpyUlAZgfXXfH9BAPTCberVANBB3RAJRR8wp6jzd/DotALA9U
-                cyZgZxis2QNijpZjSJBVqeIszTfkMY65cAjuHxmgSzGlbUFrp1d5ObGErcuLLNxep
-                5hU3H93AqjYcXti4cZZ2OSDU9CnVURddqmIovTDmoev/5GVcGDF585tjzg1JGWo0t
-                DDgxrThxq6XojieOd0nRZ6dVpBxU3zi/T1BVdViKCcTbcYX11ngB6cca9MSlGlpro
-                jHqcglycVJyHL79Q1Jn0TgBdb1gEbz9OeL81IYsRAakYvQSeC/WvVOiLE8GsM4xnv
-                suGe/Do1RY/dpRenIP753hyZxURJ3JQXbr/Lq6uLfLpZ6aIk9XJssv8VK5dNcQcmc
-                l7fKVl89kHmu0dJRVjYTRHGVSMpELaQLVCtEY8EAvMHHUwn067+0LVybtvok9KSOD
-                ZiaKEOJENihPm01gD3P+62Oq/f+Nv2d9y2D8jLUEAAAAASUVORK5CYII=
-            </>.toString()));
             // 初期化用にPotオブジェクトを経由する
             Pot.QuickPostForm.switchTextItemHelper = function() {
-                toGrayScale(icons.html).addCallback(function(data) {
-                    icons.text = data;
-                    Pot.QuickPostForm.getDescriptionContextMenu('テキストとHTMLを切り替え', function(menus, item, idx) {
-                        item.icon = icons.text;
+                Pot.QuickPostForm.getDescriptionContextMenu('テキストとHTMLを切り替え', function(menus, item, idx) {
+                    item.icons.html = item.icon;
+                    toGrayScale(item.icon).addCallback(function(data) {
+                        item.icons.plain = data;
+                        item.icon = item.icons.plain;
+                        return true;
                     });
-                    return true;
                 });
             };
-            return function(elmText, desc, caller, ps, type) {
-                var result, mode;
+            return function(elmText, desc, caller, ps, type, win) {
+                let result = '';
                 try {
-                    if (this.icon === icons.text) {
+                    if (this.icon === this.icons.plain) {
                         ps[type].flavors.plain = desc.value;
                         result = getFlavor(ps[type], 'html');
                     } else {
                         if (ps[type].flavors.plain === undefined) {
                             ps[type].flavors.plain = Pot.StringUtil.stringify(ps[type]) || desc.value;
                         }
-                        result = ps[type].flavors.plain;
+                        if (Pot.isString(ps[type].flavors.html)) {
+                            ps[type].flavors.html = desc.value;
+                        }
+                        result = getFlavor(ps[type], 'plain');
                     }
                 } catch (e) {
                     result = desc.value;
                 } finally {
-                    toggleIcon(this);
+                    this.trigger.toggleIcon(this, win);
                 }
                 desc.value = Pot.StringUtil.stringify(result);
             };
@@ -7117,7 +7488,7 @@ QuickPostForm.descriptionContextMenus.push(
     {
         name: 'キーワード抽出',
         execute: function(elmText, desc) {
-            var d, df, text, doc;
+            let d, df, text, doc;
             d = new Deferred();
             df = new Deferred();
             doc = Pot.getDocument();
@@ -7164,7 +7535,7 @@ QuickPostForm.descriptionContextMenus.push(
                 let mc;
                 try {
                     mc = new Pot.MarkovChainer();
-                    //TODO: APIで形態素解析
+                    //TODO: APIで形態素解析 (API使用量様子見)
                     return Pot.StringUtil.stringify(mc.summarize(s));
                     //return mc.morphemize(s).join(' | ');
                 } finally {
@@ -7173,11 +7544,15 @@ QuickPostForm.descriptionContextMenus.push(
                 }
             };
             removeNoise = function(s) {
-                return Pot.QuickPostForm.callDescriptionContextMenu(
-                    'ノイズを除去', Pot.StringUtil.remove2chName(s));
+                let text = Pot.StringUtil.stringify(s);
+                text = Pot.StringUtil.remove2chName(s);
+                // すべてのノイズ(AA/ソースコード/顔文字 etc.)を除去するため gainを増やす
+                text = Pot.StringUtil.removeAA(text, 70);
+                text = Pot.QuickPostForm.callDescriptionContextMenu('ノイズを除去', text);
+                return text;
             };
             return function(elmText, desc) {
-                var d, df, value, prev;
+                let d, df, value, prev;
                 d = new Deferred();
                 df = new Deferred();
                 value = prev = Pot.StringUtil.trim(desc.value);
@@ -7191,8 +7566,7 @@ QuickPostForm.descriptionContextMenus.push(
                     return removeNoise(v);
                 }).addCallback(function(v) {
                     v = summarize(v);
-                    if (v === prev ||
-                        (String(v).length <= String(prev).length && Pot.rand(0, 1))) {
+                    if (v === prev || !v) {
                         return succeed().addCallback(function() {
                             return Pot.getTextContent() || v;
                         }).addCallback(function(v) {
@@ -7223,79 +7597,91 @@ QuickPostForm.descriptionContextMenus.push(
             // となり同士が単語と単語(となりうる記号)の時のみスペースを入れる (minify)
             name: '改行とホワイトスペースを詰める',
             execute: function(elmText, desc) {
-                var value, c, uris = [], restore, re = {
-                    nls: /[\r\n]+/g,
-                    space: /[\s\u00A0\u3000]/g,
-                    spaces: /[\s\u00A0\u3000]+/g,
-                    split: /([\s\S])[\s\u00A0\u3000]+([\s\S])/g,
-                    bounds: /[$@#\w\\<>{}*+-]/,
-                    tail: /([\s\S]{76,152}(?:[,.､、，。！!？?]+|[；：…‥】」》）』”］〉〕｝]+|[\s\u3000;:?(){}[\]<>]+))/g
+                let d, df, value, c, uris = [], restore, re = {
+                    nls    : /[\r\n]+/g,
+                    space  : /[\s\u00A0\u3000]/g,
+                    spaces : /[\s\u00A0\u3000]+/g,
+                    split  : /([\s\S])[\s\u00A0\u3000]+([\s\S])/g,
+                    bounds : /[$@#\w\\<>{}*+-]/,
+                    tail   : /([\s\S]{76,152}(?:[,.､、，。！!？?]+|[；：…‥】」》）』”］〉〕｝]+|[\s\u3000;:?(){}[\]<>]+))/g
                 };
-                value = Pot.StringUtil.stringify(desc.value);
-                if (value && value.length) {
-                    
-                    // URI の途中では折り返さない
-                    if (URI_PATTERN.test(value)) {
-                        c = '';
-                        do {
-                            c += String.fromCharCode(Pot.rand(65, 90), Pot.rand(97, 122));
-                        } while (value.indexOf(c) !== -1);
+                d = new Deferred();
+                df = new Deferred();
+                d.addCallback(function() {
+                    value = Pot.StringUtil.stringify(desc.value);
+                    if (value && value.length) {
                         
-                        value = value.replace(URI_PATTERN, function(uri) {
-                            uris.push(uri);
-                            return c + uris.length + c;
-                        });
-                        restore = function(s) {
-                            re.restore = new RegExp([c, c].join('([0-9]+)').wrap('([\\s\\S]|)'), 'g');
-                            try {
-                                return s.replace(re.restore, function(m0, left, idx, right) {
-                                    var index = idx - 1, open = '(', close = ')', enclosed = false;
-                                    try {
-                                        if (left === open) {
-                                            if (uris[index].slice(-1) === close) {
-                                                right = uris[index].slice(-1) + right;
-                                                uris[index] = uris[index].slice(0, -1);
-                                            } else if (uris[index].slice(-2, -1) === close && /^[,.:;!?]$/.test(uris[index].slice(-1))) {
-                                                right = uris[index].slice(-2) + right;
-                                                uris[index] = uris[index].slice(0, -2);
+                        // URI の途中では折り返さない
+                        if (URI_PATTERN.test(value)) {
+                            c = '';
+                            do {
+                                c += String.fromCharCode(Pot.rand(65, 90), Pot.rand(97, 122));
+                            } while (value.indexOf(c) !== -1);
+                            
+                            value = value.replace(URI_PATTERN, function(uri) {
+                                uris.push(uri);
+                                return c + uris.length + c;
+                            });
+                            restore = function(s) {
+                                re.restore = new RegExp([c, c].join('([0-9]+)').wrap('([\\s\\S]|)'), 'g');
+                                try {
+                                    return s.replace(re.restore, function(m0, left, idx, right) {
+                                        var index = idx - 1, open = '(', close = ')', enclosed = false;
+                                        try {
+                                            if (left === open) {
+                                                if (uris[index].slice(-1) === close) {
+                                                    right = uris[index].slice(-1) + right;
+                                                    uris[index] = uris[index].slice(0, -1);
+                                                } else if (uris[index].slice(-2, -1) === close &&
+                                                            /^[,.:;!?]$/.test(uris[index].slice(-1))
+                                                ) {
+                                                    right = uris[index].slice(-2) + right;
+                                                    uris[index] = uris[index].slice(0, -2);
+                                                }
                                             }
+                                            // メールアドレスの表現を崩さない
+                                            if (left.slice(-1) === '<' && right.charAt(0) === '>') {
+                                                enclosed = true;
+                                            }
+                                            return [
+                                                left,
+                                                (enclosed || re.space.test(left.slice(-1))) ? '' : ' ',
+                                                uris[index],
+                                                (enclosed || re.space.test(right.charAt(0))) ? '' : ' ',
+                                                right
+                                            ].join('');
+                                        } finally {
+                                            uris[index] = null;
                                         }
-                                        if (left.slice(-1) === '<' && right.charAt(0) === '>') {
-                                            enclosed = true;
-                                        }
-                                        return [
-                                            left,
-                                            (enclosed || re.space.test(left.slice(-1))) ? '' : ' ',
-                                            uris[index],
-                                            (enclosed || re.space.test(right.charAt(0))) ? '' : ' ',
-                                            right
-                                        ].join('');
-                                    } finally {
-                                        uris[index] = null;
-                                    }
-                                });
-                            } finally {
-                                delete re.restore;
-                                uris = [];
-                            }
-                        };
+                                    });
+                                } finally {
+                                    delete re.restore;
+                                    uris = [];
+                                }
+                            };
+                        }
+                        value = value.replace(re.nls, ' ').replace(re.spaces, ' ').replace(re.split, function(m0, left, right) {
+                            return (re.bounds.test(left) && re.bounds.test(right)) ? left + ' ' + right : left + right;
+                        }).replace(re.tail, '$1\n');
+                        
+                        if (restore) {
+                            value = restore(value);
+                        }
+                        value = Pot.StringUtil.trim(
+                            value.split(re.nls).map(function(line) {
+                                return Pot.StringUtil.trim(line);
+                            }).filter(function(line) {
+                                return line && line.length > 0;
+                            }).join('\n').replace(/(\r\n|\r|\n){2,}/g, '$1')
+                        );
                     }
-                    value = value.replace(re.nls, ' ').replace(re.spaces, ' ').replace(re.split, function(m0, left, right) {
-                        return (re.bounds.test(left) && re.bounds.test(right)) ? left + ' ' + right : left + right;
-                    }).replace(re.tail, '$1\n');
-                    
-                    if (restore) {
-                        value = restore(value);
-                    }
-                    value = Pot.StringUtil.trim(
-                        value.split(re.nls).map(function(line) {
-                            return Pot.StringUtil.trim(line);
-                        }).filter(function(line) {
-                            return line && line.length > 0;
-                        }).join('\n').replace(/(\r\n|\r|\n){2,}/g, '$1')
-                    );
-                }
-                desc.value = value || '';
+                    return value || '';
+                }).addCallback(function(v) {
+                    df.callback();
+                    desc.value = v;
+                });
+                callLater(0.125, function() { d.callback(); });
+                return df;
             }
         },
         {
@@ -7326,11 +7712,11 @@ QuickPostForm.descriptionContextMenus.push(
              */
             name: 'はてな記法から回避',
             execute: function(elmText, desc) {
-                var s = Pot.StringUtil.stringify(desc.value), patterns = [
+                let s = Pot.StringUtil.stringify(desc.value), patterns = [
                     {
                         // 一般的なプロトコルは残す
                         //
-                        // スペース入れるか迷ったけど全角のほうが変更されたと明確に分かる
+                        // スペース入れるか迷ったけど全角のほうが変更されたと明確に分かる(?)
                         //
                         by: /(?!(?:(?:http|ftp)s?|javascript|file|data))(\b(?:\w+)\b):/gi,
                         to: '$1：'
@@ -7344,20 +7730,20 @@ QuickPostForm.descriptionContextMenus.push(
                         to: '＠$1'
                     }
                 ], getCutLength = function(string) {
-                    var tops = [], toplen, c, chars, len, maxsize, size;
-                    const def = 1000;
+                    let tops = [], toplen, c, chars, len, maxsize, size;
+                    const DEF = 1000;
                     chars = string.split('');
                     len = chars.length;
                     maxsize = MAX_LENGTH.HatenaBookmark.comment;
                     if (!Pot.isNumeric(maxsize)) {
-                        maxsize = def;
+                        maxsize = DEF;
                     }
                     maxsize = Math.max(0, maxsize);
                     while (--len >= 0) {
                         tops.push(chars.shift());
                         size = Pot.StringUtil.getByteSize(tops.join(''));
                         if (!Pot.isNumeric(size)) {
-                            toplen = def;
+                            toplen = DEF;
                             break;
                         }
                         if (size > maxsize) {
@@ -7365,12 +7751,18 @@ QuickPostForm.descriptionContextMenus.push(
                             break;
                         }
                     }
-                    return (Pot.isNumeric(toplen) && toplen > 0) ? toplen : def;
-                }, cutLength = getCutLength(s);
-                patterns.forEach(function(re) {
-                    s = s.slice(0, cutLength).replace(re.by, re.to) + s.slice(cutLength);
+                    return (Pot.isNumeric(toplen) && toplen > 0) ? toplen : DEF;
+                }, cutLength = getCutLength(s), d = new Deferred(), df = new Deferred();
+                d.addCallback(function() {
+                    patterns.forEach(function(re) {
+                        s = s.slice(0, cutLength).replace(re.by, re.to) + s.slice(cutLength);
+                    });
+                }).addCallback(function() {
+                    df.callback();
+                    desc.value = s;
                 });
-                desc.value = s;
+                callLater(0.125, function() { d.callback(); });
+                return df;
             }
         },
         {
@@ -7388,13 +7780,13 @@ QuickPostForm.descriptionContextMenus.push(
         {
             name: '2つ以上の改行を1つに変換',
             execute: function(elmText, desc) {
-                var re = {
+                let re = {
                     singleNL: /(?:\r\n|\r|\n)/g,
                     multiNL: /(?:\r\n|\r|\n){2,}/g
                 };
                 desc.value = Pot.StringUtil.trim(
                     Pot.StringUtil.stringify(desc.value).split(re.singleNL).map(function(s) {
-                        var t = Pot.StringUtil.trim(s);
+                        let t = Pot.StringUtil.trim(s);
                         return (t && t.length) ? Pot.StringUtil.rtrim(s) : t;
                     }).join('\n').split(re.multiNL).join('\n\n')
                 );
@@ -7403,13 +7795,13 @@ QuickPostForm.descriptionContextMenus.push(
         {
             name: 'すべての改行を1つに変換',
             execute: function(elmText, desc) {
-                var re = {
+                let re = {
                     singleNL: /(?:\r\n|\r|\n)/g,
                     multiNL: /(?:\r\n|\r|\n){1,}/g
                 };
                 desc.value = Pot.StringUtil.trim(
                     Pot.StringUtil.stringify(desc.value).split(re.singleNL).map(function(s) {
-                        var t = Pot.StringUtil.trim(s);
+                        let t = Pot.StringUtil.trim(s);
                         return (t && t.length) ? Pot.StringUtil.rtrim(s) : t;
                     }).join('\n').split(re.multiNL).join('\n')
                 );
@@ -7418,18 +7810,18 @@ QuickPostForm.descriptionContextMenus.push(
         {
             name: 'すべての改行を除去',
             execute: function(elmText, desc) {
-                var value, re = {
-                    nl: /(?:\r\n|\r|\n)/g,
-                    bounds: /[$@#\w\\<>{}*+-]/,
-                    join: /(.)(?:\r\n|\r|\n)(.)/g
+                let value, re = {
+                    nl     : /(?:\r\n|\r|\n)/g,
+                    bounds : /[$@#\w\\<>{}*+-]/,
+                    join   : /(.)(?:\r\n|\r|\n)(.)/g
                 };
                 value = Pot.StringUtil.stringify(desc.value).split(re.nl).map(function(s) {
-                    var t = Pot.StringUtil.trim(s);
+                    let t = Pot.StringUtil.trim(s);
                     return (t && t.length) ? Pot.StringUtil.rtrim(s) : t;
                 }).filter(function(s) {
                     return s && s.length > 0;
                 }).join('\n').replace(re.join, function(all, left, right) {
-                    var glue = '';
+                    let glue = '';
                     if (re.bounds.test(left) && re.bounds.test(right)) {
                         glue = ' ';
                     }
@@ -7444,7 +7836,7 @@ QuickPostForm.descriptionContextMenus.push(
         {
             name: '左側のホワイトスペースを除去(ltrim)',
             execute: function(elmText, desc) {
-                var value = Pot.StringUtil.stringify(desc.value);
+                let value = Pot.StringUtil.stringify(desc.value);
                 value = Pot.StringUtil.trim(
                     value.split(/(?:\r\n|\r|\n)/).map(function(s) {
                         return Pot.StringUtil.ltrim(s);
@@ -7458,7 +7850,7 @@ QuickPostForm.descriptionContextMenus.push(
         {
             name: '右側のホワイトスペースを除去(rtrim)',
             execute: function(elmText, desc) {
-                var value = Pot.StringUtil.stringify(desc.value);
+                let value = Pot.StringUtil.stringify(desc.value);
                 value = Pot.StringUtil.trim(
                     value.split(/(?:\r\n|\r|\n)/).map(function(s) {
                         return Pot.StringUtil.rtrim(s);
@@ -7472,7 +7864,7 @@ QuickPostForm.descriptionContextMenus.push(
         {
             name: '両側のホワイトスペースを除去(trim)',
             execute: function(elmText, desc) {
-                var value = Pot.StringUtil.stringify(desc.value);
+                let value = Pot.StringUtil.stringify(desc.value);
                 value = Pot.StringUtil.trim(
                     value.split(/(?:\r\n|\r|\n)/).map(function(s) {
                         return Pot.StringUtil.trim(s);
@@ -7489,7 +7881,9 @@ QuickPostForm.descriptionContextMenus.push(
         {
             name: 'HTMLタグを除去',
             execute: function(elmText, desc) {
-                desc.value = Pot.StringUtil.stripTags(Pot.StringUtil.stringify(desc.value)).split(/(?:\r\n|\r|\n)+/).map(function(s) {
+                desc.value = Pot.StringUtil.stripTags(Pot.StringUtil.stringify(desc.value)).
+                    split(/(?:\r\n|\r|\n)+/).map(function(s) 
+                {
                     return Pot.StringUtil.rtrim(s);
                 }).filter(function(s) {
                     return s && s.length > 0;
@@ -7498,133 +7892,108 @@ QuickPostForm.descriptionContextMenus.push(
         },
         {
             name: 'ノイズを除去',
-            execute: function(elmText, desc) {
-                let s, d, waiting, patterns = [
-                    {
-                        // 不正な文字を削除
-                        by: /[\u0000-\u001F\s\u00A0\u3000]+/g,
-                        to: ' '
-                    },
-                    {
-                        // ADを削除
-                        by: /\b(?:AD|PR|ＡＤ｜ＰＲ)\s*[:：]\s*(?:[^\r\n]+[\r\n]+|)/gi,
-                        to: ' '
-                    },
-                    {
-                        by: /\b(?:Ads[\u0020\u3000]+by[\u0020\u3000]+Google)\b/gi,
-                        to: ' '
-                    },
-                    {
-                        by: /^[\u0020\u3000]*twitterにこのエントリー?を追加[\u0020\u3000]*$/gim,
-                        to: ' '
-                    },
-                    {
-                        by: /^[\u0020\u3000]*コメントをどうぞ[\u0020\u3000]*/m,
-                        to: ' '
-                    },
-                    {
-                        by: /(?:^|\b)[\u0020\u3000]*\b(?:Ads[\u0020\u3000]*by[\u0020\u3000]*Google)\b/gim,
-                        to: ' '
-                    },
-                    {
-                        by: /^[\u0020\u3000]*この.{1,12}を一番乗りで「Like」しませんか[\u0020\u3000]*[?？]?[\u0020\u3000]*/im,
-                        to: ' '
-                    },
-                    {
-                        by: /^[\u0020\u3000]*[<>]+[\u0020\u3000]*利用規約[\u0020\u3000]*[<>]+[\u0020\u3000]*使い方はこちら[\u0020\u3000]*$/gim,
-                        to: ' '
-                    },
-                    {
-                        by: /(?:(?:印刷)+用画面を開く|ブログに利用このエントリー?をブログに利用|twitter[\u0020]*にこのエントリー?を追加)/gi,
-                        to: ' '
-                    },
-                    {
-                        by: /(?:>+[\u0020\u3000]*利用規約[\u0020\u3000]*>+)[\u0020\u3000]*(?:使い方はこちら|)/,
-                        to: ' '
-                    },
-                    {
-                        // ブックマークボタンの表記を削除
-                        by: new RegExp(Pot.StringUtil.trimAll(<><![CDATA[
-                            (?:
-                                (?:このエントリー?を|)
-                                [\u0020\u3000]*
-                                (?:(?:はてな|Yahoo!)ブックマーク|del\.?icio\.?us|livedoorクリップ|Buzzurl)に(?:追加|登録)
-                                [\u0020\u3000]*
-                            )+
-                        ]]></>), 'gi'),
-                        to: ' '
-                    },
-                    {
-                        // はてなダイアリーのノイズを削除
-                        by: /\b(?:CommentsAdd[\u0020\u3000]+\w{6,}|\w{24,})\b/gi,
-                        to: ' '
-                    },
-                    {
-                        // ツイートボタン、はてなボタンのテキスト表示を削除
-                        by: /\b(?:Tweet\s+Search|(?:[BＢ][!！]?|)\s+\d+\s+users)\b(?![\s\u3000,.、。!！?？]*[ぁ-ん])/gi,
-                        to: ' '
-                    },
-                    {
-                        // IPアドレスを削除
-                        by: /\b(?:[\d０-９]{1,3}[.．]){2}[\d０-９]{1,3}[.．]?\b/g,
-                        to: ''
-                    },
-                    {
-                        // ソースコードの行番号だけになった数字を削除
-                        by: /^\s*\d+\s*$|(?:\d+\s+){5,}/gm,
-                        to: ''
-                    },
-                    {
-                        // カレンダーを削除
-                        by: /(?:\d+\s*月|Dec|Nov|Oct|Sep|Aug|Jul|Jun|May|Apr|Mar|Feb|Jan)\w*\s*(?:\(\s*\d+\s*\)|)/gi,
-                        to: ' '
-                    },
-                    {
-                        // リスト記号を削除
-                        by: /\b(?:[\w※＊＋－*+-]\s+[^一-龠々〆ァ-ヴｦ-ｯｱ-ﾝぁ-ん\w\s])\b/gi,
-                        to: ' '
-                    },
-                    {
-                        // 連続した記号を削除
-                        by: /(?:([^一-龠々〆ァ-ヴｦ-ｯｱ-ﾝぁ-ん\w\s]{1,4})\s+\1\s*){1,}/gi,
-                        to: ' '
-                    },
-                    {
-                        // 連続した数字を削除
-                        by: /(?:(?:[(（]\s*)[\d０-９]+(?:\s*[)）]\s*)\s*)+/gi,
-                        to: ' '
-                    },
-                    {
-                        // 連続したリスト記号を削除
-                        by: /(?:\b([ox※＊＋－*+-]{1,4})\s+(?:[^一-龠々〆ァ-ヴｦ-ｯｱ-ﾝぁ-ん\w\s]\s+|)(?=(?:\1\s*|$))\s*){1,}/gi,
-                        to: ' '
-                    },
-                    {
-                        // 各行のリスト記号を削除
-                        by: /^[\u0020\u3000]*[^一-龠々〆ァ-ヴｦ-ｯｱ-ﾝぁ-ん\w\s]{1}[\u0020\u3000]*/gim,
-                        to: ' '
-                    },
-                    {
-                        // 同じ文字の繰り返しを削除
-                        by: /\b([^一-龠々〆ヵヶァ-ヴｦ-ｯｱ-ﾝﾞﾟぁ-ん]){1,2}(?:\s*\1\s*){3,}/g,
-                        to: '$1'
-                    },
-                    {
-                        // 日付を削除
-                        by: /(?:[\d０-９]{2,4}\s*[年月日時分秒\/.-]){1,6}(?:\s*[.．]\s*[\d０-９]|)/g,
-                        to: ' '
-                    },
-                    {
-                        // 記号を削除
-                        by: /(?:\s+|^)[^一-龠々〆ァ-ヴｦ-ｯｱ-ﾝﾞﾟぁ-んﾞ゛ﾟ゜\s\wａ-ｚＡ-Ｚ０-９Α-ωⅠ-Ⅹⅰ-ⅹ,，.．､、｡。!！?？\u301Cー～－ｰ-](?=(?:\s|$))/gi,
-                        to: ' '
-                    },
-                    {
-                        // ゴミを削除
-                        by: /\b(?:[\s\u3000]*[ox▼▲▽△]{1,2}[\s\u3000]*)\b/gi,
-                        to: ' '
-                    }
-                ];
+            execute: function(elmText, desc, construct) {
+                let s, d, df, waiting, patterns = [{
+                    // 不要な文字を削除
+                    by: /[\u0000-\u001F\s\u00A0\u3000]+/g,
+                    to: ' '
+                }, {
+                    // ADを削除
+                    by: /\b(?:AD|PR|ＡＤ｜ＰＲ)\s*[:：]\s*(?:[^\r\n]+[\r\n]+|)/gi,
+                    to: ' '
+                }, {
+                    by: /\b(?:Ads[\u0020\u3000]+by[\u0020\u3000]+Google)\b/gi,
+                    to: ' '
+                }, {
+                    by: /^[\u0020\u3000]*twitterにこのエントリー?を追加[\u0020\u3000]*$/gim,
+                    to: ' '
+                }, {
+                    by: /^[\u0020\u3000]*コメントをどうぞ[\u0020\u3000]*/m,
+                    to: ' '
+                }, {
+                    by: /(?:^|\b)[\u0020\u3000]*\b(?:Ads[\u0020\u3000]*by[\u0020\u3000]*Google)\b/gim,
+                    to: ' '
+                }, {
+                    by: /^[\u0020\u3000]*この.{1,12}を一番乗りで「Like」しませんか[\u0020\u3000]*[?？]?[\u0020\u3000]*/im,
+                    to: ' '
+                }, {
+                    by: /^[\u0020\u3000]*[<>]+[\u0020\u3000]*利用規約[\u0020\u3000]*[<>]+[\u0020\u3000]*使い方はこちら[\u0020\u3000]*$/gim,
+                    to: ' '
+                }, {
+                    by: /(?:(?:印刷)+用画面を開く|ブログに利用このエントリー?をブログに利用|twitter[\u0020]*にこのエントリー?を追加)/gi,
+                    to: ' '
+                }, {
+                    by: /(?:>+[\u0020\u3000]*利用規約[\u0020\u3000]*>+)[\u0020\u3000]*(?:使い方はこちら|)/,
+                    to: ' '
+                }, {
+                    // ブックマークボタンの表記を削除
+                    by: new RegExp(Pot.StringUtil.trimAll(<><![CDATA[
+                        (?:
+                            (?:このエントリー?を|)
+                            [\u0020\u3000]*
+                            (?:(?:はてな|Yahoo!)ブックマーク|del\.?icio\.?us|livedoorクリップ|Buzzurl)に(?:追加|登録)
+                            [\u0020\u3000]*
+                        )+
+                    ]]></>), 'gi'),
+                    to: ' '
+                }, {
+                    // はてなダイアリーのノイズを削除
+                    by: /\b(?:CommentsAdd[\u0020\u3000]+\w{6,}|\w{24,})\b/gi,
+                    to: ' '
+                }, {
+                    // ツイートボタン、はてなボタンのテキスト表示を削除
+                    by: /\b(?:Tweet\s+Search|(?:[BＢ][!！]?|)\s+\d+\s+users)\b(?![\s\u3000,.、。!！?？]*[ぁ-ん])/gi,
+                    to: ' '
+                }, {
+                    // IPアドレスを削除
+                    by: /\b(?:[\d０-９]{1,3}[.．]){2}[\d０-９]{1,3}[.．]?\b/g,
+                    to: ''
+                }, {
+                    // ソースコードの行番号だけになった数字を削除
+                    by: /^[\u0009\u0020\u3000]*\d+[\u0009\u0020\u3000]*$|(?:\d+[\u0009\u0020\u3000]+){5,}/gm,
+                    to: ''
+                }, {
+                    // カレンダーを削除
+                    by: /(?:\d+\s*月|Dec|Nov|Oct|Sep|Aug|Jul|Jun|May|Apr|Mar|Feb|Jan)\w*\s*(?:\(\s*\d+\s*\)|)/gi,
+                    to: ' '
+                }, {
+                    // リスト記号を削除
+                    by: /\b(?:[\w※＊＋－*+-]\s+[^一-龠々〆ァ-ヴｦ-ｯｱ-ﾝぁ-ん\w\s])\b/gi,
+                    to: ' '
+                }, {
+                    // 連続した記号を削除
+                    by: /(?:([^一-龠々〆ァ-ヴｦ-ｯｱ-ﾝぁ-ん\w\s]{1,4})\s+\1\s*){1,}/gi,
+                    to: ' '
+                }, {
+                    // 連続した数字を削除
+                    by: /(?:(?:[(（]\s*)[\d０-９]+(?:\s*[)）]\s*)\s*)+/gi,
+                    to: ' '
+                }, {
+                    // 連続したリスト記号を削除
+                    by: /(?:\b([ox※＊＋－*+-]{1,4})\s+(?:[^一-龠々〆ァ-ヴｦ-ｯｱ-ﾝぁ-ん\w\s]\s+|)(?=(?:\1\s*|$))\s*){1,}/gi,
+                    to: ' '
+                }, {
+                    // 各行のリスト記号を削除
+                    by: /^[\u0020\u3000]*[^一-龠々〆ァ-ヴｦ-ｯｱ-ﾝぁ-ん\w\s]{1}[\u0020\u3000]*/gim,
+                    to: ' '
+                }, {
+                    // 同じ文字の繰り返しを削除
+                    by: /\b([^一-龠々〆ヵヶァ-ヴｦ-ｯｱ-ﾝﾞﾟぁ-ん]){1,2}(?:\s*\1\s*){3,}/g,
+                    to: '$1'
+                }, {
+                    // 日付を削除
+                    by: /(?:[\d０-９]{2,4}\s*[年月日時分秒\/.-]){1,6}(?:\s*[.．]\s*[\d０-９]|)/g,
+                    to: ' '
+                }, {
+                    // 記号を削除
+                    by: /(?:\s+|^)[^一-龠々〆ァ-ヴｦ-ｯｱ-ﾝﾞﾟぁ-んﾞ゛ﾟ゜\s\wａ-ｚＡ-Ｚ０-９Α-ωⅠ-Ⅹⅰ-ⅹ,，.．､、｡。!！?？\u301Cー～－ｰ-](?=(?:\s|$))/gi,
+                    to: ' '
+                }, {
+                    // ゴミを削除
+                    by: /\b(?:[\s\u3000]*[ox▼▲▽△]{1,2}[\s\u3000]*)\b/gi,
+                    to: ' '
+                }];
+                // ↑なんだか斜めって見える錯覚が… (Fontによるのかな..)
                 d = new Deferred();
                 waiting = true;
                 s = Pot.StringUtil.stringify(desc.value);
@@ -7645,9 +8014,8 @@ QuickPostForm.descriptionContextMenus.push(
                     }).addCallback(function(res) {
                         return Pot.StringUtil.trim(res);
                     }).addCallback(function(res) {
-                        let dd, re;
-                        dd = Pot.DeferredUtil.repeat(patterns.length, function(i) {
-                            re = patterns[i];
+                        let dd = Pot.DeferredUtil.repeat(patterns.length, function(i) {
+                            let re = patterns[i];
                             res = res.replace(re.by, re.to).replace(re.by, re.to);
                         }).addCallback(function() {
                             return res;
@@ -7662,10 +8030,26 @@ QuickPostForm.descriptionContextMenus.push(
                     desc.value = res;
                 }).addBoth(function() {
                     waiting = false;
-                }).callback();
-                till(function() {
-                    return waiting !== true;
                 });
+                if (construct) {
+                    // ユーザーがメニュークリックで実行した場合
+                    df = new Deferred();
+                    d.addBoth(function() {
+                        df.callback();
+                    });
+                    // カーソルを wait にするため Deferred を返す
+                    callLater(0.125, function() { d.callback(); });
+                    return df;
+                } else {
+                    // 内部からコールした場合
+                    d.callback();
+                    if (waiting) {
+                        // 非同期を同期する
+                        till(function() {
+                            return waiting !== true;
+                        });
+                    }
+                }
             }
         }]
     },
@@ -7768,7 +8152,7 @@ QuickPostForm.descriptionContextMenus.push(
         {
             name: 'すべてひらがなに変換',
             execute: function(elmText, desc) {
-                var d, value;
+                let d, value;
                 d = new Deferred();
                 value = Pot.StringUtil.toHankakuCase(Pot.StringUtil.toZenkanaCase(
                     Pot.StringUtil.toHiraganaCase(Pot.StringUtil.stringify(desc.value))));
@@ -7788,7 +8172,7 @@ QuickPostForm.descriptionContextMenus.push(
         {
             name: 'すべてローマ字に変換',
             execute: function(elmText, desc) {
-                var d, value;
+                let d, value;
                 d = new Deferred();
                 value = Pot.StringUtil.toHankakuCase(Pot.StringUtil.toZenkanaCase(
                     Pot.StringUtil.toHiraganaCase(Pot.StringUtil.toHanSpaceCase(
@@ -7893,7 +8277,7 @@ QuickPostForm.descriptionContextMenus.push(
         {
             name: 'AlphamericStringエンコード',
             execute: function(elmText, desc) {
-                desc.value = Pot.StringUtil.AlphamericString.encode(desc.value)
+                desc.value = Pot.StringUtil.AlphamericString.encode(desc.value);
             }
         },
         {
@@ -7934,19 +8318,19 @@ QuickPostForm.descriptionContextMenus.push(
         name: 'テキスト補助',
         children: [
         {
-            name: '<blockquote>で囲う',
-            execute: function(elmText, desc) {
-                desc.value = ['<blockquote>\n', '\n</blockquote>'].join(Pot.StringUtil.trim(desc.value));
-            }
-        },
-        {
-            name: '<p>で囲う',
+            name: '全体を<p>で囲う',
             execute: function(elmText, desc) {
                 desc.value = ['<p>\n', '\n</p>'].join(Pot.StringUtil.trim(desc.value));
             }
         },
         {
-            name: '<div>で囲う',
+            name: '全体を<blockquote>で囲う',
+            execute: function(elmText, desc) {
+                desc.value = ['<blockquote>\n', '\n</blockquote>'].join(Pot.StringUtil.trim(desc.value));
+            }
+        },
+        {
+            name: '全体を<div>で囲う',
             execute: function(elmText, desc) {
                 desc.value = ['<div>\n', '\n</div>'].join(Pot.StringUtil.trim(desc.value));
             }
@@ -7957,13 +8341,132 @@ QuickPostForm.descriptionContextMenus.push(
         {
             name: '行末に<br />を挿入',
             execute: function(elmText, desc) {
-                desc.value = Pot.StringUtil.stringify(desc.value).replace(/(\r\n|\r|\n)/g, '<br />$1');
+                const TAG_BR = '<br />';
+                desc.value = Pot.StringUtil.stringify(desc.value).replace(/(\r\n|\r|\n)/g, TAG_BR + '$1');
             }
+        },
+        {
+            name: '行末に<br />を適する行のみ挿入',
+            execute: function(elmText, desc) {
+                const TAG_BR = '<br />';
+                let results = [], value, lines, patterns, codes, mark;
+                patterns = {
+                    inline: new RegExp(Pot.sprintf('^(?:<|)(%s)(?:[^>]*>|)$',
+                        Pot.StringUtil.trimAll(<><![CDATA[
+                            (?: a|b|i|q|s|u|abbr|acronym|applet|big|cite
+                              | code|dfn|em|font|iframe|kbd|label|object
+                              | samp|small|span|strike|strong|sub|sup|tt
+                              | var|bdo|button|del|ruby|img|input|select
+                              | embed|ins|keygen|textarea|map|canvas|svg
+                              | audio|command|mark|math|meter|time|video
+                              | datalist|progress|output|\w+:\w+
+                            )\b
+                        ]]></>)
+                    ), 'i'),
+                    nl   : /\r\n|\r|\n/g,
+                    top  : /^[\s\u00A0\u3000]*<\s*(\/|)\s*(\w+(?::\w+|))\b[^>]*(\/|)>/g,
+                    end  : /<\s*(\/|)\s*(\w+(?::\w+|))\b[^>]*(\/|)>[\s\u00A0\u3000]*$/g,
+                    code : /(<(pre|code|style|script)\b[^>]*>[\s\S]*?<\/\2\s*>|<!--[\s\S]*?-->|<!\[CDATA[[\s\S]*?]]>)/gi,
+                };
+                value = Pot.StringUtil.stringify(desc.value);
+                if (value) {
+                    // pre や code, コメント内はそのままにする
+                    mark = '';
+                    do {
+                        mark += String.fromCharCode(
+                            Pot.rand(0, 2), Pot.rand(0x5D, 0x7E),
+                            Pot.rand(0x3F, 0x5B), Pot.rand(0x30, 0x3B), Pot.rand(0, 2)
+                        );
+                    } while (~value.indexOf(mark));
+                    codes = [];
+                    value = value.replace(patterns.code, function(a, code) {
+                        codes[codes.length] = code;
+                        return '<' + mark + codes.length + mark + '>';
+                    });
+                    // br を挿入
+                    lines = value.split(patterns.nl);
+                    lines.forEach(function(line, i) {
+                        let append, next, cur, matches, all, closing, name, closed, nextName;
+                        append = false;
+                        next = Pot.StringUtil.stringify(lines[i + 1]);
+                        cur = Pot.StringUtil.rtrim(line);
+                        if (!patterns.end.test(cur)) {
+                            append = true;
+                        } else {
+                            matches = cur.match(patterns.end);
+                            [all, closing, name, closed] = matches;
+                            if (patterns.inline.test(name)) {
+                                append = true;
+                            } else {
+                                if (closing || closed) {
+                                    if (next && patterns.top.test(next)) {
+                                        nextName = next.match(patterns.top)[2];
+                                        if (patterns.inline.test(nextName)) {
+                                            append = true;
+                                        }
+                                    } else {
+                                        append = true;
+                                    }
+                                }
+                            }
+                        }
+                        results[results.length] = line + (append ? TAG_BR : '');
+                    });
+                    value = results.join('\n');
+                    // pre, code などを元に戻す
+                    if (codes && codes.length) {
+                        patterns.mark = new RegExp(
+                            Pot.sprintf('<(%s)([0-9]+)\\1>', Pot.escapeRegExp(mark)),
+                            'g'
+                        );
+                        value = value.replace(patterns.mark, function(a, mk, idx) {
+                            try {
+                                return codes[idx - 1];
+                            } finally {
+                                codes[idx - 1] = null;
+                            }
+                        });
+                    }
+                }
+                desc.value = value;
+            }
+        },
+        {
+            name: '----'
         },
         {
             name: '各行を<div>で囲う',
             execute: function(elmText, desc) {
                 desc.value = Pot.StringUtil.stringify(desc.value).replace(/^(.*)$/gm, '<div>$1</div>');
+            }
+        },
+        {
+            name: '各行を<p>で囲う',
+            execute: function(elmText, desc) {
+                desc.value = Pot.StringUtil.stringify(desc.value).replace(/^(.*)$/gm, '<p>$1</p>');
+            }
+        },
+        {
+            name: '----'
+        },
+        {
+            name: '行頭が「*」で始まる行を<li>で囲う',
+            execute: function(elmText, desc) {
+                let re, first;
+                first = true;
+                re = {
+                    line : /^[\u0020\u00A0\u3000]*[*][\u0020\u00A0\u3000]*(.*)[\u0020\u00A0\u3000]*$/gm,
+                    tail : /(<ul>(?:\r\n|\r|\n)<li>[\s\S]+(?:<\/li>(?:\r\n|\r|\n)))/
+                };
+                desc.value = Pot.StringUtil.stringify(desc.value).replace(re.line, function(all, s) {
+                    let result = '';
+                    if (first) {
+                        first = false;
+                        result = '<ul>\n';
+                    }
+                    result += '<li>' + Pot.StringUtil.trim(s) + '</li>';
+                    return result;
+                }).replace(re.tail, '$1</ul>\n');
             }
         }]
     }
@@ -7984,16 +8487,16 @@ callLater(0, function() { Pot.QuickPostForm.switchTextItemHelper.call(); });
         // Based: 'shortcutkey.quickPost.link' (40_ui.js)
         name: POT_SHORTCUTKEY_BOOKMARK,
         execute: function(e) {
-            var win, doc, ctx, exts;
+            let win, doc, ctx, exts;
             cancel(e);
             win = getMostRecentWindow().content;
             doc = win.document;
             ctx = update({
-                document: doc,
-                window: win,
-                title: doc.title,
-                selection: '' + win.getSelection(),
-                target: doc.documentElement
+                document  : doc,
+                window    : win,
+                title     : doc.title,
+                selection : '' + win.getSelection(),
+                target    : doc.documentElement
             }, win.location);
             exts = Tombloo.Service.check(ctx).filter(function(ext) {
                 // Bookmark を追加
@@ -8074,8 +8577,7 @@ Pot.extend(Pot.RomaReadingUtil, {
                 '',
                 '・ スペースは全角スペースやタブも使用できます。',
                 '・ 次の文字への区切りは「改行」です。',
-                '・ シャープ「#」から改行まではコメントとして扱われます。',
-                '・ 同じ英文字列が存在すると誤判断するかもしれません。'
+                '・ シャープ「#」から改行まではコメントとして扱われます。'
             ].join('\n'),
             Pot.RomaReadingUtil.load()
         );
@@ -8143,11 +8645,13 @@ Pot.extend(Pot.RomaReadingUtil, {
         }
         return maps.join('\n');
     },
+    // 他のパッチなどの影響で変化するかもしれないので初期状態を保持しておく(リセット用)
     initDefaultKeymap: function() {
         if (!Pot.RomaReadingUtil.defaultKeymap) {
             Pot.RomaReadingUtil.defaultKeymap = update({}, String.katakana);
         }
     },
+    // 滅多に再設定しないと思うのでメモリを抑えるためXULコードなどをキャッシュしない
     generateXUL: function(title, message) {
         let xul, script, params;
         xul = Pot.StringUtil.mtrim(<><![CDATA[
@@ -8276,12 +8780,12 @@ if (!Tombloo.Service.extractors['Audio']) {
         name: 'Audio',
         ICON: 'chrome://tombloo/skin/audio.png',
         check: function(ctx) {
-            var re = /(?:mp3|ogg|wav|midi?)$/i;
+            let re = /(?:mp3|ogg|wav|midi?)$/i;
             return ctx.onAudio ||
                 (tagName(ctx.target) === 'audio' && re.test(Pot.getExt(ctx.target.src)));
         },
         extract: function(ctx) {
-            var src, ext, title, text, re, result;
+            let src, ext, title, text, re, result;
             re = /([^\/\\]*?)\.[^.]*$/;
             src = Pot.resolveRelativeURI(ctx.target.src, ctx.target);
             if (ctx.target.tagName && tagName(ctx.target) !== 'audio') {
@@ -8311,7 +8815,7 @@ if (!Tombloo.Service.extractors['Audio']) {
         name: 'Audio - audio link',
         ICON: 'chrome://tombloo/skin/audio.png',
         check: function(ctx) {
-            var re = /(?:mp3|ogg|wav|midi?)$/i;
+            let re = /(?:mp3|ogg|wav|midi?)$/i;
             return ctx.onLink && ctx.link &&
                 (ctx.onAudio || re.test(Pot.getExt(ctx.link.href)));
         },
@@ -8330,7 +8834,7 @@ if (!Tombloo.Service.extractors['Audio']) {
                 Tombloo.Service.extractors['Audio - audio link'].check(ctx);
         },
         extract: function(ctx) {
-            var target, itemUrl;
+            let target, itemUrl;
             target = ctx.target;
             itemUrl = target.src || target.href || (ctx.link && ctx.link.href);
             return download(itemUrl, getTempDir()).addCallback(function(file) {
@@ -8350,7 +8854,7 @@ if (!Tumblr.Audio) {
     update(Tumblr, {
         Audio: {
             convertToForm: function(ps) {
-                var res = {
+                let res = {
                     'post[type]': ps.type,
                     'post[two]': joinText([(ps.item ? ps.item.link(ps.pageUrl) : ''), ps.description], '\n\n')
                 };
@@ -8363,7 +8867,7 @@ if (!Tumblr.Audio) {
     });
     // リブログを可能にする
     addAround(Tombloo.Service.extractors['ReBlog'], 'convertToParams', function(proceed, args) {
-        var form, result;
+        let form, result;
         result = proceed(args);
         if (!result && args && args[0]) {
             form = args[0];
@@ -8402,7 +8906,7 @@ if (!Local.Audio) {
             return /(?:regular|photo|quote|link|audio|bookmark)/.test(ps.type);
         },
         post: function(ps) {
-            var result;
+            let result;
             switch (ps.type) {
                 case 'photo':
                     result = this.Photo.post(ps);
@@ -8465,7 +8969,7 @@ if (!Local.Audio) {
         },
         Photo: {
             post: function(ps) {
-                var file, uri, fileName;
+                let file, uri, fileName;
                 if (!/photo|audio/.test(ps.type)) {
                     throw new Error('Illegal post type: ' + ps.type);
                 }
@@ -8492,7 +8996,7 @@ if (!Local.Audio) {
                             return download(ps.itemUrl, file);
                         }
                     }).addCallback(function(file) {
-                        var script, process;
+                        let script, process;
                         if (Pot.os.mac) {
                             // Macはコメントをつける
                             script = getTempDir('setcomment.scpt');
@@ -8518,29 +9022,11 @@ if (!Local.Audio) {
 }
 
 
-
 })();
 //-----------------------------------------------------------------------------
 // Install - インストール
 //-----------------------------------------------------------------------------
 (function() {
-
-// Constants for Setup
-const PSU_INSTALL_TITLE     = 'Tombloo - Bookmarkパッチのインストール';
-const PSU_UNINSTALL_TITLE   = 'Tombloo - Bookmarkパッチのアンインストール';
-const PSU_UPDATECHECK_TITLE = 'Tombloo - Bookmarkパッチのアップデート確認';
-const PSU_UPDATE_TITLE      = 'Tombloo - Bookmarkパッチのアップデート';
-const PSU_BACKUP_SUFFIX     = '-bookmark.pot.assort.bk';
-const PSU_BACKUP_DIR_NAME   = 'chrome';
-const PSU_BMA_SCRIPT_NAME   = 'tombloo.poster.bookmark.pot.assort.js';
-const PSU_QPF_SCRIPT_NAME   = 'tombloo.poster.bookmark.pot.assort.quickpostform.js';
-const PSU_QPF_XUL_FILE      = 'quickPostForm.xul';
-const PSU_PREFS_XUL_FILE    = 'prefs.xul';
-const PSU_COMP_XML_FILE     = 'completion.xml';
-const PSU_DTD_JA_FILE       = 'ja-JP/tombloo.dtd';
-const PSU_DTD_EN_FILE       = 'en-US/tombloo.dtd';
-const PSU_BMA_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/master/' + PSU_BMA_SCRIPT_NAME;
-const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/master/bookmark/' + PSU_QPF_SCRIPT_NAME;
 
 
 Pot.SetupUtil = {};
@@ -8635,7 +9121,7 @@ Pot.extend(Pot.SetupUtil, {
             Pot.SetupUtil.backup(path);
             Pot.SetupUtil.progressLog('%s Backuped.', PSU_QPF_XUL_FILE);
             success = Pot.SetupUtil.findReplace(path, [{
-                from: /(<script\b.*?\bsrc\s*=\s*["']?)(quickPostForm.js)(['"]?\s*\/>)(\r\n|\r|\n|)/i,
+                from: /(<script\b.*?\bsrc\s*=\s*["']?)(quickPostForm\.js)(['"]?\s*\/>)(\r\n|\r|\n|)/i,
                 to: '$1$2$3$4$1' + PSU_QPF_SCRIPT_NAME + '$3$4'
             }]);
             if (!success) {
@@ -9202,7 +9688,7 @@ Pot.extend(Pot.SetupUtil, {
                     } else {
                         message = '';
                         if (silent) {
-                            message += '[Tomblooブックマークパッチ]\n'
+                            message += Pot.sprintf('[%s]\n', PSU_UPDATE_TITLE);
                         }
                         message += [
                             '最新バージョンにアップデートできます。',
@@ -9353,7 +9839,7 @@ Pot.extend(Pot.SetupUtil, {
         return maybeDeferred(d);
     },
     findReplace: function(fileName, replacements) {
-        var result = false, code, file;
+        let result = false, code, file;
         try {
             file = Pot.SetupUtil.assignLocalFile(fileName);
             code = Pot.SetupUtil.loadFile(file);
@@ -9594,11 +10080,11 @@ Pot.extend(Pot.SetupUtil, {
         let file, path, re, names;
         try {
             re = {
-                tombloo: /^Tombloo:\/{0,}/i,
-                data: /^(?:Tombloo[.]|)data(?:es|):\/{0,}/i,
-                patch: /^(?:Tombloo[.]|)patch(?:es|):\/{0,}/i,
-                defs: /^[{]([^{}]+?)[}]:\/{0,}/,
-                sep: /[\/\\]/g
+                tombloo : /^Tombloo:\/{0,}/i,
+                data    : /^(?:Tombloo[.]|)data(?:e?s|):\/{0,}/i,
+                patch   : /^(?:Tombloo[.]|)patch(?:es|):\/{0,}/i,
+                defs    : /^[{]([^{}]+?)[}]:\/{0,}/,
+                sep     : /[\/\\]/g
             };
             if (filePath instanceof ILocalFile) {
                 file = filePath;
@@ -9733,6 +10219,7 @@ Pot.extend(Pot.SetupUtil, {
             <dialog title="{TITLE}" buttons="accept"
                     xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
                     xmlns:html="http://www.w3.org/1999/xhtml">
+                <script>{SCRIPT}</script>
                 <hbox flex="1">
                     <vbox style="margin: 0.8em 1.7em;" flex="1">
                         <spacer height="10"/>
@@ -9753,7 +10240,10 @@ Pot.extend(Pot.SetupUtil, {
                                 return Pot.sprintf('<label value="%s"/>', s);
                              }).join('\n'),
                 '{BUTTON}': Pot.escapeHTML(Pot.StringUtil.stringify(button) || 'OK'),
-                '{EXTRA}': Pot.StringUtil.stringify(/<\w[^>]*>/.test(extra) ? extra : '')
+                '{EXTRA}': Pot.StringUtil.stringify(/<\w[^>]*>/.test(extra) ? extra : ''),
+                '{SCRIPT}': ['<![CDATA[', ']]>'].join(Pot.StringUtil.mtrim(<><![CDATA[
+                                var env = Components.classes['@brasil.to/tombloo-service;1'].getService().wrappedJSObject;
+                            ]]></>).wrap('\n'))
             };
             data = Pot.StringUtil.stringify(xul);
             forEach(reps, function([key, val]) {
@@ -9796,6 +10286,7 @@ callLater(1, function() {
 //-----------------------------------------------------------------------------
 (function() {
 
+
 // メニューのラベルを定義
 const POT_BOOKMARK_MENU_LABELS = {
     top: {
@@ -9813,6 +10304,10 @@ const POT_BOOKMARK_MENU_LABELS = {
     uninstall: {
         ja: 'Bookmarkパッチをアンインストール',
         en: 'Uninstall the Bookmark patch'
+    },
+    about: {
+        ja: 'Bookmarkパッチについて',
+        en: 'About Bookmark patch'
     }
 };
 
@@ -9872,6 +10367,7 @@ Tombloo.Service.actions.register({
             // アンインストール
             name: Pot.tmp.MENULABEL('uninstall'),
             type: 'context,menu',
+            icon: 'chrome://tombloo/skin/cross.png',
             check: function(ctx) {
                 return true;
             },
@@ -9879,6 +10375,63 @@ Tombloo.Service.actions.register({
                 if (confirm('アンインストールを実行します\nよろしいですか？')) {
                     Pot.SetupUtil.uninstall();
                 }
+            }
+        },
+        {
+            name: '----',
+            type: 'context,menu'
+        },
+        {
+            // Bookmarkパッチについて
+            name: Pot.tmp.MENULABEL('about'),
+            type: 'context,menu',
+            check: function(ctx) {
+                return true;
+            },
+            execute: function(ctx) {
+                Pot.SetupUtil.openAlert(
+                    'Tombloo - Bookmarkパッチについて',
+                    [
+                        '[Tombloo - Bookmarkパッチ]',
+                        '',
+                        'Version: ' + Pot.VERSION,
+                        'System: ' + Pot.os.toString(),
+                        'Language: ' + Pot.lang,
+                        '',
+                        'Core file: ',
+                        ' - ' + PSU_BMA_SCRIPT_NAME,
+                        '',
+                        'Sub script files: ',
+                        ' - ' + PSU_QPF_SCRIPT_NAME,
+                        '',
+                        'Backuped and replaced files: ',
+                        ' - ' + PSU_QPF_XUL_FILE,
+                        ' - ' + PSU_PREFS_XUL_FILE,
+                        ' - ' + PSU_COMP_XML_FILE,
+                        ' - ' + PSU_DTD_JA_FILE,
+                        ' - ' + PSU_DTD_EN_FILE,
+                        ''
+                    ].join('\n'),
+                    null,
+                    Pot.StringUtil.mtrim(<><![CDATA[
+                        <hbox flex="1">
+                            <label value="Blog article:"/>
+                            <label class="text-link"
+                                    style="-moz-user-focus: ignore;"
+                                    value="http://polygon-planet.blogspot.com/2011/06/audiobookmarktombloo.html"
+                                    onclick="env.addTab(this.value);"/>
+                        </hbox>
+                        <spacer height="2"/>
+                        <hbox hrex="1">
+                            <label value="Repository:"/>
+                            <label class="text-link"
+                                    style="-moz-user-focus: ignore;"
+                                    value="https://github.com/polygonplanet/tombloo"
+                                    onclick="env.addTab(this.value);"/>
+                        </hbox>
+                        <spacer height="15"/>
+                    ]]></>)
+                );
             }
         }
     ]
