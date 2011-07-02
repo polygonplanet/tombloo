@@ -37,8 +37,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.32
- * @date     2011-07-01
+ * @version  1.33
+ * @date     2011-07-02
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -186,7 +186,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.32',
+    VERSION: '1.33',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -4738,7 +4738,7 @@ Pot.extend({
         const MARKOV_START = '\u0000';
         const MARKOV_END   = '\u0001';
         const MARKOV_SYMBOL_PATTERN = /[\u0000-\u0008]+/g;
-        const MARKOV_LOOP_MAX = 1000;
+        const MARKOV_LOOP_MAX = 1000; // 形態素単位(なのでもっと短くていいかも)
         var MarkovChainer = function() {
             return new arguments.callee.prototype.init();
         };
@@ -5143,15 +5143,15 @@ Pot.extend({
                         'われ(?:われ|)[つっちー]*|[おわ]れ[つっちー]*|まし[たて]',
                         'おい(?:ら|どん)[つっちー]*|ぼく(?:ちん|)[つっちー]*',
                         'ね[むも]い|ね[みむも][いぃつっよょおぉー]*|だらだら|だ[がしねよ]',
-                        'け?だ[るり]い|け?だ[るり][いぃつっよょおぉー]*',
+                        'け?だ[るり]い|け?だ[るり][いぃつっよょおぉー]*|[だら]め[えぇー]*',
                         'う[ざぜ]い|う[ざぜ][えぇいぃつっよょおぉー]*|すん?ばらし[いくー]?',
                         'かなし[いぃつっいぃよょおぉー]*|ぱいぱい|ぱん(?:つ|て[いぃー]*)',
                         'うれし[いぃつっいぃよょおぉー]*|っ?ぽい|しまぱん',
-                        'むなし[いぃつっいぃよょおぉー]*|かちかち|くんくん|ぷんぷん',
-                        'おっ?ぱ[あぁつっー]*い|いろいろ|そろそろ|こういう',
+                        'むなし[いぃつっいぃよょおぉー]*|かちかち|くんくん|ぷん[っ]*ぷん',
+                        'おっ?ぱ[あぁつっー]*い|いろいろ|そろそろ|こういう|ぱん[っ]*ぱん',
                         '(?:[いぃ]ろ[いぃろおぉつっんなあぁー])+|たっぷり|だ[なよわ]',
                         'なんだ[あぁいぃおぉかつってなー]*|に[およ]い(?![たて])',
-                        '(?:[くク][んン][かカ])+|[さサたタﾀ][そソｿンん]',
+                        '(?:[くク][んン][かカ])+|[さサたタﾀ][そソｿンん]|どや',
                         '(?:[ちチ][ゅュ][っッうぅウゥー]*)+|は[あぁつっー]*は[あぁつっー]*',
                         'もふ[つっうぅーん]*もふ[つっうぅーん]*|あげる?|とりあえず',
                         'はてな|すもも|ふぁぼ|ねこ[ぢじ]る|いぬ|ねこ|ろり(?:こん|)',
@@ -6789,7 +6789,7 @@ update(models.FirefoxBookmark, {
                 let folders, created = false;
                 
                 // ここでPOST時にダイアログが固まるので非ブロックで処理する
-                callLater(0, function() {
+                Pot.callLazy(function() {
                     folders = [folder].concat(tags.map(bind('createTag', self)));
                     created = true;
                 });
@@ -6823,7 +6823,7 @@ update(models.FirefoxBookmark, {
                 title,
                 tags,
                 comment
-            ).addCallback(function() {
+            ).addBoth(function() {
                 // オートコンプリートで使うタグをリセット
                 Pot.QuickPostForm.resetCandidates();
             });
@@ -6981,20 +6981,16 @@ update(models.FirefoxBookmark, {
         });
     },
     getSuggestions: function(url) {
-        let self = this, d, tags = [], dups = [], hash, allTags = PlacesUtils.tagging.allTags;
-        hash = new Pot.Hash();
-        d = Pot.DeferredUtil.repeat(allTags.length, function(i) {
-            let tag = allTags[i];
-            if (hash.has(tag)) {
-                hash.set(tag, -1);
-            } else {
+        let self = this, d, tags = [], allTags = PlacesUtils.tagging.allTags;
+        d = new Deferred();
+        d.addCallback(function() {
+            Pot.forEach(allTags || [], function(i, tag) {
                 tags[tags.length] = {
                     name: tag,
                     frequency: -1
                 };
-            }
+            });
         }).addCallback(function() {
-            hash = null;
             return Pot.BookmarkUtil.getKeywords(url).addCallback(function(keywords) {
                 return self.isBookmarked(url).addCallback(function(duplicated) {
                     return {
@@ -7995,7 +7991,7 @@ QuickPostForm.descriptionContextMenus.push(
                     to: ' '
                 }, {
                     // ゴミを削除
-                    by: /\b(?:[\s\u3000]*[ox▼▲▽△]{1,2}[\s\u3000]*)\b/gi,
+                    by: /\b(?:[\s\u3000]*[ox*▼▲▽△]{1,2}[\s\u3000]*)\b/gi,
                     to: ' '
                 }];
                 // ↑なんだか斜めって見える錯覚が… (Fontによるのかな..)
@@ -8119,6 +8115,21 @@ QuickPostForm.descriptionContextMenus.push(
             execute: function(elmText, desc) {
                 desc.value = Pot.StringUtil.toHanSpaceCase(
                     Pot.StringUtil.toHankanaCase(Pot.StringUtil.toHankakuCase(desc.value)));
+            }
+        },
+        {
+            name: '----'
+        },
+        {
+            name: '全角英数記号文字に変換',
+            execute: function(elmText, desc) {
+                desc.value = Pot.StringUtil.toZenkakuCase(desc.value);
+            }
+        },
+        {
+            name: '半角英数記号文字に変換',
+            execute: function(elmText, desc) {
+                desc.value = Pot.StringUtil.toHankakuCase(desc.value);
             }
         },
         {
@@ -9656,7 +9667,7 @@ Pot.extend(Pot.SetupUtil, {
             Pot.SetupUtil.blocked = true;
             if (!silent) {
                 Pot.SetupUtil.progress = new Pot.ProgressDialog();
-                Pot.SetupUtil.progress.open(PSU_INSTALL_TITLE, 'Checking for update...');
+                Pot.SetupUtil.progress.open(PSU_UPDATECHECK_TITLE, 'Checking for update...');
             }
             return wait(0);
         }).addCallback(function() {
