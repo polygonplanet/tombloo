@@ -18,7 +18,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.13
+ * @version  1.14
  * @date     2011-07-05
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
@@ -172,6 +172,22 @@ update(FormPanel.prototype.types, {
             }
         });
     })();
+    // ----- FormPanel -----
+    (function() {
+        override('FormPanel', function(code) {
+            return code;
+        }, {
+            // タイトルバーのWidgetの表示位置を整える
+            /**
+             * @param  {Element}  elem  挿入するエレメント
+             * @return {Element}        挿入したエレメント
+             */
+            potAppendToLeftTitleBox: function(elem) {
+                document.getElementById('potLeftTitleBox').appendChild(elem);
+                return elem;
+            }
+        });
+    })();
     // ----- TagsPanel -----
     (function() {
         override('TagsPanel', function(code) {
@@ -215,6 +231,22 @@ update(FormPanel.prototype.types, {
             });
             return code;
         }, {
+            // ブックマーク済みのアイコンの位置がずれないようにする
+            showBookmarked: function(editPage) {
+                let self = this;
+                withDocument(document, function() {
+                    let elmStar = self.formPanel.potAppendToLeftTitleBox(IMAGE({
+                        tooltiptext : getMessage('label.bookmarked'),
+                        src         : 'chrome://tombloo/skin/star.png'
+                    }));
+                    if (editPage) {
+                        elmStar.style.cursor = 'pointer';
+                        elmStar.addEventListener('click', function() {
+                            addTab(editPage);
+                        }, true);
+                    }
+                });
+            },
             // おすすめタグのボタン押したとき大文字小文字を自分のタグに合わせる(ある場合)
             toggleTag: function(elmTag) {
                 var used, word, tag, i, len, cand, cands;
