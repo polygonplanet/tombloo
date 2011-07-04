@@ -38,7 +38,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.35
+ * @version  1.36
  * @date     2011-07-05
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
@@ -187,7 +187,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.35',
+    VERSION: '1.36',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -9535,10 +9535,28 @@ Pot.extend(Pot.SetupUtil, {
             path = Pot.SetupUtil.getConstantURI(PSU_QPF_XUL_FILE);
             Pot.SetupUtil.backup(path);
             Pot.SetupUtil.progressLog('%s Backuped.', PSU_QPF_XUL_FILE);
-            success = Pot.SetupUtil.findReplace(path, [{
-                from: /(<script\b.*?\bsrc\s*=\s*["']?)(quickPostForm\.js)(['"]?\s*\/>)(\r\n|\r|\n|)/i,
-                to: '$1$2$3$4$1' + PSU_QPF_SCRIPT_NAME + '$3$4'
-            }]);
+            success = Pot.SetupUtil.findReplace(path, [
+            {
+                from: Pot.SetupUtil.createPattern(<><![CDATA[
+                    ([\u0009\u0020]*)(<script\b[\s\S]*?\bsrc = ["']?)(quickPostForm\.js)(['"]? />)(\r\n|\r|\n|)
+                ]]></>),
+                to: Pot.sprintf(Pot.StringUtil.mtrim(<><![CDATA[
+                    $1$2$3$4
+                    $1$2%s$4$5
+                ]]></>),
+                    PSU_QPF_SCRIPT_NAME
+                )
+            },
+            {
+                from: Pot.SetupUtil.createPattern(<><![CDATA[
+                    ([\u0009\u0020]*)(<spacer\b id = ["']?titleSpace['"]? flex = ["']?1['"]? />)(\r\n|\r|\n|)
+                ]]></>),
+                to: Pot.StringUtil.mtrim(<><![CDATA[
+                    $1<vbox id="potLeftTitleBox"></vbox>
+                    $1$2$3
+                ]]></>)
+            }
+            ]);
             if (!success) {
                 Pot.SetupUtil.raiseError('Failed to replace code: ' + PSU_QPF_XUL_FILE);
             }
