@@ -18,8 +18,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.12
- * @date     2011-07-01
+ * @version  1.13
+ * @date     2011-07-05
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -39,6 +39,11 @@ try {
 } catch (e) {
     throw e;
 }
+
+//-----------------------------------------------------------------------------
+// Constants
+//-----------------------------------------------------------------------------
+const POT_TOMBLOO_QUICKPOSTFORM_URI = 'chrome://tombloo/content/quickPostForm.xul';
 
 //-----------------------------------------------------------------------------
 // Audio/Bookmarkを追加
@@ -79,6 +84,94 @@ update(FormPanel.prototype.types, {
 // Replace - Object の中のコードを一部置換
 //-----------------------------------------------------------------------------
 (function(global) {
+    // ----- DialogPanel -----
+    (function() {
+        override('DialogPanel', function(code) {
+            let re = [
+                {
+                    // ブックマークのエントリー数を表示する (Bookmarkのみ(横幅的に))
+                    by: bySp(<><![CDATA[
+                            ( self \. elmWindow \. style \. opacity = 0 ;? [{}]? ;? )
+                            ( [\s\S]*? window \. addEventListener [(][)]{0} ["']load['"] , function )
+                        ]]></>),
+                    to: toSp(<><![CDATA[
+                            $1
+                            if (ps && ps.type === 'bookmark') {
+                                self.potShowEnteredUsersCount();
+                            }
+                            $2
+                        ]]></>)
+                }
+            ];
+            re.forEach(function(item) {
+                code = code.replace(item.by, item.to);
+            });
+            return code;
+        }, {
+            // ダイアログを閉じると同時にブラウザが閉じてしまうのを修正(できてません!)
+            close: function() {
+                let win, box = this.elmBase.boxObject;
+                QuickPostForm.dialog[ps.type] = {
+                    expandedForm : this.formPanel.expanded,
+                    expandedTags : this.formPanel.tagsPanel ? this.formPanel.tagsPanel.expanded : false,
+                    size : {
+                        width  : box.width,
+                        height : box.height
+                    }
+                };
+                // フォーカスを戻すと複数フォームを開いていたときに背後に回ってしまう
+                // getMostRecentWindow().focus();
+                try {
+                    if (window.location && window.location.href === POT_TOMBLOO_QUICKPOSTFORM_URI) {
+                        window.close();
+                    } else {
+                        Pot.getChromeWindow(POT_TOMBLOO_QUICKPOSTFORM_URI).close();
+                    }
+                } catch (e) {
+                    {
+                        // たぶん閉じると大変なことになる
+                        let msg = 'Cannot close window!';
+                        error(msg);
+                        alert(msg);
+                        throw new Error(msg);
+                    }
+                }
+            },
+            // ブックマークしてるユーザー数を表示 (実装しているサービスのみ)
+            potShowEnteredUsersCount: function() {
+                const POT_DEFAULT_ENTRY_PROVIDERS = [
+                    'HatenaBookmark', 'Twitter', 'Delicious', 'LivedoorClip', 'YahooBookmarks'
+                ];
+                let self = this, url, d;
+                url = ps && ps.itemUrl;
+                if (url) {
+                    d = new Deferred();
+                    d.addCallback(function() {
+                        let dd = new Deferred();
+                        POT_DEFAULT_ENTRY_PROVIDERS.forEach(function(provider) {
+                            if (provider && models[provider] && models[provider].getEnteredUsersCount) {
+                                dd.addCallback(function() {
+                                    return models[provider].getEnteredUsersCount(url, document, 'xul', function(uri) {
+                                        addTab(uri);
+                                    }).addCallback(function(elem) {
+                                        let users;
+                                        if (elem) {
+                                            users = self.formPanel.addWidgetToTitlebar(elem);
+                                        }
+                                    });
+                                });
+                            }
+                        });
+                        dd.callback();
+                        return dd;
+                    });
+                    Pot.callLazy(function() {
+                        d.callback();
+                    });
+                }
+            }
+        });
+    })();
     // ----- TagsPanel -----
     (function() {
         override('TagsPanel', function(code) {
@@ -742,6 +835,35 @@ update(FormPanel.prototype.types, {
                     });
                 } catch (e) {}
             }, 75);
+        })();
+        // closeボタン押下時にブラウザごと閉じないよう修正(デキテマセン)
+        (function() {
+            let close;
+            try {
+                close = document.querySelector('image#close.button');
+                if (close) {
+                    close.removeAttribute('onclick');
+                    close.addEventListener('click', function() {
+                        let win, msg;
+                        try {
+                            if (typeof dialogPanel !== 'undefined') {
+                                dialogPanel.close();
+                            } else {
+                                if (window.location && window.location.href === POT_TOMBLOO_QUICKPOSTFORM_URI) {
+                                    window.close();
+                                } else {
+                                    Pot.getChromeWindow(POT_TOMBLOO_QUICKPOSTFORM_URI).close();
+                                }
+                            }
+                        } catch (e) {
+                            msg = 'Cannot close window!';
+                            error(msg);
+                            alert(msg);
+                            throw new Error(msg);
+                        }
+                    }, true);
+                }
+            } catch (e) {}
         })();
     }, true);
 })();
