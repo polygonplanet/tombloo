@@ -32,13 +32,14 @@
  * - タグ名補完で読みが想定外なものを本来の読みに一部修正
  * - パッチの自動アップデート機能
  * - ローマ字読みを編集できる機能
+ * - 各ブックマークサービスの被ブックマーク数が表示される機能
  *
  * - ほか
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.33
- * @date     2011-07-02
+ * @version  1.34
+ * @date     2011-07-05
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -186,7 +187,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.33',
+    VERSION: '1.34',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -6259,6 +6260,91 @@ update(models.HatenaBookmark, {
                 recommended: entry.recommend_tags
             }
         });
+    },
+    /**
+     * 指定したURLのエントリー数を取得
+     *
+     * @param  {String}      url       対象のURL
+     * @param  {Document}   (doc)      現在のdocument
+     * @param  {String}     (type)     'xul', 'html' が指定可能(エレメントとして取得する場合)
+     * @param  {Function}   (onClick)  onclickイベントを設定する場合の関数
+     * @return {Deferred}              Deferredが返る (element or {count,url,title})
+     */
+    getEnteredUsersCount: function(url, doc, type, onClick) {
+        const ENTRY_LITE_URL  = 'http://b.hatena.ne.jp/entry/jsonlite/';
+        const ENTRY_BASE_URL  = 'http://b.hatena.ne.jp/entry/';
+        const ENTRY_IMAGE_URL = ENTRY_BASE_URL + 'image/';
+        const ENTRY_TITLE     = 'はてなブックマーク';
+        let entryUrl;
+        entryUrl = Pot.sprintf('%s?url=%s', ENTRY_LITE_URL, encodeURIComponent(url));
+        return request(entryUrl).addCallback(function(res) {
+            let result, params, make, json;
+            json = JSON.parse(res.responseText);
+            params = {
+                count : Number(json.count) || 0,
+                url   : json.entry_url || ENTRY_BASE_URL + encodeURIComponent(url),
+                title : ENTRY_TITLE + (json.title ? ' - ' + json.title : '')
+            };
+            if (type) {
+                withDocument(doc || Pot.getCurrentDocument(), function() {
+                    make = {};
+                    'a img image'.split(' ').forEach(function(tag) {
+                        make[tag] = bind(E, null, tag);
+                    });
+                    switch (String(type).toLowerCase()) {
+                        case 'html': {
+                                let a, img;
+                                a = make.a({
+                                    href : params.url
+                                });
+                                img = make.img({
+                                    src   : ENTRY_IMAGE_URL + encodeURIComponent(json.url || url),
+                                    alt   : params.title,
+                                    title : params.title
+                                });
+                                a.appendChild(img);
+                                if (onClick) {
+                                    a.addEventListener('click', function(event) {
+                                        try {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                        } catch (e) {}
+                                        onClick(Pot.escapeHTML(params.url));
+                                    }, true);
+                                }
+                                result = a;
+                            }
+                            break;
+                        case 'xul': {
+                                let image;
+                                image = make.image({
+                                    tooltiptext : params.title,
+                                    src         : ENTRY_IMAGE_URL + (json.url || url),
+                                    style       : Pot.StringUtil.mtrim(<>
+                                        padding: 0.1em;
+                                        cursor: pointer !important;
+                                        outline: 0;
+                                        -moz-user-focus: ignore;
+                                    </>)
+                                });
+                                if (onClick) {
+                                    image.addEventListener('click', function() {
+                                        onClick(params.url);
+                                    }, true);
+                                }
+                                result = image;
+                            }
+                            break;
+                        default:
+                            result = null;
+                            break;
+                    }
+                });
+            } else {
+                result = params;
+            }
+            return result;
+        });
     }
 });
 
@@ -6393,6 +6479,207 @@ update(models.Delicious, {
                 })
             });
         });
+    },
+    /**
+     * 指定したURLのエントリー数を取得
+     *
+     * @param  {String}      url       対象のURL
+     * @param  {Document}   (doc)      現在のdocument
+     * @param  {String}     (type)     'xul' が指定可能(エレメントとして取得する場合)
+     * @param  {Function}   (onClick)  onclickイベントを設定する場合の関数
+     * @return {Deferred}              Deferredが返る (element or {count,url,title})
+     */
+    getEnteredUsersCount: function(url, doc, type, onClick) {
+        const ENTRY_BASE_URL  = 'http://feeds.delicious.com/v2/json/urlinfo/';
+        const ENTRY_JUMP_URL  = 'http://www.delicious.com/url/';
+        const ENTRY_TITLE     = this.name;
+        let entryUrl, hash, make;
+        make = {};
+        'label'.split(' ').forEach(function(tag) {
+            make[tag] = bind(E, null, tag);
+        });
+        hash = Pot.StringUtil.stringify(url).md5();
+        entryUrl = ENTRY_BASE_URL + hash;
+        return request(entryUrl).addCallback(function(res) {
+            let result, params, json;
+            json = JSON.parse(res.responseText);
+            if (json && Pot.isArray(json)) {
+                json = json.shift();
+            }
+            params = {
+                count : Number(json.total_posts) || 0,
+                url   : ENTRY_JUMP_URL + hash,
+                title : ENTRY_TITLE + (json.title ? ' - ' + json.title : '')
+            };
+            if (type) {
+                withDocument(doc || Pot.getCurrentDocument(), function() {
+                    switch (String(type).toLowerCase()) {
+                        case 'xul': {
+                                let label;
+                                label = make.label({
+                                    tooltiptext : params.title,
+                                    value       : params.count + ' users',
+                                    class       : 'text-link',
+                                    style       : Pot.StringUtil.mtrim(<>
+                                        padding: 0.1em;
+                                        color: #4c6bc9;
+                                        font-size: 11.2px;
+                                        font-weight: bold;
+                                        cursor: pointer !important;
+                                        outline: 0;
+                                        -moz-user-focus: ignore;
+                                    </>)
+                                });
+                                if (onClick) {
+                                    label.addEventListener('click', function() {
+                                        onClick(params.url);
+                                    }, true);
+                                }
+                                result = label;
+                            }
+                            break;
+                        default:
+                            result = null;
+                            break;
+                    }
+                });
+            } else {
+                result = params;
+            }
+            return result;
+        });
+    }
+});
+
+
+})();
+//-----------------------------------------------------------------------------
+// Update - LivedoorClip
+//-----------------------------------------------------------------------------
+(function() {
+
+
+update(models.LivedoorClip, {
+    name: 'LivedoorClip',
+    ICON: 'http://clip.livedoor.com/favicon.ico',
+    POST_URL: 'http://clip.livedoor.com/clip/add',
+    check: function(ps) {
+        return /(?:photo|quote|link|conversation|video|bookmark)/.test(ps.type) && !ps.file;
+    },
+    post: function(ps) {
+        return LivedoorClip.getToken().addCallback(function(token) {
+            let content = {
+                rate    : ps.rate ? ps.rate : '',
+                title   : ps.item,
+                postKey : token,
+                link    : ps.itemUrl,
+                tags    : joinText(ps.tags, ' '),
+                notes   : joinText([ps.body, ps.description], ' ', true),
+                public  : (ps.private || Pot.getPref(POT_BOOKMARK_PRIVATE)) ? 'off' : 'on'
+            };
+            return request(LivedoorClip.POST_URL, {
+                redirectionLimit: 0,
+                sendContent: content
+            });
+        });
+    },
+    getAuthCookie: function() {
+        return getCookieString('livedoor.com', '.LRC');
+    },
+    getSuggestions: function(url) {
+        if (!this.getAuthCookie()) {
+            return fail(new Error(getMessage('error.notLoggedin')));
+        }
+        // 何かのURLを渡す必要がある
+        return request(LivedoorClip.POST_URL, {
+            queryString: {
+                link: url || 'http://tombloo/'
+            }
+        }).addCallback(function(res){
+            let doc = convertToHTMLDocument(res.responseText);
+            return {
+                duplicated: !!$x('//form[@name="delete_form"]', doc),
+                tags: $x('//div[@class="TagBox"]/span/text()', doc, true).map(function(tag) {
+                    return {
+                        name      : tag,
+                        frequency : -1
+                    };
+                })
+            };
+        });
+    },
+    getToken: function() {
+        let self = this;
+        switch (this.updateSession()) {
+            case 'none':
+                throw new Error(getMessage('error.notLoggedin'));
+                break;
+            case 'same':
+                if (this.token) {
+                    return succeed(this.token);
+                }
+                break;
+            case 'changed':
+                return request(LivedoorClip.POST_URL, {
+                    queryString: {
+                        link  : 'http://tombloo/',
+                        cache : Date.now()
+                    }
+                }).addCallback(function(res) {
+                    let token, re, s;
+                    re = /(["'])postkey\1[\u0009\u0020]*value[\u0009\u0020]*=[\u0009\u0020]*(['"])([^\2]*?)\2/i;
+                    s = Pot.StringUtil.stringify(res.responseText);
+                    try {
+                        token = s.match(re)[3];
+                        if (!token) {
+                            throw token;
+                        }
+                        self.token = token;
+                    } catch (e) {
+                        throw new Error(getMessage('error.notLoggedin'));
+                    }
+                    return self.token;
+                });
+                break;
+            default:
+                break;
+        }
+    },
+    /**
+     * 指定したURLのエントリー数を取得(Image)
+     *
+     * @param  {String}      url       対象のURL
+     * @param  {Document}   (doc)      現在のdocument
+     * @param  {String}     (type)     未使用
+     * @param  {Function}   (onClick)  onclickイベントを設定する場合の関数
+     * @return {Deferred}              Deferredが返る (Element)
+     */
+    getEnteredUsersCount: function(url, doc, type, onClick) {
+        const ENTRY_IMAGE_URL = 'http://image.clip.livedoor.com/counter/small/';
+        const ENTRY_JUMP_URL  = 'http://clip.livedoor.com/page/';
+        const ENTRY_TITLE     = 'livedoorクリップ';
+        let make = {}, image, params;
+        'image'.split(' ').forEach(function(tag) {
+            make[tag] = bind(E, null, tag);
+        });
+        withDocument(doc || Pot.getCurrentDocument(), function() {
+            image = make.image({
+                tooltiptext : ENTRY_TITLE,
+                src         : ENTRY_IMAGE_URL + url,
+                style       : Pot.StringUtil.mtrim(<>
+                    padding: 0.1em;
+                    cursor: pointer !important;
+                    outline: 0;
+                    -moz-user-focus: ignore;
+                </>)
+            });
+            if (onClick) {
+                image.addEventListener('click', function() {
+                    onClick(ENTRY_JUMP_URL + url);
+                }, true);
+            }
+        });
+        return succeed(image);
     }
 });
 
@@ -6721,6 +7008,118 @@ update(models.YahooBookmarks, {
                     }
                 })
             };
+        });
+    },
+    /**
+     * 指定したURLのエントリー数を取得(Image)
+     *
+     * @param  {String}      url       対象のURL
+     * @param  {Document}   (doc)      現在のdocument
+     * @param  {String}     (type)     未使用
+     * @param  {Function}   (onClick)  onclickイベントを設定する場合の関数
+     * @return {Deferred}              Deferredが返る (Element)
+     */
+    getEnteredUsersCount: function(url, doc, type, onClick) {
+        const ENTRY_IMAGE_URL = 'http://num.bookmarks.yahoo.co.jp/image/small/';
+        const ENTRY_JUMP_URL  = 'http://bookmarks.yahoo.co.jp/url';
+        const ENTRY_TITLE     = 'Yahoo!ブックマーク';
+        let make = {}, image, params;
+        'image'.split(' ').forEach(function(tag) {
+            make[tag] = bind(E, null, tag);
+        });
+        withDocument(doc || Pot.getCurrentDocument(), function() {
+            image = make.image({
+                tooltiptext : ENTRY_TITLE,
+                src         : ENTRY_IMAGE_URL + url,
+                style       : Pot.StringUtil.mtrim(<>
+                    padding: 0.1em;
+                    cursor: pointer !important;
+                    outline: 0;
+                    -moz-user-focus: ignore;
+                </>)
+            });
+            if (onClick) {
+                image.addEventListener('click', function() {
+                    onClick(Pot.sprintf('%s?url=%s', ENTRY_JUMP_URL, encodeURIComponent(url)));
+                }, true);
+            }
+        });
+        return succeed(image);
+    }
+});
+
+
+})();
+//-----------------------------------------------------------------------------
+// Update - Twitter
+//-----------------------------------------------------------------------------
+(function() {
+
+
+update(models.Twitter, {
+    /**
+     * 指定したURLのエントリー数を取得
+     *
+     * @param  {String}      url       対象のURL
+     * @param  {Document}   (doc)      現在のdocument
+     * @param  {String}     (type)     'xul' が指定可能(エレメントとして取得する場合)
+     * @param  {Function}   (onClick)  onclickイベントを設定する場合の関数
+     * @return {Deferred}              Deferredが返る (element or {count,url,title})
+     */
+    getEnteredUsersCount: function(url, doc, type, onClick) {
+        const ENTRY_BASE_URL  = 'http://urls.api.twitter.com/1/urls/count.json';
+        const ENTRY_JUMP_URL  = 'http://twitter.com/search';
+        const ENTRY_TITLE     = this.name;
+        let entryUrl, make;
+        make = {};
+        'label'.split(' ').forEach(function(tag) {
+            make[tag] = bind(E, null, tag);
+        });
+        entryUrl = Pot.sprintf('%s?url=%s', ENTRY_BASE_URL, encodeURIComponent(url));
+        return request(entryUrl).addCallback(function(res) {
+            let result, params, json;
+            json = JSON.parse(res.responseText);
+            params = {
+                count : Number(json.count) || 0,
+                url   : Pot.sprintf('%s?q=%s', ENTRY_JUMP_URL, encodeURIComponent(json.url || url)),
+                title : ENTRY_TITLE
+            };
+            if (type) {
+                withDocument(doc || Pot.getCurrentDocument(), function() {
+                    switch (String(type).toLowerCase()) {
+                        case 'xul': {
+                                let label;
+                                label = make.label({
+                                    tooltiptext : params.title,
+                                    value       : params.count + ' tweets',
+                                    class       : 'text-link',
+                                    style       : Pot.StringUtil.mtrim(<>
+                                        padding: 0.1em;
+                                        color: #68b2d8;
+                                        font-size: 11.2px;
+                                        font-weight: bold;
+                                        cursor: pointer !important;
+                                        outline: 0;
+                                        -moz-user-focus: ignore;
+                                    </>)
+                                });
+                                if (onClick) {
+                                    label.addEventListener('click', function() {
+                                        onClick(params.url);
+                                    }, true);
+                                }
+                                result = label;
+                            }
+                            break;
+                        default:
+                            result = null;
+                            break;
+                    }
+                });
+            } else {
+                result = params;
+            }
+            return result;
         });
     }
 });
@@ -7063,7 +7462,7 @@ callLater(1.25, function() {
                             let cwin, doc, selector, menuShare, menuBookmark;
                             try {
                                 cwin = Pot.getChromeWindow();
-                                selector = Pot.sprintf('menuitem[label="%s"][image="%s"]', self.name, self.ICON);
+                                selector = Pot.sprintf('menuitem[image][label="%s"]', self.name);
                                 doc = cwin.document;
                                 menuShare = doc.getElementById('tombloo-menu-share');
                                 menuBookmark = menuShare.parentNode.querySelector(selector);
