@@ -38,7 +38,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.36
+ * @version  1.37
  * @date     2011-07-05
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
@@ -187,7 +187,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.36',
+    VERSION: '1.37',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -9538,7 +9538,7 @@ Pot.extend(Pot.SetupUtil, {
             success = Pot.SetupUtil.findReplace(path, [
             {
                 from: Pot.SetupUtil.createPattern(<><![CDATA[
-                    ([\u0009\u0020]*)(<script\b[\s\S]*?\bsrc = ["']?)(quickPostForm\.js)(['"]? />)(\r\n|\r|\n|)
+                    ([\u0009\u0020]*)(<script\b.*?\bsrc = ["']?)(quickPostForm\.js)(['"]? />)(\r\n|\r|\n|)
                 ]]></>),
                 to: Pot.sprintf(Pot.StringUtil.mtrim(<><![CDATA[
                     $1$2$3$4
