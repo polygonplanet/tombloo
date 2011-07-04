@@ -38,7 +38,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.34
+ * @version  1.35
  * @date     2011-07-05
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
@@ -187,7 +187,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.34',
+    VERSION: '1.35',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -10070,7 +10070,7 @@ Pot.extend(Pot.SetupUtil, {
             }
             return wait(0);
         }).addCallback(function() {
-            let dd;
+            let dd, code;
             dd = request(PSU_BMA_SCRIPT_URL).addCallback(function(res) {
                 if (!silent) {
                     try {
@@ -10078,10 +10078,9 @@ Pot.extend(Pot.SetupUtil, {
                     } catch (e) {}
                     Pot.SetupUtil.progress = {};
                 }
-                return succeed(res);
-            }).addCallback(function(res) {
-                let df, code, head, message, params, agree, result;
                 code = Pot.StringUtil.stringify(res.responseText);
+            }).addCallback(function() {
+                let df, head, message, params, agree, result, waiting;
                 try {
                     code = String(String(code).convertToUnicode() || code || '');
                 } catch (e) {}
@@ -10117,14 +10116,22 @@ Pot.extend(Pot.SetupUtil, {
                         params[message] = null;
                         params[agree]   = false;
                         
-                        result = input(params, PSU_UPDATECHECK_TITLE);
-                        
+                        waiting = true;
+                        Pot.callLazy(function() {
+                            // inputが別スレッドからじゃないと動作しない!
+                            result = input(params, PSU_UPDATECHECK_TITLE);
+                            waiting = false;
+                        });
+                        // ここで待ち合わせ
+                        till(function() {
+                            return waiting !== true;
+                        });
                         if (result && result[agree]) {
                             Pot.SetupUtil.blocked = false;
                             df = Pot.SetupUtil.update(code);
                         } else {
                             // ユーザーがキャンセルした場合は再度表示しない
-                            if (!silent) {
+                            if (silent) {
                                 Pot.SetupUtil.autoUpdaterUserCanceled = true;
                             }
                         }
