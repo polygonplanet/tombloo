@@ -18,8 +18,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.14
- * @date     2011-07-05
+ * @version  1.15
+ * @date     2011-07-10
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -168,6 +168,15 @@ update(FormPanel.prototype.types, {
                     Pot.callLazy(function() {
                         d.callback();
                     });
+                }
+            },
+            onKeydown: function(e) {
+                let proc;
+                try {
+                    proc = DialogPanel.shortcutkeys[keyString(e)];
+                } catch (e) {}
+                if (proc) {
+                    proc(e);
                 }
             }
         });
