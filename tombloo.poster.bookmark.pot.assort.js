@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.37
- * @date     2011-07-05
+ * @version  1.38
+ * @date     2011-07-10
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -68,9 +68,19 @@ const MAX_LENGTH = {
     Tumblr: {},
     Local: {},
     Evernote: {},
-    LivedoorClip: {},
     FirefoxBookmark: {},
-    
+    //
+    // http://help.livedoor.com/clip/qa2816
+    // 最大数を超えると自動でカットされる、長すぎるとエラー
+    // comment 最大数は不明 (約 450 Bytes)
+    // タグは最大数 10, 1つのタグの最大文字数 30 Bytes
+    LivedoorClip: {
+        title     : 250,
+        tagLength : 30,
+        tagCount  : 10,
+        comment   : 434,
+        unit      : 'byte'
+    },
     // 短くしないとラベルが多い場合消える or POSTできない
     // GoogleBookmarksは不明な点が多すぎだよ...
     // (調査したのは日本語版だけだった、英語版は制限も違うかも)
@@ -187,7 +197,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.37',
+    VERSION: '1.38',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -446,29 +456,37 @@ Pot.extend({
                 fast   : 36,
                 rapid  : 60,
                 ninja  : 100
+            },
+            types: {
+                forLoop   : 1,
+                forInLoop : 2,
+                repeat    : 4,
+                forEver   : 8
             }
         });
         ForEach.prototype = {
             constructor: ForEach,
             interval: ForEach.speeds.normal,
             speeds: ForEach.speeds,
+            types: ForEach.types,
             iter: null,
             result: null,
             waiting: false,
+            options: null,
             doit: function(object, callback, options) {
-                this.setInterval(options);
+                this.setOptions(options);
+                this.setInterval();
                 this.execute(object, callback);
                 this.watch();
                 return this;
             },
-            setInterval: function(options) {
+            setOptions: function(options) {
+                this.options = options || {};
+            },
+            setInterval: function() {
                 let n = null;
-                if (options !== undefined) {
-                    if (Pot.isNumeric(options)) {
-                        n = options - 0;
-                    } else if (Pot.isNumeric(options.interval)) {
-                        n = options.interval - 0;
-                    }
+                if (Pot.isNumeric(this.options.interval)) {
+                    n = this.options.interval - 0;
                 }
                 if (n !== null && !isNaN(n)) {
                     this.interval = n;
@@ -494,18 +512,21 @@ Pot.extend({
                 } else {
                     d = new Deferred();
                     d.addCallback(function() {
-                        if (!callback && Pot.isFunction(object)) {
+                        let type = self.options.type;
+                        if ((type & self.types.forEver) === self.types.forEver) {
                             self.result = {};
                             self.iter = self.forEver(object);
-                        } else if (Pot.isNumeric(object)) {
+                        } else if ((type & self.types.repeat) === self.types.repeat) {
                             self.result = {};
-                            self.iter = self.repeat(object - 0, callback);
-                        } else if (Pot.isIterable(object)) {
-                            self.result = object;
-                            self.iter = self.forLoop(object, callback);
+                            self.iter = self.repeat(object, callback);
                         } else {
-                            self.result = object;
-                            self.iter = self.forInLoop(object, callback);
+                            if (Pot.isIterable(object)) {
+                                self.result = object;
+                                self.iter = self.forLoop(object, callback);
+                            } else {
+                                self.result = object;
+                                self.iter = self.forInLoop(object, callback);
+                            }
                         }
                     }).addCallback(function() {
                         let d1, d2;
@@ -632,14 +653,31 @@ Pot.extend({
                 }
             },
             repeat: function(max, callback) {
-                let i, result, last = max - 1;
-                for (i = 0; i < max; i++) {
+                let i, loop, result, n, last;
+                if (!max || max == null) {
+                    n = 0;
+                } else if (Pot.isNumeric(max)) {
+                    n = max - 0;
+                } else {
+                    n = max || {};
+                }
+                loop = {
+                    begin : Pot.isNumeric(n.begin) ? n.begin - 0 : 0,
+                    end   : Pot.isNumeric(n.end)   ? n.end   - 0 : (n || 0) - 0,
+                    step  : Pot.isNumeric(n.step)  ? n.step  - 0 : 1,
+                    last  : false,
+                    prev  : null
+                };
+                last = loop.end - 1;
+                for (i = loop.begin; i < loop.end; i += loop.step) {
                     yield i;
                     try {
-                        result = callback(i, i >= last);
+                        loop.last = i >= last;
+                        result = callback(i, loop.last, loop);
                         if (Pot.isStopIter(result)) {
                             break;
                         }
+                        loop.prev = result;
                     } catch (e) {
                         if (e == StopIteration || (e instanceof StopIteration) ||
                             e == Pot.StopIteration || (e instanceof Pot.StopIteration) ||
@@ -705,6 +743,7 @@ Pot.extend({
                     }
                     return function(object, callback, options) {
                         let ops = options || {};
+                        ops.type = ForEach.types.forLoop | ForEach.types.forInLoop;
                         ops.interval = interval;
                         return (new ForEach(object, callback, ops)).result;
                     };
@@ -738,6 +777,7 @@ Pot.extend({
      *
      * @results [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
      *
+     *
      * callback関数の第二引数にはループの最後のみ true になる値が渡される
      *
      * @example
@@ -752,9 +792,23 @@ Pot.extend({
      * @results 'a=0,b=1,c=2,d=3,e=4,f=5;'
      *
      *
-     * @param  {Number}   max       何回ループするかの最大値
-     * @param  {Function} callback  実行する関数
-     *                              (止めるときは Pot.StopIteration を投げる)
+     * 第一引数に begin, end, step を任意に指定してオブジェクトで指定可
+     *
+     * @example
+     * <code>
+     * var a = [];
+     * Pot.repeat({begin: 0, end: 100, step: 10}, function(i) {
+     *   a.push(i);
+     * });
+     * debug(a);
+     * </code>
+     *
+     * @results [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
+     *
+     *
+     * @param  {Number || Object}  max       何回ループするかの最大値
+     * @param  {Function}          callback  実行する関数
+     *                                       (止めるときはPot.StopIteration投げる)
      */
     repeat: (function() {
         let methods, construct, name, create = function(speed) {
@@ -766,13 +820,12 @@ Pot.extend({
             }
             return function(max, callback, options) {
                 let ops = options || {};
+                ops.type = Pot.ForEach.types.repeat;
                 ops.interval = interval;
                 return (new Pot.ForEach(max, callback, ops)).result;
             };
         };
-        construct = function(max, callback, options) {
-            return Pot.forEach(max, callback, options);
-        };
+        construct = create();
         methods = {};
         for (name in Pot.ForEach.speeds) {
             methods[name] = create(name);
@@ -814,13 +867,12 @@ Pot.extend({
             }
             return function(callback, options) {
                 let ops = options || {};
+                ops.type = Pot.ForEach.types.forEver;
                 ops.interval = interval;
                 return (new Pot.ForEach(callback, null, ops)).result;
             };
         };
-        construct = function(callback, options) {
-            return Pot.forEach(callback, null, options);
-        };
+        construct = create();
         methods = {};
         for (name in Pot.ForEach.speeds) {
             methods[name] = create(name);
@@ -829,6 +881,7 @@ Pot.extend({
         return Pot.extend(construct, methods);
     })()
 });
+
 
 /**
  * Hash:
@@ -1495,11 +1548,18 @@ Pot.extend({
      * 遅延実行
      */
     callLazy: function(callback) {
-        let func, o = {}, args = Array.prototype.slice.call(arguments, 1);
+        let func, ctx = {}, args = Array.prototype.slice.call(arguments, 1);
         func = callback || function() {};
         callLater(0, function() {
-            func.apply(o, args);
+            if (func instanceof Deferred) {
+                try {
+                    func.callback();
+                } catch (e) {}
+            } else {
+                func.apply(ctx, args);
+            }
         });
+        return callback;
     },
     /**
      * sprintf
@@ -1833,7 +1893,7 @@ Pot.extend({
      * @return {String}             取得したテキスト
      */
     getTextContent: function(context, xpath) {
-        let text = '', doc, ids, node, found, names, expr, alpha, format;
+        let text = '', d, waiting, doc, re, ids, node, found, names, expr, alpha, format;
         if (context && Pot.isString(context)) {
             [doc, expr] = [xpath, context];
         }
@@ -1870,48 +1930,87 @@ Pot.extend({
                     post
                     container
                 </>).split(/\s+/);
+                re = /-/g;
                 node = null;
                 found = false;
-                ids.forEach(function(id) {
-                    if (!found) {
-                        if (id) {
-                            names = [id];
-                            if (id.indexOf('-') !== -1) {
-                                names.push(id.replace(/-/g, ''), id.replace(/-/g, '_'));
-                            }
-                            Pot.ArrayUtil.toArray(names).forEach(function(name) {
-                                let tail = name.slice(-1).toLowerCase();
-                                names.push(name + 's');
-                                if (tail === 'y') {
-                                    names.push(name.slice(0, -1) + 'ies');
-                                } else if (tail === 's') {
-                                    names.push(name.slice(0, -1) + 'es');
-                                }
-                            });
-                            names.forEach(function(name) {
-                                if (!found) {
-                                    format = '//*[contains(translate(@id,"%s","%s"),"%s")]';
-                                    node = $x(Pot.sprintf(format, alpha.up, alpha.low, name), doc);
-                                    if (!node) {
-                                        format = '//*[contains(translate(@class,"%s","%s"),"%s")]';
-                                        node = $x(Pot.sprintf(format, alpha.up, alpha.low, name), doc);
-                                    }
-                                    if (node && Pot.StringUtil.trimAll(node.textContent).length > 256) {
-                                        found = true;
-                                    } else {
-                                        node = null;
-                                    }
-                                }
-                            });
+                Pot.forEach(ids, function(x, id) {
+                    if (id) {
+                        names = [id];
+                        if (~id.indexOf('-')) {
+                            names[names.length] = id.replace(re, '');
+                            names[names.length] = id.replace(re, '_');
                         }
+                        Pot.forEach(Pot.ArrayUtil.toArray(names), function(x, name) {
+                            let tail = name.slice(-1).toLowerCase();
+                            names[names.length] = name + 's';
+                            if (tail === 'y') {
+                                names[names.length] = name.slice(0, -1) + 'ies';
+                            } else if (tail === 's') {
+                                names[names.length] = name.slice(0, -1) + 'es';
+                            }
+                        });
+                        Pot.forEach(names, function(x, name) {
+                            format = '//*[contains(translate(@id,"%s","%s"),"%s")]';
+                            node = $x(Pot.sprintf(format, alpha.up, alpha.low, name), doc);
+                            if (!node) {
+                                format = '//*[contains(translate(@class,"%s","%s"),"%s")]';
+                                node = $x(Pot.sprintf(format, alpha.up, alpha.low, name), doc);
+                            }
+                            if (node && Pot.StringUtil.trimAll(node.textContent).length > 256) {
+                                found = true;
+                                throw Pot.StopIteration;
+                            }
+                            node = null;
+                        });
+                    }
+                    if (found) {
+                        throw Pot.StopIteration;
                     }
                 });
-                text = convertToHTMLString(node || doc.body || doc.documentElement, true);
+                {
+                    let dc = new Deferred(), processing = true;
+                    dc.addCallback(function() {
+                        text = node && node.textContent;
+                        if (!text) {
+                            text = convertToHTMLString(node || doc.body || doc.documentElement, true);
+                        }
+                    }).addBoth(function() {
+                        processing = false;
+                    });
+                    Pot.callLazy(dc);
+                    if (processing) {
+                        till(function() {
+                            return processing !== true;
+                        });
+                    }
+                }
             }
             if (text) {
-                text = Pot.StringUtil.normalizeSpace(Pot.StringUtil.removeNoise(
-                        Pot.StringUtil.removeAA(Pot.StringUtil.remove2chName(
-                        Pot.unescapeHTML(Pot.StringUtil.stripTags(text)))))).replace(/\s+/g, ' ');
+                // まとめブログのようなページサイズが大きい場合
+                // 処理が重くなりがちなので分割して遅延実行する
+                waiting = true;
+                d = new Deferred();
+                d.addCallback(function() {
+                    return Pot.unescapeHTML(Pot.StringUtil.stripTags(text));
+                }).addCallback(function(res) {
+                    return Pot.StringUtil.removeAA(Pot.StringUtil.remove2chName(res));
+                }).addCallback(function(res) {
+                    return Pot.StringUtil.normalizeSpace(Pot.StringUtil.removeNoise(res));
+                }).addCallback(function(res) {
+                    text = res.replace(/\s+/g, ' ');
+                }).addBoth(function() {
+                    waiting = false;
+                });
+                if (text.length >= 8192) {
+                    Pot.callLazy(d);
+                } else {
+                    d.callback();
+                }
+                if (waiting) {
+                    till(function() {
+                        return waiting !== true;
+                    });
+                }
             }
         } catch (e) {}
         return text;
@@ -2126,11 +2225,11 @@ Pot.extend(Pot.DeferredUtil, {
     /**
      * 非同期で実行
      */
-    callLazy: function(func) {
+    callLazy: function(callback) {
         let d, args = Array.prototype.slice.call(arguments, 1);
         d = new Deferred();
         d.addCallback(function() {
-            return func.apply(this, args);
+            return callback.apply(this, args);
         });
         callLater(0, function() {
             d.callback();
@@ -3888,28 +3987,32 @@ Pot.extend(Pot.StringUtil, {
      * ↓こんな行
      *  5：以下、名無しにかわりましてVIPがお送りします：0000/00/00(日) 00:00:00.00 ID:xxxxxxxxx
      *
+     *
      * @param  {String}  text  対象のテキスト
      * @return {String}        除去したテキスト
      */
     remove2chName: function(text) {
         let s, tpls, patterns, re = {
-            colon: '[：:]',
-            space: '[\\u0009\\u0020\\u3000]*',
-            open: '[（(]',
-            close: '[)）]',
-            day: '[月火水木金土日]',
-            id: 'ID:[a-zA-Z0-9_./=+-]{9}',
-            number: '[0-9]',
-            numbers: '[1-9][0-9]',
-            name: '.*?',
-            be: '[\\u0020-\\u007F]{0,39}'
+            colon   : '[：:]',
+            space   : '[\\u0009\\u0020\\u3000]*',
+            open    : '[（(]',
+            close   : '[)）]',
+            day     : '[月火水木金土日]',
+            year    : '[/年]',
+            month   : '[/月]',
+            date    : '[/日]',
+            id      : 'ID:[a-zA-Z0-9_./=+-]{5,11}',
+            number  : '[0-9]',
+            numbers : '[1-9][0-9]',
+            name    : '.*?',
+            be      : '[\\u0020-\\u007F]{0,39}'
         };
         s = Pot.StringUtil.stringify(text);
         tpls = [{
-            format: '^ %s{0,3} %s? %s %s? %s{3}/%s{2}/%s{2} %s %s %s %s{2}:%s{2}:%s{2}(?:[.]%s{1,2}|) (?:%s|)%s$',
+            format: '^ %s{0,3} %s? %s %s? %s{3}%s%s{2}%s%s{2}%s? (?:%s %s %s|) %s{2}:%s{2}(?::%s{2}|)(?:[.]%s{1,2}|) (?:%s|)%s$',
             flags: 'gim'
         }, {
-            format: '(?:\\b|) %s{0,3} %s? %s %s? %s{3}/%s{2}/%s{2} %s %s %s %s{2}:%s{2}:%s{2}(?:[.]%s{1,2}|) (?:%s|)%s?' +
+            format: '(?:\\b|) %s{0,3} %s? %s %s? %s{3}%s%s{2}%s%s{2}%s? (?:%s %s %s|) %s{2}:%s{2}(?::%s{2}|)(?:[.]%s{1,2}|) (?:%s|)%s?' +
                     '(?=[\\u0100-\\uFFFF]|[\\r\\n]|\\b|$|)',
             flags: 'gi'
         }];
@@ -3918,7 +4021,8 @@ Pot.extend(Pot.StringUtil, {
             patterns.push(new RegExp(
                 Pot.sprintf(
                     tpl.format,
-                    re.numbers, re.colon, re.name, re.colon, re.numbers, re.number, re.number,
+                    re.numbers, re.colon, re.name, re.colon,
+                    re.numbers, re.year, re.number, re.month, re.number, re.date,
                     re.open, re.day, re.close,re.number, re.number, re.number, re.number, re.id, re.be
                 ).replace(/\s+/g, re.space),
                 tpl.flags
@@ -4211,17 +4315,25 @@ Pot.extend(Pot.ArrayUtil, {
     /**
      * 配列をシャッフルして返す (元の配列は変えない)
      *
+     * @example shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+     * @results [8, 6, 4, 5, 9, 2, 3, 1, 7] (uncertain)
+     *
      * @param  {Array}  array  対象の配列
      * @return {Array}         シャッフルされた配列
      */
     shuffle: function(array) {
         let result = [], a, len, push;
-        a = array.concat();
-        len = a.length;
-        push = Array.prototype.push;
-        do {
-            push.apply(result, a.splice(Math.floor(Math.random() * len), 1));
-        } while (--len);
+        if (Pot.isArray(array)) {
+            a = array.concat();
+            len = a.length;
+            push = Array.prototype.push;
+            Pot.forEver(function() {
+                push.apply(result, a.splice(Math.floor(Math.random() * len), 1));
+                if (--len <= 0) {
+                    throw Pot.StopIteration;
+                }
+            });
+        }
         return result;
     },
     /**
@@ -4256,32 +4368,50 @@ Pot.extend(Pot.ArrayUtil, {
     /**
      * 与えられた配列をユニークにした配列を返す (ソートなしで順序を保つ)
      *
+     *
+     * @example unique([1, 2, 3, 4, 5, 3, 5, 'a', 3, 'b', 'a', 'c', 2, 5]);
+     * @results [1, 2, 3, 4, 5, 'a', 'b', 'c']
+     *
+     * @example unique([5, 7, 8, 3, 6, 1, 7, 2, 3, 8, 4, 2, 9, 5]);
+     * @results [5, 7, 8, 3, 6, 1, 2, 4, 9]
+     *
+     * @example unique(['1', 1, '2', 2, 0, '0', '', null, false, (void 0)], true);
+     * @results ['1', '2', 0, null]
+     *
+     * @example unique(['abc', 'ABC', 'Foo', 'bar', 'foO', 'BaR'], false, true);
+     * @results ['abc', 'Foo', 'bar']
+     *
+     *
      * @param  {Array}    array       対象の配列 (この配列に変化は生じない)
      * @param  {Boolean}  loose       緩い比較(==)をする場合 true, デフォルトは厳密な比較(===)
      * @param  {Boolean}  ignoreCase  大文字小文字を区別しない場合 true を渡す
      * @return {Array}                ユニークな値を持つ配列
      */
     unique: function(array, loose, ignoreCase) {
-        let result = [], i, j, len, dups = [], ia, ja, strict;
+        let result = [], len, dups = [], ia, ja, strict;
         if (Pot.isArray(array)) {
             len = array.length;
-            strict = ignoreCase ? true : !loose;
-            for (i = 0; i < len; ++i) {
-                for (j = i + 1; j < len; ++j) {
-                    if (ignoreCase) {
-                        ia = String(array[i]).toLowerCase();
-                        ja = String(array[j]).toLowerCase();
-                    } else {
-                        ia = array[i];
-                        ja = array[j];
+            if (len) {
+                strict = ignoreCase ? true : !loose;
+                Pot.repeat(len, function(i) {
+                    Pot.repeat({begin: i + 1, end: len}, function(j) {
+                        if (j < len) {
+                            if (ignoreCase) {
+                                ia = String(array[i]).toLowerCase();
+                                ja = String(array[j]).toLowerCase();
+                            } else {
+                                ia = array[i];
+                                ja = array[j];
+                            }
+                            if ((strict && ia === ja) || ia == ja) {
+                                dups[j] = i;
+                            }
+                        }
+                    });
+                    if (!(i in dups)) {
+                        result[result.length] = array[i];
                     }
-                    if ((strict && ia === ja ) || (ia == ja)) {
-                        dups[j] = i;
-                    }
-                }
-                if (!(i in dups)) {
-                    result[result.length] = array[i];
-                }
+                });
             }
         }
         return result;
@@ -4830,15 +4960,9 @@ Pot.extend({
                         }
                         cr = self.randKey(self.dics.get(c1).get(c2));
                         c3 = self.dics.get(c1).get(c2).get(cr);
-                    });
+                    }, true);
                     this.addTail(words);
                     result = this.joinWords(words);
-                    //
-                    // これは1行で終わる学習方法じゃないので
-                    // 結果が空になることは滅多にないため処理を省く
-                    //if (!result && this.dics.length > 6) {
-                    //    return this.chain2();
-                    //}
                 }
                 return result;
             },
@@ -4851,8 +4975,7 @@ Pot.extend({
                 let self = this, s, segs, len, c, c1, c2;
                 s = this.removeSymbols(this.stringify(text));
                 if (s) {
-                    //FIXME: ここでYahoo!形態素解析にするべき(?)
-                    segs = this.morphemize(s);
+                    segs = this.morphemize.strict(s);
                     this.morphLen = segs.length;
                     this.addTail(segs);
                     segs.unshift(this.START);
@@ -4874,7 +4997,7 @@ Pot.extend({
                                 self.dics.get(c2).set(c1, self.createDics());
                             }
                             self.dics.get(c2).get(c1).set(j, c);
-                        });
+                        }, true);
                     }
                 }
                 return this;
@@ -4933,36 +5056,30 @@ Pot.extend({
                 );
             },
             joinWords: function(words) {
-                let result = [], re, word, last;
+                let result = [], re, word, last, glue;
                 re = /[a-zA-Z0-9_ａ-ｚＡ-Ｚ０-９＿]/;
                 if (words && this.isArray(words)) {
                     this.loop(words.length, function(i) {
                         word = words[i];
                         if (word) {
+                            glue = '';
                             last = result[result.length - 1];
                             if (last) {
                                 if (re.test(last) && re.test(word)) {
-                                    word = ' ' + word;
+                                    glue = ' ';
                                 }
                             }
-                            result[result.length] = word;
+                            result[result.length] = glue + word;
                         }
                     });
                 }
                 return this.trim(result.join(''));
             },
-            loop: function(length, callback) {
-                let waiting = true;
-                Pot.DeferredUtil.repeat(length, function(i) {
+            loop: function(length, callback, rapid) {
+                let speed = rapid ? 'rapid' : 'ninja';
+                Pot.repeat[speed](length, function(i) {
                     callback(i);
-                }).addBoth(function(err) {
-                    waiting = false;
-                }).callback();
-                if (waiting) {
-                    till(function() {
-                        return waiting !== true;
-                    });
-                }
+                });
             },
             /**
              * 簡易形態素解析
@@ -5213,6 +5330,33 @@ Pot.extend({
             })()
         };
         MarkovChainer.prototype.init.prototype = MarkovChainer.prototype;
+        
+        // API使用で形態素解析
+        Pot.extend(MarkovChainer.prototype.morphemize, {
+            strict: function(text) {
+                let result = [], d, waiting, sty, trim;
+                sty = Pot.StringUtil.stringify;
+                trim = Pot.StringUtil.trim;
+                waiting = true;
+                d = Yahoo.Pot.morphemize(sty(text)).addCallback(function(res) {
+                    Pot.forEach(res || [], function(i, o) {
+                        let s = trim(o && o.surface);
+                        if (s && s.length) {
+                            result[result.length] = s;
+                        }
+                    });
+                }).addBoth(function() {
+                    waiting = false;
+                });
+                Pot.callLazy(d);
+                if (waiting) {
+                    till(function() {
+                        return waiting !== true;
+                    });
+                }
+                return result;
+            }
+        });
         // Simple dictionary object
         // Pot.Hashを軽量化したオブジェクト
         MarkovChainer.Dictionary = (function() {
@@ -5261,15 +5405,10 @@ Pot.BookmarkUtil = {};
 Pot.extend(Pot.BookmarkUtil, {
     checkPattern: /(?:photo|quote|link|conversation|video|bookmark)/,
     check: function(ps) {
-        let result = true, uri = ps.itemUrl;
-        if (Pot.BookmarkUtil.isDisableURI(uri)) {
-            result = false;
-        } else {
-            result = Pot.BookmarkUtil.checkPattern.test(ps.type) && !ps.file;
-        }
-        return result;
+        return ps && Pot.BookmarkUtil.checkPattern.test(ps.type) && !ps.file;
     },
     /*
+     * *** 未使用 ***
      * ブックマークするURLの拡張子が画像の場合 TumblrにPOSTしてるとみなし
      * 無意味なブックマークを避ける
      *
@@ -5282,6 +5421,8 @@ Pot.extend(Pot.BookmarkUtil, {
      * ブクマ数が大量になると不安定になるのでその考慮のためのメソッド
      */
     fixURI: function(ps) {
+        return succeed(ps);
+        /*
         let ok = true;
         if (Pot.BookmarkUtil.isImageURI(ps.itemUrl)) {
             if (Pot.BookmarkUtil.isImageTitle(ps.item)) {
@@ -5303,6 +5444,7 @@ Pot.extend(Pot.BookmarkUtil, {
             ps.item = title;
             return ps;
         });
+        */
     },
     toParentURI: function(url) {
         let uri = Pot.StringUtil.stringify(url).split('/');
@@ -5340,6 +5482,7 @@ Pot.extend(Pot.BookmarkUtil, {
         }
         return result;
     },
+    // ### 未使用 ###
     //FIXME: このメソッドは勝手にユーザーのブックマークを抑制してるので邪魔な機能かも
     isDisableURI: function(url) {
         let result = false, disables = {
@@ -5427,13 +5570,13 @@ Pot.extend(Pot.BookmarkUtil, {
             return hasOwnProperty.call(object, prop);
         };
         hasProp = function(object, prop) {
-            let has = false, name;
-            for (name in object) {
+            let has = false;
+            Pot.forEach(object, function(name) {
                 if (name == prop) {
                     has = true;
-                    break;
+                    throw Pot.StopIteration;
                 }
-            }
+            });
             return has;
         };
         hasIteratorProp = function(object) {
@@ -5447,9 +5590,10 @@ Pot.extend(Pot.BookmarkUtil, {
                 }
             } catch (e) {
                 msg = String(e);
-                specials.importants.forEach(function(s) {
-                    if (msg.indexOf(s) !== -1) {
+                Pot.forEach(specials.importants, function(x, s) {
+                    if (~msg.indexOf(s)) {
                         has = true;
+                        throw Pot.StopIteration;
                     }
                 });
             }
@@ -5480,10 +5624,10 @@ Pot.extend(Pot.BookmarkUtil, {
                 return this.replaceAll(tags, specials.subs, hasProp);
             },
             replaceAll: function(tags, specials, hasOwn) {
-                let self = this, special, uniq, exists;
+                let that = this, special, uniq, exists;
                 if (specials && tags && Pot.isObject(tags)) {
                     exists = false;
-                    specials.forEach(function(special) {
+                    Pot.forEach(specials, function(x, special) {
                         if (hasOwn(tags, special)) {
                             exists = true;
                             uniq = 'pot';
@@ -5491,10 +5635,10 @@ Pot.extend(Pot.BookmarkUtil, {
                                 uniq += String.fromCharCode(Pot.rand(0x61, 0x7A));
                             } while (hasOwn(tags, uniq));
                             tags[uniq] = tags[special];
-                            self.orgTags.push({
+                            that.orgTags[that.orgTags.length] = {
                                 org: special,
                                 tmp: uniq
-                            });
+                            };
                             delete tags[special];
                         }
                     });
@@ -5503,39 +5647,37 @@ Pot.extend(Pot.BookmarkUtil, {
             },
             // はてブ用
             restoreHatena: function(tags) {
-                let self = this, result;
+                let that = this, result;
                 result = tags.map(function(item) {
-                    item.name = self.restoreName(item.name);
+                    item.name = that.restoreName(item.name);
                     return item;
                 });
                 return result;
             },
             restore: function(object) {
-                let i, len, tag;
+                let that = this, tag;
                 if (Pot.isObject(object)) {
-                    len = this.orgTags.length;
-                    for (i = 0; i < len; i++) {
-                        tag = this.orgTags[i];
+                    Pot.repeat(this.orgTags.length, function(i) {
+                        tag = that.orgTags[i];
                         if (tag && tag.tmp && tag.org && hasProp(object, tag.tmp)) {
                             object[tag.org] = object[tag.tmp];
                             try {
                                 delete object[tag.tmp];
                             } catch (e) {}
                         }
-                    }
+                    });
                 }
                 return object;
             },
             restoreName: function(name) {
-                let result = name, i, len, tag;
-                len = this.orgTags.length;
-                for (i = 0; i < len; i++) {
-                    tag = this.orgTags[i];
+                let that = this, result = name, tag;
+                Pot.repeat(this.orgTags.length, function(i) {
+                    tag = that.orgTags[i];
                     if (tag && tag.tmp && tag.org && tag.tmp === name) {
                         result = tag.org;
-                        break;
+                        throw Pot.StopIteration;
                     }
-                }
+                });
                 return result;
             },
             clear: function() {
@@ -5552,9 +5694,11 @@ Pot.extend(Pot.BookmarkUtil, {
      * タグ/ラベルを正規化
      */
     normalizeTags: function(tags) {
-        let result = [], skip, prop, i, item, explode = function(tag) {
+        let result = [], skip, prop, i, item, re, explode;
+        re = /[,\s\u00A0\u3000]+/;
+        explode = function(tag) {
             let r = [];
-            Pot.StringUtil.stringify(tag).split(/[,\s\u3000]+/).forEach(function(t) {
+            Pot.forEach(Pot.StringUtil.stringify(tag).split(re), function(x, t) {
                 if (t && t.length) {
                     r[r.length] = t;
                 }
@@ -5585,7 +5729,7 @@ Pot.extend(Pot.BookmarkUtil, {
         if (skip) {
             result = tags;
         } else {
-            (Pot.isArray(tags) ? tags : []).forEach(function(tag) {
+            Pot.forEach(Pot.isArray(tags) ? tags : [], function(x, tag) {
                 explode(tag).forEach(function(t) {
                     if (t && t.length) {
                         result[result.length] = t;
@@ -5689,82 +5833,232 @@ Pot.extend(Pot.BookmarkUtil, {
                 });
             }
         }).addCallback(function(doc) {
-            let entry, title;
-            entry = Pot.getTextContent(doc);
-            title = doc.title || $x('//title/text()', doc) || '';
-            return new Array(7).join(' ' + Pot.StringUtil.stringify(title) + ' ') + entry;
-        }).addCallback(function(s) {
-            return Pot.QuickPostForm.callDescriptionContextMenu('ノイズを除去', s);
-        }).addCallback(function(s) {
-            return Pot.StringUtil.toZenkanaCase(
-                Pot.StringUtil.toHanSpaceCase(
-                    Pot.StringUtil.toHankakuCase(
-                        Pot.StringUtil.trim(
-                            Pot.StringUtil.stringify(s).
-                                replace(/[\u0000-\u001F\s\u00A0\u3000]+/g, ' ').
-                                replace(/\s+/g, ' ').
-                                replace(/([^一-龠々〆ヵヶァ-ヴｦ-ｯｱ-ﾝﾞﾟぁ-ん]){1,2}(?:\s*\1\s*){3,}/g, '$1')
-                            )
-                        )
-                    )
-                );
-        }).addCallback(function(s) {
-            let dd = Yahoo.Pot.keywordize(s).addCallback(function(res) {
-                let result, filters = [
-                    // 'Ao8U8heogP4HgUEi89r4g4g8' のような非単語を除外する
-                    function(a) {
-                        return !/\w/.test(a) ||
-                            (a.split(/\d+/).length <= 2 &&
-                             a.split(/\W/).length  <= 2);
-                    },
-                    // 1文字のみを除外
-                    function(a) {
-                        return a.length > 1 || /^[c-jlms]$/i.test(a);
-                    },
-                    function(a) {
-                        return /^[^\s,[\]]+$/.test(a);
-                    },
-                    function(a) {
-                        return !/^[a-z]{2}$/.test(a);
-                    },
-                    function(a) {
-                        return a.length <= 32;
-                    },
-                    function(a) {
-                        let result = true, ignores = [
-                            // 除外する単語 (随時追加)
-                            'the', 'are', 'does', 'not', /^(?:ad|pr)s?$/i, 'its',
-                            'おすすめ', 'エントリー', '広告', /^\d*users?$/i
-                        ];
-                        Pot.forEach(ignores, function(i, k) {
-                            if ((Pot.isRegExp(k) && k.test(a)) ||
-                                String(k).toLowerCase() === String(a).toLowerCase()) {
-                                result = false;
-                                throw Pot.StopIteration;
-                            }
-                        });
-                        return result;
-                    },
-                    function(a) {
-                        return a && a.length > 0;
-                    }
-                ];
-                result = Pot.ArrayUtil.toArray(res);
-                filters.forEach(function(f) {
-                    if (result.length > 10) {
-                        result = result.filter(f);
-                    }
+            return {
+                title : doc.title || $x('//title/text()', doc) || '',
+                entry : Pot.getTextContent(doc)
+            };
+        }).addCallback(function(o) {
+            let dn, waiting = true, name = 'ノイズを除去';
+            dn = new Deferred();
+            dn.addCallback(function() {
+                if (o.title) {
+                    o.title = Pot.QuickPostForm.callDescriptionContextMenu(name, o.title);
+                }
+            }).addCallback(function() {
+                if (o.entry) {
+                    o.entry = Pot.QuickPostForm.callDescriptionContextMenu(name, o.entry);
+                }
+            }).addBoth(function() {
+                waiting = false;
+            });
+            Pot.callLazy(dn);
+            if (waiting) {
+                till(function() {
+                    return waiting !== true;
                 });
-                if (result.length > 10) {
-                    result = Pot.ArrayUtil.shuffle(result).slice(0, 10);
+            }
+            return o;
+        }).addCallback(function(o) {
+            let valid = function(string) {
+                let result, dv, processing = true;
+                dv = new Deferred();
+                dv.addCallback(function() {
+                    return Pot.StringUtil.stringify(string).
+                        replace(/[\u0000-\u001F\s\u00A0\u3000]+/g, ' ').
+                        replace(/\s+/g, ' ').
+                        replace(/([^一-龠々〆ヵヶァ-ヴｦ-ｯｱ-ﾝﾞﾟぁ-ん]){1,2}(?:\s*\1\s*){3,}/g, '$1');
+                }).addCallback(function(res) {
+                    return Pot.StringUtil.toHankakuCase(Pot.StringUtil.trim(res));
+                }).addCallback(function(res) {
+                    return Pot.StringUtil.toZenkanaCase(Pot.StringUtil.toHanSpaceCase(res));
+                }).addBoth(function(res) {
+                    result = res;
+                    processing = false;
+                });
+                if (string && string.length >= 1024) {
+                    Pot.callLazy(dv);
+                } else {
+                    dv.callback();
+                }
+                if (processing) {
+                    till(function() {
+                        return processing !== true;
+                    });
                 }
                 return result;
+            };
+            if (o.title) {
+                o.title = valid(o.title);
+            }
+            if (o.entry) {
+                o.entry = valid(o.entry);
+            }
+            return o;
+        }).addCallback(function(o) {
+            let result = [], d1, d2, titles, entries, filter, filters;
+            filters = [
+                // 'Ao8U8heogP4HgUEi89r4g4g8' のような非単語を除外
+                function(a) {
+                    return !/\w/.test(a) ||
+                        (a.split(/\d+/).length <= 2 &&
+                         a.split(/\W/).length  <= 2);
+                },
+                // 1文字のみを除外
+                function(a) {
+                    return a.length > 1 || /^[c-hjms]$/i.test(a);
+                },
+                function(a) {
+                    return /^[^\s,[\]]+$/.test(a);
+                },
+                function(a) {
+                    return !/^[a-z]{2}$/.test(a);
+                },
+                function(a) {
+                    return a.length <= 32;
+                },
+                function(a) {
+                    let result = true, ignores = [
+                        // 除外する単語 (随時追加)
+                        'i', 'the', 'are', 'does', 'not', 'but', 'you', 'your', 'and', 'did',
+                        /^(?:ad|pr)s?$/i, /^it'?s$/i, 'おすすめ', 'エントリー', '広告',
+                        /^\d*users?$/i, 'there', 'can', /^(?:you|we)'?re$/i, 'that', 'how',
+                        'for', 'what', /^don'?t$/i, 'she', 'his', 'her', 'from', 'off', 'had',
+                        'say', 'yes', 'our', /^etc[.]?$/, /^e[.]g[.,]+$/, /^i[.]e[.,]+$/,
+                        'has', 'via', /^we'?ll$/i, 'then', 'may', 'must', 'should', 'these',
+                        /^Co[.,\s]+(?:Ltd[.]?|)$/i, /^we'?ll?$/i, 'him', 'have', 'would',
+                        'was', 'were', 'who', 'this', 'that', 'which', 'will', 'shall'
+                    ];
+                    Pot.forEach(ignores, function(i, k) {
+                        if ((Pot.isRegExp(k) && k.test(a)) ||
+                            String(k).toLowerCase() === String(a).toLowerCase()) {
+                            result = false;
+                            throw Pot.StopIteration;
+                        }
+                    });
+                    return result;
+                },
+                function(a) {
+                    return a && a.length > 0;
+                }
+            ];
+            filter = function(a) {
+                let r = Pot.ArrayUtil.toArray(a);
+                Pot.forEach(filters, function(i, f) {
+                    if (r && r.length) {
+                        r = r.filter(f);
+                    }
+                });
+                return r;
+            };
+            // タイトル文字列のキーワードを優先して取り込む
+            d1 = o.title ? Yahoo.Pot.keywordize(o.title) : new Deferred();
+            d1.addCallback(function(res) {
+                titles = res || [];
+                d2 = o.entry ? Yahoo.Pot.keywordize(o.entry) : new Deferred();
+                d2.addCallback(function(res) {
+                    // 全体(最大キーワード数)のうち文章内から取り込む最低限のパーセンテージ
+                    const ENTRY_RATIO = 30;
+                    const KEYWORD_MAX = 10;
+                    let resLen, entLen, prevLen, ratio, keywords, shuffled;
+                    entries = res || [];
+                    titles  = titles  && filter(titles)  || [];
+                    entries = entries && filter(entries) || [];
+                    result  = Pot.ArrayUtil.shuffle(titles).slice(0, KEYWORD_MAX);
+                    entries = Pot.ArrayUtil.shuffle(entries);
+                    resLen = result.length;
+                    entLen = entries.length;
+                    if (resLen < KEYWORD_MAX) {
+                        entLen = Math.min(KEYWORD_MAX - resLen, entLen);
+                    } else {
+                        ratio  = Math.min(entLen, Math.round(resLen / 100 * ENTRY_RATIO));
+                        resLen = resLen - ratio;
+                        entLen = ratio;
+                    }
+                    keywords = Pot.ArrayUtil.merge(entries.slice(entLen), titles.slice(KEYWORD_MAX));
+                    result = Pot.ArrayUtil.merge(result.slice(0, resLen), entries.slice(0, entLen));
+                    // 大文字小文字を区別しないでユニークにする
+                    shuffled = false;
+                    Pot.forEver(function() {
+                        prevLen = result.length;
+                        result = Pot.ArrayUtil.unique(result, false, true);
+                        if (keywords && keywords.length && result.length < prevLen) {
+                            if (!shuffled) {
+                                shuffled = true;
+                                keywords = Pot.ArrayUtil.shuffle(keywords);
+                            }
+                            while (keywords && keywords.length && result.length < prevLen) {
+                                result[result.length] = Pot.rand(0, 1) ? keywords.shift() : keywords.pop();
+                            }
+                        } else {
+                            throw Pot.StopIteration;
+                        }
+                    });
+                    return result.slice(0, KEYWORD_MAX);
+                });
+                return Pot.callLazy(d2);
             });
-            dd.callback();
-            return dd;
+            return Pot.callLazy(d1);
         });
-        d.callback();
-        return d;
+        return Pot.callLazy(d);
+    },
+    /**
+     * APIからタグを取得
+     */
+    getRecentUserTags: function(url) {
+        const API_URL = 'http://b.hatena.ne.jp/entry/jsonlite/';
+        return request(API_URL, {
+            queryString: {
+                url: url
+            }
+        }).addCallback(function(res) {
+            let json, tags = [], re;
+            re = {
+                space : /[,\s\u00A0\u3000[\]]+/g,
+                trim  : /^[^\w.#$&=:+-]+|[^\w.#$&=:+-]+$/g
+            };
+            try {
+                //TODO: 優先度をつける
+                json = JSON.parse(res.responseText);
+                Pot.forEach(json.bookmarks, function(i, item) {
+                    if (item && item.tags && item.tags.length) {
+                        Pot.forEach(item.tags, function(i, tag) {
+                            let utag, u, exists = false;
+                            utag = Pot.StringUtil.trim(tag).replace(re.space, '');
+                            if (utag && utag.length) {
+                                u = utag.replace(re.trim, '').toLowerCase();
+                                Pot.forEach(tags, function(i, rtag) {
+                                    if (u === rtag.replace(re.trim, '').toLowerCase()) {
+                                        exists = true;
+                                        throw Pot.StopIteration;
+                                    }
+                                });
+                                if (!exists) {
+                                    tags[tags.length] = utag;
+                                }
+                            }
+                        });
+                    }
+                });
+            } catch (e) {}
+            return tags;
+        });
+    },
+    /**
+     * キーワード抽出とAPI取得の組み合わせ
+     */
+    getRecommends: function(url) {
+        const MAX_TAGS = 10;
+        return Pot.BookmarkUtil.getRecentUserTags(url).addCallback(function(tags) {
+            if (tags && tags.length >= MAX_TAGS) {
+                return succeed().addCallback(function() {
+                    return Pot.ArrayUtil.shuffle(tags).slice(0, MAX_TAGS);
+                });
+            } else {
+                return Pot.BookmarkUtil.getKeywords(url).addCallback(function(keywords) {
+                    return Pot.ArrayUtil.merge(tags, keywords).slice(0, MAX_TAGS);
+                });
+            }
+        });
     }
 });
 
@@ -5852,15 +6146,18 @@ update(models.GoogleBookmarks, {
     privateCache: {
         // ブックマーク済みか迅速に表示するためのキャッシュ
         bookmarked: {
-            data: {},
+            data: null,
             has: function(url) {
-                return typeof GoogleBookmarks.privateCache.bookmarked.data[url] !== 'undefined';
+                return this.data && this.data.has(url);
             },
             add: function(url) {
-                GoogleBookmarks.privateCache.bookmarked.data[url] = true;
+                if (!this.data) {
+                    this.data = new Pot.Hash();
+                }
+                this.data.set(url, true);
             },
             clear: function() {
-                GoogleBookmarks.privateCache.bookmarked.data = {};
+                this.data && this.data.clear();
             }
         },
         tags: {
@@ -5881,56 +6178,64 @@ update(models.GoogleBookmarks, {
     },
     //TODO: APIから取得
     isBookmarked: function(url) {
-        let self = this, findUrl = 'https://www.google.com/bookmarks/find';
-        return self.privateCache.bookmarked.has(url) ? succeed(true) : request(findUrl, {
+        const FIND_URL = 'https://www.google.com/bookmarks/find';
+        let self = this;
+        return self.privateCache.bookmarked.has(url) ? succeed(true) : request(FIND_URL, {
             queryString: {
-                start: 0,
-                num: 1,
-                output: 'xml',
-                q: url
+                start  : 0,
+                num    : 1,
+                output : 'xml',
+                q      : url,
+                hl     : 'en'
             }
         }).addCallback(function(res) {
-            let uris, result, xpath, doc = convertToHTMLDocument(res.responseText);
+            let result = false, uri, doc;
+            doc = convertToHTMLDocument(res.responseText);
             if (doc.getElementById('gaia_loginform')) {
                 throw new Error(getMessage('error.notLoggedin'));
             }
-            xpath = '//bookmark//title[normalize-space()][string-length()>0]/../url/text()';
-            uris = $x(xpath, doc, true);
-            result = false;
-            ((Pot.isArray(uris) && uris) || (uris && [String(uris)]) || []).forEach(function(uri) {
-                if (uri == url) {
-                    self.privateCache.bookmarked.add(url);
-                    result = true;
+            try {
+                doc = convertToXML(res.responseText);
+                for each (uri in doc..bookmarks..url.text()) {
+                    if (uri == url) {
+                        self.privateCache.bookmarked.add(url);
+                        result = true;
+                        break;
+                    }
                 }
-            });
+            } catch (e) {}
             return result;
         });
     },
-    getBookmarkTagsByURI: function(uri) {
-        let url = 'https://www.google.com/bookmarks/find';
-        return request(url, {
+    getBookmarkTagsByURI: function(url) {
+        const FIND_URL ='https://www.google.com/bookmarks/find';
+        return request(FIND_URL, {
             queryString: {
-                start: 0,
-                num: 1,
-                output: 'xml',
-                q: uri
+                start  : 0,
+                num    : 1,
+                output : 'xml',
+                q      : url,
+                hl     : 'en'
             }
         }).addCallback(function(res) {
-            let labels, xp, result, doc = convertToHTMLDocument(res.responseText);
-            xp = '//bookmark//url[text()=' + Pot.escapeXPathText(uri) + ']/../labels//label//text()';
-            labels = $x(xp, doc, true);
-            if (labels && Pot.isArray(labels)) {
-                result = labels.map(function(label) {
-                    return Pot.StringUtil.trim(label);
-                });
-            } else {
-                result = labels ? [Pot.StringUtil.trim(labels)] : [];
-            }
-            return Pot.BookmarkUtil.normalizeTags(result);
+            let labels, label, tag, result, doc;
+            labels = [];
+            try {
+                doc = convertToXML(res.responseText);
+                for each (label in doc..bookmarks.(url.text() == url).parent()..label.text()) {
+                    tag = Pot.StringUtil.trim(label);
+                    if (tag && tag.length) {
+                        labels[labels.length] = tag;
+                    }
+                }
+            } catch (e) {}
+            result = Pot.BookmarkUtil.normalizeTags(labels);
+            return result;
         });
     },
     getBookmarkDescriptionByURI: function(uri) {
-        let url = 'https://www.google.com/bookmarks/find', fixRSS = {
+        const FIND_URL = 'https://www.google.com/bookmarks/find';
+        let fixRSS = {
             //
             // --------------------------------------------------------------
             //XXX: convertToHTMLDocument で変換すると、
@@ -5942,17 +6247,18 @@ update(models.GoogleBookmarks, {
             // * RSSの時だけ発生(?)
             // --------------------------------------------------------------
             //
-            name: 'potuniqid' + (new Date).getTime(),
+            name: 'potuniqid' + Pot.mtime(),
             execute: function(rss) {
                 return String(rss).replace(/<(\/|)link\b([^>]*)>/ig, '<$1' + fixRSS.name + '$2>');
             }
         };
-        return request(url, {
+        return request(FIND_URL, {
             queryString: {
-                start: 0,
-                num: 1,
-                output: 'rss',
-                q: uri
+                start  : 0,
+                num    : 1,
+                output : 'rss',
+                q      : uri,
+                hl     : 'en'
             }
         }).addCallback(function(res) {
             let desc = null, items, doc, text;
@@ -5960,11 +6266,29 @@ update(models.GoogleBookmarks, {
             doc = convertToHTMLDocument(text);
             items = Pot.ArrayUtil.toArray(doc.getElementsByTagName('item') || []);
             (Pot.isArray(items) ? items : []).forEach(function(item) {
+                let link;
                 try {
-                    if (desc === null && item.getElementsByTagName(fixRSS.name)[0].innerHTML === uri) {
-                        desc = item.getElementsByTagName('smh:bkmk_annotation')[0].innerHTML;
+                    if (desc === null && item) {
+                        link = item.getElementsByTagName(fixRSS.name);
+                        if (link && link[0] && link[0].innerHTML == uri) {
+                            desc = item.getElementsByTagName('smh:bkmk_annotation');
+                            if (!desc || desc.length === 0) {
+                                desc = item.getElementsByTagNameNS('smh', 'signature');
+                                if (!desc || desc.length === 0) {
+                                    desc = item.getElementsByTagName('bkmk_annotation');
+                                }
+                            }
+                            if (desc && desc.length && desc[0]) {
+                                desc = Pot.StringUtil.stringify(desc[0].innerHTML);
+                            }
+                        }
                     }
-                } catch (e) {}
+                    if (!desc || !Pot.isString(desc)) {
+                        throw desc;
+                    }
+                } catch (e) {
+                    desc = null;
+                }
             });
             return desc ? Pot.StringUtil.trim(desc) : '';
         });
@@ -5977,7 +6301,7 @@ update(models.GoogleBookmarks, {
         return Pot.BookmarkUtil.truncateFields(this.name, 'comment', annotation);
     },
     post: function(ps) {
-        var self = this;
+        let self = this;
         return this.isBookmarked(ps).addCallback(function(bookmarked) {
             if (bookmarked) {
                 // ブックマークが存在する場合は上書き (Update) される
@@ -6005,21 +6329,20 @@ update(models.GoogleBookmarks, {
                     } else {
                         url = 'https://www.google.com/bookmarks/mark';
                     }
+                    // オートコンプリート補完タグを更新
+                    Pot.QuickPostForm.resetCandidates();
                     return request(url, {
                         redirectionLimit: 0,
                         sendContent: {
-                            title: Pot.BookmarkUtil.truncateFields(self.name, 'title', ps.item),
-                            bkmk: ps.itemUrl,
-                            annotation: self.getAnnotation(ps),
-                            labels: joinText(tags, ','),
-                            btnA: fs.btnA,
-                            sig: fs.sig,
+                            title      : Pot.BookmarkUtil.truncateFields(self.name, 'title', ps.item),
+                            bkmk       : ps.itemUrl,
+                            annotation : self.getAnnotation(ps),
+                            labels     : joinText(tags, ','),
+                            btnA       : fs.btnA,
+                            sig        : fs.sig,
                             // 'zx' 必要かもしれないユニーク乱数パラメータ
-                            zx: Math.random().toString(36).split('.').pop()
+                            zx         : Math.random().toString(36).split('.').pop()
                         }
-                    }).addCallback(function(response) {
-                        // オートコンプリートで使うタグをリセット
-                        Pot.QuickPostForm.resetCandidates();
                     });
                 });
             });
@@ -6033,25 +6356,33 @@ update(models.GoogleBookmarks, {
         );
         let self = this;
         return this.isBookmarked(url).addCallback(function(bookmarked) {
-            return Pot.BookmarkUtil.getKeywords(url).addCallback(function(keywords) {
-                return request(LIST_LABELS_URL).addCallback(function(res) {
-                    let tags = [], d, json = JSON.parse(res.responseText);
-                    json.labels.pop();
-                    json.counts.pop();
-                    d = Pot.DeferredUtil.repeat(json.labels.length, function(i) {
-                        tags[tags.length] = {
-                            name: json.labels[i],
-                            frequency: (json.counts[i] - 0) || 1
-                        };
-                    }).addCallback(function() {
-                        return {
-                            duplicated: bookmarked,
-                            recommended: keywords || [],
-                            tags: tags
-                        };
+            return Pot.BookmarkUtil.getRecommends(url).addCallback(function(keywords) {
+                return self.getBookmarkDescriptionByURI(url).addCallback(function(description) {
+                    return self.getBookmarkTagsByURI(url).addCallback(function(postTags) {
+                        return request(LIST_LABELS_URL).addCallback(function(res) {
+                            let tags = [], d, json = JSON.parse(res.responseText);
+                            json.labels.pop();
+                            json.counts.pop();
+                            d = Pot.DeferredUtil.repeat(json.labels.length, function(i) {
+                                tags[tags.length] = {
+                                    name      : json.labels[i],
+                                    frequency : (json.counts[i] - 0) || 1
+                                };
+                            }).addCallback(function() {
+                                tags = self.privateCache.tags.normalize(tags);
+                                return {
+                                    duplicated  : bookmarked,
+                                    recommended : keywords || [],
+                                    tags        : tags,
+                                    form        : {
+                                        tags        : postTags || [],
+                                        description : description
+                                    }
+                                };
+                            });
+                            return Pot.callLazy(d);
+                        });
                     });
-                    d.callback();
-                    return d;
                 });
             });
         });
@@ -6079,25 +6410,30 @@ update(models.HatenaBookmark, {
         return this.addBookmark(
             ps.itemUrl,
             null,
-            Pot.BookmarkUtil.truncateFields(this.name, 'tagLength', this.validateTags(Pot.BookmarkUtil.appendConstantTags(ps.tags))),
-            Pot.BookmarkUtil.truncateFields(this.name, 'comment', joinText([ps.body, ps.description], ' ', true))
+            Pot.BookmarkUtil.truncateFields(this.name, 'tagLength',
+                this.validateTags(Pot.BookmarkUtil.appendConstantTags(ps.tags))),
+            Pot.BookmarkUtil.truncateFields(this.name, 'comment',
+                joinText([ps.body, ps.description], ' ', true))
         );
     },
     privateCache: {
         bookmarked: {
-            data: {},
+            data: null,
             has: function(url) {
-                return typeof HatenaBookmark.privateCache.bookmarked.data[url] !== 'undefined';
+                return this.data && this.data.has(url);
             },
             add: function(url) {
-                HatenaBookmark.privateCache.bookmarked.data[url] = true;
+                if (!this.data) {
+                    this.data = new Pot.Hash();
+                }
+                this.data.set(url, true);
             },
             clear: function() {
-                HatenaBookmark.privateCache.bookmarked.data = {};
+                this.data && this.data.clear();
             }
         },
         tags: {
-            normalize: function(tags) {
+            normalize: function(tags, resetOnly) {
                 let result = [];
                 //
                 // 増えたタグの解析を行うようにする
@@ -6108,7 +6444,10 @@ update(models.HatenaBookmark, {
                 if (Pot.isArray(tags)) {
                     result = tags || [];
                 }
-                return Pot.ArrayUtil.unique(result);
+                if (!resetOnly) {
+                    result = Pot.ArrayUtil.unique(result);
+                }
+                return result;
             }
         }
     },
@@ -6150,7 +6489,8 @@ update(models.HatenaBookmark, {
                             (data.original_url && data.original_url === url)) {
                             if (data.bookmarked_data &&
                                 data.bookmarked_data.timestamp &&
-                                data.bookmarked_data.user != null) {
+                                data.bookmarked_data.user != null
+                            ) {
                                 self.privateCache.bookmarked.add(url);
                                 result = true;
                             }
@@ -6186,8 +6526,8 @@ update(models.HatenaBookmark, {
             // 本来の処理
             tags = items(tags).map(function(pair) {
                 return {
-                    name: pair[0],
-                    frequency: pair[1].count
+                    name      : pair[0],
+                    frequency : pair[1].count
                 }
             });
             
@@ -6206,14 +6546,12 @@ update(models.HatenaBookmark, {
             return request('http://b.hatena.ne.jp/bookmarklet.edit', {
                 redirectionLimit: 0,
                 sendContent: {
-                    rks: token,
-                    url: url.replace(/%[0-9a-f]{2}/g, function(s) {
-                        return s.toUpperCase();
-                    }),
-                    title: title,
-                    comment: Hatena.reprTags(tags) + description.replace(/[\r\n]+/g, ' '),
+                    rks     : token,
+                    url     : url.replace(/%[0-9a-f]{2}/g, function(s) { return s.toUpperCase(); }),
+                    title   : title,
+                    comment : Hatena.reprTags(tags) + description.replace(/[\r\n]+/g, ' '),
                     // plusのみ有効
-                    private: (privateMode ? 1 : 0).toString()
+                    private : (privateMode ? 1 : 0).toString()
                 }
             });
         });
@@ -6229,36 +6567,37 @@ update(models.HatenaBookmark, {
         let self = this;
         return Hatena.getCurrentUser().addCallback(function(user) {
             return new DeferredHash({
-                tags: self.getUserTags(user),
-                entry: self.getEntry(url)
+                tags  : self.getUserTags(user),
+                entry : self.getEntry(url)
             });
         }).addCallback(function(ress) {
-            let entry, tags, duplicated, endpoint, form;
+            let entry, tags, duplicated, endpoint, form, privateMode;
+            privateMode = Pot.getPref(POT_BOOKMARK_PRIVATE);
             entry = ress.entry[1];
             tags = ress.tags[1] || [];
-            tags = self.privateCache.tags.normalize(tags);
+            tags = self.privateCache.tags.normalize(tags, true);
             duplicated = !!entry.bookmarked_data;
             endpoint = HatenaBookmark.POST_URL + '?' + queryString({
-                mode: 'confirm',
-                url: url
+                mode : 'confirm',
+                url  : url
             });
             form = {
                 item: entry.title
             };
             if (duplicated) {
                 form = update(form, {
-                    description: entry.bookmarked_data.comment,
-                    tags: entry.bookmarked_data.tags,
-                    private: entry.bookmarked_data.private
+                    description : entry.bookmarked_data.comment,
+                    tags        : entry.bookmarked_data.tags,
+                    private     : privateMode ? 1 : entry.bookmarked_data.private
                 });
             }
             return {
-                form: form,
-                editPage: endpoint,
-                tags: tags,
-                duplicated: duplicated,
-                recommended: entry.recommend_tags
-            }
+                form        : form,
+                editPage    : endpoint,
+                tags        : tags,
+                duplicated  : duplicated,
+                recommended : entry.recommend_tags
+            };
         });
     },
     /**
@@ -6362,6 +6701,38 @@ update(models.Delicious, {
     check: function(ps) {
         return Pot.BookmarkUtil.check(ps);
     },
+    privateCache: {
+        bookmarked: {
+            data: null,
+            has: function(url) {
+                return this.data && this.data.has(url);
+            },
+            add: function(url) {
+                if (!this.data) {
+                    this.data = new Pot.Hash();
+                }
+                this.data.set(url, true);
+            },
+            clear: function() {
+                this.data && this.data.clear();
+            }
+        },
+        tags: {
+            normalize: function(tags) {
+                let result = [];
+                //
+                // 増えたタグの解析を行うようにする
+                //
+                //FIXME: #503 API制限をキャッシュでどうにかする
+                //
+                Pot.QuickPostForm.resetCandidates();
+                if (Pot.isArray(tags)) {
+                    result = tags || [];
+                }
+                return Pot.ArrayUtil.unique(result);
+            }
+        }
+    },
     /**
      * ユーザーの利用しているタグ一覧を取得する。
      *
@@ -6369,26 +6740,50 @@ update(models.Delicious, {
      * @return {Array}
      */
     getUserTags: function(user) {
+        const TAGS_URL    = 'http://feeds.delicious.com/feeds/json/tags/';
+        const SANDBOX_URL = 'http://feeds.delicious.com/';
         // 同期でエラーが起きないようにする
         return succeed().addCallback(function() {
-            return request('http://feeds.delicious.com/feeds/json/tags/' + (user || Delicious.getCurrentUser()));
+            return request(TAGS_URL + (user || Delicious.getCurrentUser()));
         }).addCallback(function(res) {
-            var tags = evalInSandbox(res.responseText, 'http://feeds.delicious.com/');
-            
-            // タグが無いか?(取得失敗時も発生)
+            let tags = evalInSandbox(res.responseText, SANDBOX_URL);
+            // タグが無いか(?)(取得失敗時も発生)
             if (!tags || isEmpty(tags)) {
                 tags = [];
             } else {
                 tags = reduce(function(memo, tag) {
                     memo.push({
-                        name: tag[0],
-                        frequency: tag[1]
+                        name      : tag[0],
+                        frequency : tag[1]
                     });
                     return memo;
                 }, tags, []);
             }
             return tags;
         });
+    },
+    isBookmarked: function(url) {
+        const CHECK_URL = 'http://www.delicious.com/save';
+        let self = this;
+        if (this.privateCache.bookmarked.has(url)) {
+            return succeed(true);
+        } else {
+            // ログインチェック
+            this.getCurrentUser();
+            return request(CHECK_URL, {
+                queryString: {
+                    noui : 1,
+                    url  : url
+                }
+            }).addCallback(function(res) {
+                let bookmarked, doc = convertToHTMLDocument(res.responseText);
+                bookmarked = !!(doc && doc.getElementById('savedon'));
+                if (bookmarked) {
+                    self.privateCache.bookmarked.add(url);
+                }
+                return bookmarked;
+            });
+        }
     },
     /**
      * タグ、おすすめタグ、ネットワークなどを取得する。
@@ -6398,7 +6793,7 @@ update(models.Delicious, {
      * @return {Object}
      */
     getSuggestions: function(url) {
-        var self = this, ds = {
+        let self = this, ds = {
             tags: this.getUserTags(),
             suggestions: succeed().addCallback(function() {
                 // ログインをチェックする
@@ -6407,22 +6802,31 @@ update(models.Delicious, {
                 // ブックマークレット用画面の削除リンクを使い既ブックマークを判定する
                 return request('http://www.delicious.com/save', {
                     queryString: {
-                        noui: 1,
-                        url: url
+                        noui : 1,
+                        url  : url
                     }
                 });
             }).addCallback(function(res) {
-                var doc = convertToHTMLDocument(res.responseText);
+                let item, note, tags, privateMode, doc;
+                doc = convertToHTMLDocument(res.responseText);
+                item = doc.getElementById('saveTitle').value;
+                note = doc.getElementById('saveNotes').value;
+                tags = doc.getElementById('saveTags').value;
+                tags = self.privateCache.tags.normalize(Pot.BookmarkUtil.normalizeTags(tags));
+                privateMode = doc.getElementById('savePrivate').checked;
+                if (Pot.getPref(POT_BOOKMARK_PRIVATE)) {
+                    privateMode = true;
+                }
                 return {
-                    editPage: 'http://www.delicious.com/save?url=' + encodeURIComponent(url),
-                    form: {
-                        item: doc.getElementById('saveTitle').value,
-                        description: doc.getElementById('saveNotes').value,
-                        tags: doc.getElementById('saveTags').value.split(/[\s\u3000]+/),
-                        private: doc.getElementById('savePrivate').checked
+                    editPage : 'http://www.delicious.com/save?url=' + encodeURIComponent(url),
+                    form : {
+                        item        : item,
+                        description : note,
+                        tags        : tags,
+                        private     : privateMode
                     },
-                    duplicated: !!doc.getElementById('savedon'),
-                    recommended: $x('id("recommendedField")//span[contains(@class,"m")]/text()', doc, true)
+                    duplicated  : !!doc.getElementById('savedon'),
+                    recommended : $x('id("recommendedField")//span[contains(@class,"m")]/text()', doc, true)
                 }
             })
         };
@@ -6453,29 +6857,39 @@ update(models.Delicious, {
         return user;
     },
     post: function(ps) {
-        var tags, notes, title;
-        title = Pot.BookmarkUtil.truncateFields(this.name, 'title', ps.item);
-        tags = Pot.BookmarkUtil.truncateFields(this.name, 'tagLength', Pot.BookmarkUtil.appendConstantTags(ps.tags));
-        notes = Pot.BookmarkUtil.truncateFields(this.name, 'comment', joinText([ps.body, ps.description], ' ', true));
-        return request('http://www.delicious.com/post/', {
+        const POST_URL = 'http://www.delicious.com/post/';
+        let tags, notes, title;
+        {
+            let tr = Pot.BookmarkUtil.truncateFields,
+                append = Pot.BookmarkUtil.appendConstantTags,
+                name = this.name;
+            title = tr(name, 'title', ps.item);
+            tags = tr(name, 'tagLength', append(ps.tags));
+            notes = tr(name, 'comment', joinText([ps.body, ps.description], ' ', true));
+        }
+        return request(POST_URL, {
             queryString: {
-                title: title,
-                url: ps.itemUrl
+                title : title,
+                url   : ps.itemUrl
             }
         }).addCallback(function(res) {
-            var elmForm, doc = convertToHTMLDocument(res.responseText);
+            let elmForm, actionUrl, action, doc;
+            doc = convertToHTMLDocument(res.responseText);
             elmForm = doc.getElementById('saveForm');
             if (!elmForm) {
                 throw new Error(getMessage('error.notLoggedin'));
             }
-            return request('http://www.delicious.com' + $x('id("saveForm")/@action', doc), {
-                redirectionLimit: 0,
-                sendContent: update(formContents(elmForm), {
-                    description: title,
-                    jump: 'no',
-                    notes: notes,
-                    tags: joinText(tags, ' '),
-                    share: (ps.private || Pot.getPref(POT_BOOKMARK_PRIVATE)) ? 'no' : ''
+            Pot.QuickPostForm.resetCandidates();
+            action = $x('id("saveForm")/@action', doc);
+            actionUrl = 'http://www.delicious.com/' + Pot.StringUtil.ltrim(action, '/');
+            return request(actionUrl, {
+                redirectionLimit : 0,
+                sendContent : update(formContents(elmForm), {
+                    description : title,
+                    jump        : 'no',
+                    notes       : notes,
+                    tags        : joinText(tags, ' '),
+                    share       : (ps.private || Pot.getPref(POT_BOOKMARK_PRIVATE)) ? 'no' : ''
                 })
             });
         });
@@ -6564,49 +6978,97 @@ update(models.LivedoorClip, {
     ICON: 'http://clip.livedoor.com/favicon.ico',
     POST_URL: 'http://clip.livedoor.com/clip/add',
     check: function(ps) {
-        return /(?:photo|quote|link|conversation|video|bookmark)/.test(ps.type) && !ps.file;
+        return Pot.BookmarkUtil.check(ps);
+    },
+    privateCache: {
+        bookmarked: {
+            data: null,
+            has: function(url) {
+                return this.data && this.data.has(url);
+            },
+            add: function(url) {
+                if (!this.data) {
+                    this.data = new Pot.Hash();
+                }
+                this.data.set(url, true);
+            },
+            clear: function() {
+                this.data && this.data.clear();
+            }
+        },
+        tags: {
+            normalize: function(tags) {
+                let result = [];
+                //
+                // 増えたタグの解析を行うようにする
+                //
+                //FIXME: #503 API制限をキャッシュでどうにかする
+                //
+                Pot.QuickPostForm.resetCandidates();
+                if (Pot.isArray(tags)) {
+                    result = tags || [];
+                }
+                return Pot.ArrayUtil.unique(result);
+            }
+        }
     },
     post: function(ps) {
         return LivedoorClip.getToken().addCallback(function(token) {
-            let content = {
-                rate    : ps.rate ? ps.rate : '',
-                title   : ps.item,
-                postKey : token,
-                link    : ps.itemUrl,
-                tags    : joinText(ps.tags, ' '),
-                notes   : joinText([ps.body, ps.description], ' ', true),
-                public  : (ps.private || Pot.getPref(POT_BOOKMARK_PRIVATE)) ? 'off' : 'on'
-            };
+            let title, tags, notes;
+            {
+                let tr = Pot.BookmarkUtil.truncateFields,
+                    append = Pot.BookmarkUtil.appendConstantTags,
+                    name = LivedoorClip.name;
+                title = tr(name, 'title', ps.item);
+                tags = tr(name, 'tagLength', LivedoorClip.validateTags(append(ps.tags)));
+                notes = tr(name, 'comment', joinText([ps.body, ps.description], ' ', true));
+            }
+            Pot.QuickPostForm.resetCandidates();
             return request(LivedoorClip.POST_URL, {
                 redirectionLimit: 0,
-                sendContent: content
+                sendContent: {
+                    rate    : String(Math.max(0, Math.min(5, ps.rate - 0)) || 0),
+                    title   : title,
+                    postkey : token,
+                    link    : ps.itemUrl,
+                    tags    : joinText(tags || [], ' '),
+                    notes   : notes,
+                    public  : (ps.private || Pot.getPref(POT_BOOKMARK_PRIVATE)) ? 'off' : 'on'
+                }
             });
         });
     },
+    /**
+     * livedoorクリップのタグで使用できない文字を置換する
+     */
+    validateTags: function(tags) {
+        // 削除されてしまうので仕方なく全角にする
+        let result = [], marks = {
+            '?': '？',
+            '/': '／',
+            '%': '％',
+            '[': '［',
+            ']': '］',
+            ':': '：',
+            '#': '＃'
+        }, re = {
+            by: new RegExp('[' + keys(marks).map(function(k) {
+                    return Pot.escapeRegExp(k);
+                }) + ']', 'g'),
+            to: function(m) {
+                return marks[m] || '';
+            }
+        };
+        Pot.BookmarkUtil.normalizeTags(tags).forEach(function(tag) {
+            tag = tag.replace(re.by, re.to);
+            if (tag && tag.length) {
+                result.push(tag);
+            }
+        });
+        return result;
+    },
     getAuthCookie: function() {
         return getCookieString('livedoor.com', '.LRC');
-    },
-    getSuggestions: function(url) {
-        if (!this.getAuthCookie()) {
-            return fail(new Error(getMessage('error.notLoggedin')));
-        }
-        // 何かのURLを渡す必要がある
-        return request(LivedoorClip.POST_URL, {
-            queryString: {
-                link: url || 'http://tombloo/'
-            }
-        }).addCallback(function(res){
-            let doc = convertToHTMLDocument(res.responseText);
-            return {
-                duplicated: !!$x('//form[@name="delete_form"]', doc),
-                tags: $x('//div[@class="TagBox"]/span/text()', doc, true).map(function(tag) {
-                    return {
-                        name      : tag,
-                        frequency : -1
-                    };
-                })
-            };
-        });
     },
     getToken: function() {
         let self = this;
@@ -6622,28 +7084,92 @@ update(models.LivedoorClip, {
             case 'changed':
                 return request(LivedoorClip.POST_URL, {
                     queryString: {
-                        link  : 'http://tombloo/',
+                        link  : 'http://www.example.com/',
                         cache : Date.now()
                     }
                 }).addCallback(function(res) {
-                    let token, re, s;
-                    re = /(["'])postkey\1[\u0009\u0020]*value[\u0009\u0020]*=[\u0009\u0020]*(['"])([^\2]*?)\2/i;
-                    s = Pot.StringUtil.stringify(res.responseText);
-                    try {
-                        token = s.match(re)[3];
-                        if (!token) {
-                            throw token;
-                        }
-                        self.token = token;
-                    } catch (e) {
+                    let token, expr, doc;
+                    doc = convertToHTMLDocument(res.responseText);
+                    expr = '//input[@name="postkey"]/@value';
+                    token = $x(expr, doc);
+                    if (!token) {
                         throw new Error(getMessage('error.notLoggedin'));
                     }
-                    return self.token;
+                    return self.token = token;
                 });
                 break;
             default:
                 break;
         }
+    },
+    isBookmarked: function(url) {
+        if (!this.getAuthCookie()) {
+            return fail(new Error(getMessage('error.notLoggedin')));
+        }
+        return this.privateCache.bookmarked.has(url) ? succeed(true) :
+            request(LivedoorClip.POST_URL, {
+                queryString: {
+                    link: url
+                }
+            }).addCallback(function(res) {
+                let bookmarked, expr, doc;
+                doc = convertToHTMLDocument(res.responseText);
+                expr = '//form[@name="delete_form"]';
+                bookmarked = !!$x(expr, doc);
+                if (bookmarked) {
+                    LivedoorClip.privateCache.bookmarked.add(url);
+                }
+                return bookmarked;
+            });
+    },
+    getSuggestions: function(url) {
+        const DUMMY_URL = 'http://www.example.com/';
+        let that = this, uri;
+        // 何かのURLを渡す必要がある
+        uri = url || DUMMY_URL;
+        if (!this.getAuthCookie()) {
+            return fail(new Error(getMessage('error.notLoggedin')));
+        }
+        return Pot.BookmarkUtil.getRecommends(uri).addCallback(function(keywords) {
+            return request(that.POST_URL, {
+                queryString: {
+                    link: uri
+                }
+            }).addCallback(function(res) {
+                let tags, duplicated, doc, form, val, item, postTags, description;
+                doc = convertToHTMLDocument(res.responseText);
+                val = function(x, y) {
+                    return y ? ($x(x, doc, y) || []) : Pot.StringUtil.stringify($x(x, doc));
+                };
+                duplicated = !!$x('//form[@name="delete_form"]', doc);
+                tags = [];
+                val('//div[@class="TagBox"]/span/text()', true).forEach(function(tag) {
+                    let name = Pot.StringUtil.trim(tag);
+                    if (name && name.length) {
+                        tags[tags.length] = {
+                            name      : name,
+                            frequency : -1
+                        };
+                    }
+                });
+                item = val('//input[@name="my_title"]/@value');
+                postTags = val('//input[@name="tags"]/@value');
+                postTags = Pot.BookmarkUtil.normalizeTags(postTags);
+                description = val('//textarea[@name="notes"]/text()');
+                tags = that.privateCache.tags.normalize(tags);
+                return {
+                    editPage    : Pot.sprintf('%s?link=%s', that.POST_URL, encodeURIComponent(url)),
+                    recommended : keywords || [],
+                    duplicated  : duplicated,
+                    tags        : tags,
+                    form        : {
+                        item        : item,
+                        tags        : postTags,
+                        description : description
+                    }
+                };
+            });
+        });
     },
     /**
      * 指定したURLのエントリー数を取得(Image)
@@ -6719,19 +7245,18 @@ update(models.Yahoo, {
             df = new Deferred();
             d = this.explode(string, 'parse');
             d.addCallback(function(chars) {
-                chars.forEach(function(s) {
+                Pot.forEach(chars, function(x, s) {
                     df.addCallback(function() {
                         return self.parse({
                             sentence: Pot.StringUtil.stringify(s),
                             response: 'surface,pos'
                         }).addCallback(function(res) {
-                            let surface;
-                            surface = list(res.ma_result.word_list.word.surface);
-                            list(res.ma_result.word_list.word.pos).forEach(function(p, i) {
-                                result.push({
-                                    surface: surface[i].toString(),
-                                    pos: p.toString()
-                                });
+                            let surface = list(res.ma_result.word_list.word.surface);
+                            Pot.forEach(list(res.ma_result.word_list.word.pos), function(i, p) {
+                                result[result.length] = {
+                                    surface : surface[i].toString(),
+                                    pos     : p.toString()
+                                };
                             });
                             return wait(0);
                         });
@@ -6756,7 +7281,7 @@ update(models.Yahoo, {
             df = new Deferred();
             d = this.explode(string, 'keyword');
             d.addCallback(function(chars) {
-                chars.forEach(function(s) {
+                Pot.forEach(chars, function(x, s) {
                     df.addCallback(function() {
                         return request(url, {
                             charset: 'utf-8',
@@ -6767,8 +7292,8 @@ update(models.Yahoo, {
                             }
                         }).addCallback(function(res) {
                             let words = JSON.parse(res.responseText);
-                            forEach(words, function([name, score]) {
-                                var i = parseInt(score) || 50;
+                            Pot.forEach(words, function(name, score) {
+                                let i = parseInt(score) || 50;
                                 while (typeof result[i] === 'string') {
                                     i++;
                                 }
@@ -6784,8 +7309,9 @@ update(models.Yahoo, {
                     // 数字/記号だけorマルチバイト1文字だけはダメ
                     invalid = /^[!-@[-`\]{-~}\s]+$|^[\u0100-\uFFFF]$/;
                     dp = Pot.DeferredUtil.repeat(result.length, function(idx) {
-                        Pot.ArrayUtil.emptyFilter(Pot.StringUtil.
-                            trim(result[idx]).split(clean)).forEach(function(v) {
+                        Pot.ArrayUtil.emptyFilter(Pot.StringUtil.trim(result[idx])
+                            .split(clean)).forEach(function(v) 
+                        {
                             item = Pot.StringUtil.trim(v).replace(clean, '');
                             if (item && item.length && !invalid.test(item)) {
                                 results[results.length] = item;
@@ -6814,7 +7340,7 @@ update(models.Yahoo, {
             df = new Deferred();
             d = this.explode(string, 'parse');
             d.addCallback(function(chars) {
-                chars.forEach(function(s) {
+                Pot.forEach(chars, function(x, s) {
                     df.addCallback(function() {
                         return self.parse({
                             sentence: Pot.StringUtil.stringify(s),
@@ -6887,7 +7413,6 @@ update(models.Yahoo, {
                 s = null;
                 len = chars.length;
                 i = 0;
-                // ループのゆらぎを防ぐためジェネレータを生成
                 g = (function() {
                     while (i < len) {
                         yield i;
@@ -6949,32 +7474,142 @@ update(models.YahooBookmarks, {
     check: function(ps) {
         return Pot.BookmarkUtil.check(ps);
     },
+    privateCache: {
+        bookmarked: {
+            data: null,
+            has: function(url) {
+                return this.data && this.data.has(url);
+            },
+            add: function(url) {
+                if (!this.data) {
+                    this.data = new Pot.Hash();
+                }
+                this.data.set(url, true);
+            },
+            clear: function() {
+                this.data && this.data.clear();
+            }
+        },
+        tags: {
+            normalize: function(tags) {
+                let result = [];
+                //
+                // 増えたタグの解析を行うようにする
+                //
+                //FIXME: #503 API制限をキャッシュでどうにかする
+                //
+                Pot.QuickPostForm.resetCandidates();
+                if (Pot.isArray(tags)) {
+                    result = tags || [];
+                }
+                return Pot.ArrayUtil.unique(result);
+            }
+        }
+    },
     post: function(ps) {
-        var self = this;
-        return request('http://bookmarks.yahoo.co.jp/action/post').addCallback(function(res) {
-            if (res.responseText.indexOf('login_form') !== -1) {
+        const POST_URL = 'http://bookmarks.yahoo.co.jp/action/post';
+        const DONE_URL = 'http://bookmarks.yahoo.co.jp/action/post/done';
+        let that = this;
+        return request(POST_URL).addCallback(function(res) {
+            let text, doc;
+            text = Pot.StringUtil.stringify(res.responseText);
+            doc = convertToHTMLDocument(text);
+            if (text.indexOf('login_form') !== -1) {
                 throw new Error(getMessage('error.notLoggedin'));
             }
-            return formContents($x('(id("addbookmark")//form)[1]', convertToHTMLDocument(res.responseText)));
+            return formContents($x('(id("addbookmark")//form)[1]', doc));
         }).addCallback(function(fs) {
-            var tags, desc, title, privateMode;
+            let tags, desc, title, privateMode;
             privateMode = Pot.getPref(POT_BOOKMARK_PRIVATE);
-            title = Pot.BookmarkUtil.truncateFields(self.name, 'title', ps.item);
-            tags = Pot.BookmarkUtil.truncateFields(self.name, 'tagLength', Pot.BookmarkUtil.appendConstantTags(ps.tags)),
-            desc = Pot.BookmarkUtil.truncateFields(self.name, 'comment', joinText([ps.body, ps.description], ' ', true));
-            return request('http://bookmarks.yahoo.co.jp/action/post/done', {
-                redirectionLimit: 0,
-                sendContent: {
-                    title: title,
-                    url: ps.itemUrl,
-                    desc: desc,
-                    tags: joinText(tags, ' '),
-                    crumbs: fs.crumbs,
-                    visibility: (ps.private == null && !privateMode) ? 1 :
-                                        ((ps.private || privateMode) ? 0 : 1)
+            {
+                let tr = Pot.BookmarkUtil.truncateFields,
+                    append = Pot.BookmarkUtil.appendConstantTags,
+                    name = that.name;
+                title = tr(name, 'title', ps.item);
+                tags = tr(name, 'tagLength', append(ps.tags));
+                desc = tr(name, 'comment', joinText([ps.body, ps.description], ' ', true));
+            }
+            Pot.QuickPostForm.resetCandidates();
+            return request(DONE_URL, {
+                redirectionLimit : 0,
+                sendContent : {
+                    title      : title,
+                    url        : ps.itemUrl,
+                    desc       : desc,
+                    tags       : joinText(tags, ' '),
+                    crumbs     : fs.crumbs,
+                    visibility : (ps.private == null && !privateMode) ? 1 :
+                                         ((ps.private || privateMode) ? 0 : 1)
                 }
             });
         });
+    },
+    isBookmarked: function(url) {
+        const CHECK_URL = 'http://bookmarks.yahoo.co.jp/bookmarklet/showpopup';
+        let that = this;
+        return this.privateCache.bookmarked.has(url) ? succeed(true) : request(CHECK_URL, {
+            queryString: {
+                u: url
+            }
+        }).addCallback(function(res) {
+            let bookmarked, expr, doc;
+            doc = convertToHTMLDocument(res.responseText);
+            if (!$x('id("bmtsave")', doc)) {
+                throw new Error(getMessage('error.notLoggedin'));
+            }
+            expr = '//input[@name="docid"]';
+            bookmarked = !!$x(expr, doc);
+            if (bookmarked) {
+                that.privateCache.bookmarked.add(url);
+            }
+            return bookmarked;
+        });
+    },
+    getBookmarkTagsByURI: function(uri) {
+        const TAGS_URL = 'http://bookmarks.yahoo.co.jp/bookmarklet/showpopup';
+        let that = this;
+        return request(TAGS_URL, {
+            queryString: {
+                u: uri
+            }
+        }).addCallback(function(res) {
+            let doc, tags;
+            doc = convertToHTMLDocument(res.responseText);
+            if (!$x('id("bmtsave")', doc)) {
+                throw new Error(getMessage('error.notLoggedin'));
+            }
+            tags = $x('//input[@name="tags"]/@value', doc);
+            tags = that.privateCache.tags.normalize(Pot.BookmarkUtil.normalizeTags(tags));
+            return tags;
+        });
+    },
+    getBookmarkDescriptionByURI: function(uri) {
+        const DESC_URL = 'http://bookmarks.yahoo.co.jp/bookmarklet/showpopup';
+        let that = this;
+        return request(DESC_URL, {
+            queryString: {
+                u: uri
+            }
+        }).addCallback(function(res) {
+            let doc, desc;
+            doc = convertToHTMLDocument(res.responseText);
+            if (!$x('id("bmtsave")', doc)) {
+                throw new Error(getMessage('error.notLoggedin'));
+            }
+            desc = $x('//textarea[@name="desc"]/text()', doc);
+            return Pot.StringUtil.stringify(desc);
+        });
+    },
+    getTagsInSandbox: function(part, text) {
+        const SANDBOX_URL = 'http://bookmarks.yahoo.co.jp/';
+        let result, code, re, space;
+        space = '[\\u0009\\u0020\\u3000]';
+        re = new RegExp(Pot.sprintf('^%s*%s%s*=%s*(.+)(?:;|$)',
+            space, Pot.escapeRegExp(part), space, space
+        ), 'm');
+        code = Pot.unescapeHTML(unescapeHTML(Pot.StringUtil.stringify(text).extract(re)));
+        result = evalInSandbox(code, SANDBOX_URL) || [];
+        return result;
     },
     /**
      * タグ、おすすめタグを取得する。
@@ -6984,29 +7619,62 @@ update(models.YahooBookmarks, {
      * @return {Object}
      */
     getSuggestions: function(url) {
-        return request('http://bookmarks.yahoo.co.jp/bookmarklet/showpopup', {
+        const EDIT_URL = 'http://bookmarks.yahoo.co.jp/bookmarklet/showpopup';
+        let that = this;
+        return request(EDIT_URL, {
             queryString: {
                 u: url
             }
         }).addCallback(function(res) {
-            var doc = convertToHTMLDocument(res.responseText);
+            let doc, tags, allTags, duplicated, popular, form, val;
+            let item, notes, postTags, privateMode, text;
+            text = res.responseText;
+            doc = convertToHTMLDocument(text);
+            val = function(x) {
+                return Pot.StringUtil.stringify($x(x, doc));
+            };
             if (!$x('id("bmtsave")', doc)) {
                 throw new Error(getMessage('error.notLoggedin'));
             }
-            function getTags(part) {
-                var code, re = new RegExp('^' + Pot.escapeRegExp(part) + ' ?= ?(.+)(;|$)', 'm');
-                code = Pot.unescapeHTML(unescapeHTML(res.responseText.extract(re)));
-                return evalInSandbox(code, 'http://bookmarks.yahoo.co.jp/') || [];
+            duplicated = !!$x('//input[@name="docid"]', doc);
+            popular = that.getTagsInSandbox('rectags', text)  || [];
+            allTags = that.getTagsInSandbox('yourtags', text) || [];
+            tags = [];
+            ((allTags && Pot.isArray(allTags)) ? allTags : []).forEach(function(tag) {
+                let name = Pot.StringUtil.trim(tag);
+                if (name && name.length) {
+                    tags[tags.length] = {
+                        name      : name,
+                        frequency : -1
+                    };
+                }
+            });
+            tags = that.privateCache.tags.normalize(tags);
+            item = val('//input[@name="title"]/@value');
+            notes = val('//textarea[@name="desc"]/text()');
+            postTags = val('//input[@name="tags"]/@value');
+            postTags = Pot.BookmarkUtil.normalizeTags(postTags);
+            privateMode = val('//input[@name="visibility"][checked]/@value');
+            if (Pot.getPref(POT_BOOKMARK_PRIVATE)) {
+                privateMode = true;
+            } else {
+                privateMode = !!Number(privateMode);
+            }
+            form = {};
+            if (duplicated) {
+                form = {
+                    item        : item,
+                    description : notes,
+                    tags        : postTags,
+                    private     : privateMode
+                };
             }
             return {
-                duplicated: !!$x('//input[@name="docid"]', doc),
-                popular: getTags('rectags'),
-                tags: getTags('yourtags').map(function(tag) {
-                    return {
-                        name: tag,
-                        frequency: -1
-                    }
-                })
+                duplicated : duplicated,
+                popular    : popular,
+                tags       : tags,
+                form       : form,
+                editPage   : Pot.sprintf('%s?u=%s', EDIT_URL, encodeURIComponent(url))
             };
         });
     },
@@ -7146,16 +7814,16 @@ update(models.FirefoxBookmark, {
     addBookmark: function(uri, title, tags, description) {
         let self = this, ps, folder, bs = NavBookmarksService, index = bs.DEFAULT_INDEX;
         
-        // ハッシュタイプの引数か?
+        // String じゃない場合の対処
         if (typeof(uri) === 'object' && !(uri instanceof IURI)) {
             if (uri.index != null) {
                 index = uri.index;
             }
-            folder = uri.folder;
-            title = uri.title;
-            tags = uri.tags;
+            folder      = uri.folder;
+            title       = uri.title;
+            tags        = uri.tags;
             description = uri.description;
-            uri = uri.uri;
+            uri         = uri.uri;
         }
         ps = {
             item: title,
@@ -7243,9 +7911,6 @@ update(models.FirefoxBookmark, {
     isBookmarked: function(uri) {
         let bookmarked = this.getBookmarkId(uri) != null;
         return succeed(bookmarked);
-        
-        // 存在しなくてもtrueが返ってくるようになり利用できない
-        // return NavBookmarksService.isBookmarked(createURI(uri));
     },
     removeBookmark: function(uri) {
         this.removeItem(this.getBookmarkId(uri));
@@ -7390,13 +8055,21 @@ update(models.FirefoxBookmark, {
                 };
             });
         }).addCallback(function() {
-            return Pot.BookmarkUtil.getKeywords(url).addCallback(function(keywords) {
-                return self.isBookmarked(url).addCallback(function(duplicated) {
-                    return {
-                        duplicated: duplicated,
-                        recommended: keywords || [],
-                        tags: tags
-                    };
+            return self.getBookmarkTagsByURI(url).addCallback(function(postTags) {
+                return self.getBookmarkDescriptionByURI(url).addCallback(function(description) {
+                    return Pot.BookmarkUtil.getRecommends(url).addCallback(function(keywords) {
+                        return self.isBookmarked(url).addCallback(function(duplicated) {
+                            return {
+                                duplicated  : duplicated,
+                                recommended : keywords || [],
+                                tags        : tags,
+                                form        : {
+                                    tags        : postTags,
+                                    description : description
+                                }
+                            };
+                        });
+                    });
                 });
             });
         });
@@ -7486,35 +8159,340 @@ callLater(1.25, function() {
         },
         extract: function(ctx) {
             let d, ps = {
-                type: 'bookmark',
-                item: ctx.title,
-                itemUrl: ctx.href
+                type    : 'bookmark',
+                item    : ctx.title,
+                itemUrl : ctx.href,
+                form    : {}
             };
             if (ctx.date) {
                 ps.date = ctx.date;
             }
-            if (Pot.tagProvider && Pot.tagProvider.getBookmarkTagsByURI) {
-                d = Pot.tagProvider.getBookmarkTagsByURI(ps.itemUrl).addCallback(function(tags) {
-                    ps.tags = Pot.BookmarkUtil.normalizeTags(tags);
-                    return ps;
-                });
-            } else {
-                d = succeed(ps);
-            }
-            if (Pot.tagProvider && Pot.tagProvider.getBookmarkDescriptionByURI) {
-                d = d.addCallback(function(ps) {
-                    return Pot.tagProvider.getBookmarkDescriptionByURI(ps.itemUrl).addCallback(function(desc) {
-                        ps.description = desc || '';
-                        return ps;
+            d = new Deferred();
+            if (Pot.tagProvider) {
+                if (Pot.tagProvider.getBookmarkTagsByURI) {
+                    d.addCallback(function() {
+                        return Pot.tagProvider.getBookmarkTagsByURI(ps.itemUrl).addCallback(function(tags) {
+                            ps.tags = ps.form.tags = Pot.BookmarkUtil.normalizeTags(tags);
+                            return ps;
+                        });
                     });
-                });
+                }
+                if (Pot.tagProvider.getBookmarkDescriptionByURI) {
+                    d.addCallback(function() {
+                        return Pot.tagProvider.getBookmarkDescriptionByURI(ps.itemUrl).addCallback(function(desc) {
+                            ps.description = ps.form.description = Pot.StringUtil.stringify(desc);
+                            return ps;
+                        });
+                    });
+                }
             }
-            return d;
+            d.addCallback(function() {
+                return ps;
+            });
+            return Pot.callLazy(d);
         }
     }]);
     // アイコンを初期化
     Pot.callLazy(function() { Tombloo.Service.extractors.Bookmark.initIcon(); });
 });
+
+
+})();
+//-----------------------------------------------------------------------------
+// Update - convertToHTMLString / createFlavoredString
+//-----------------------------------------------------------------------------
+(function() {
+/**
+ * Quoteテキストなどで使われれるFlavors関数をアップデート
+ *
+ * [追加機能]
+ * --------------------------------------------------------------------------
+ * - convertToHTMLStringをアップデートして可能なかぎりサニタイズ
+ * - はてなキーワードなどのリンクをはずしても問題ないものを解除する
+ * - コメントノードやCDATAセクションを残さず除去する
+ * - styleのexpressionを削除する
+ * - onclickなどのJavaScriptが動作する属性を削除する
+ * - javascript:などの不要なURIを除去する
+ * - Quoteで選択時にHTMLとプレーンテキストで内容に誤差が生じないよう修正する
+ * - 相対パスのURIがあればhttpなどのプロトコルと絶対パスを補完する
+ * - style="display:none"などの不可視ノードを除去
+ * - 2重エンコードされたエンティティを修正する
+ * --------------------------------------------------------------------------
+ */
+/**
+ * HTMLが表示された状態のプレーンテキストを取得する
+ * 範囲選択をしてコピーした時に得られる文字列に類似
+ *
+ * @param  {Element || Selection}  src     DOM要素または選択範囲
+ * @param  {Boolean}               safe    script要素などの不要要素を除去する
+ *                                         100%セキュアなHTMLになるわけではない
+ *                                         (UnescapeHTMLを用いた
+ *                                           sanitizeHTMLの利用も要検討)
+ * @return {String}                        HTML文字列
+ */
+function potConvertToHTMLString(src, safe) {
+    let me = arguments.callee, doc, encoder, html, root, ancestor, xpath, result;
+    try {
+        if (!src) {
+            throw src;
+        }
+        // 選択範囲の適切な外側まで含めてHTML文字列へ変換する(pre内選択なども正常処理される)
+        doc = src.ownerDocument || src.focusNode && src.focusNode.ownerDocument;
+        encoder = new HTMLCopyEncoder(doc, 'text/unicode',
+            HTMLCopyEncoder.OutputPreformatted | HTMLCopyEncoder.OutputLFLineBreak);
+        encoder[src.nodeType ? 'setNode' : 'setSelection'](src);
+        html = encoder.encodeToString();
+        if (!safe) {
+            result = html;
+        } else {
+            // DOMツリーに戻し不要な要素を除去する
+            if (src.getRangeAt) {
+                ancestor = src.getRangeAt(0).commonAncestorContainer;
+                root = (src.anchorNode == ancestor) ? doc.createElement('div') : ancestor.cloneNode(false);
+                
+                // 親にtableを持たない要素にtrを追加すると消える
+                if (tagName(root) === 'tbody') {
+                    doc.createElement('table').appendChild(root);
+                }
+            } else {
+                root = doc.createElement('div');
+            }
+            root.innerHTML = html;
+            xpath = Pot.sprintf('.//*[contains(",%s,", concat(",", local-name(.), ","))]', me.UNSAFE_ELEMENTS);
+            forEach($x(xpath, root, true), removeElement);
+            xpath = Pot.sprintf('.//@*[not(contains(",%s,", concat(",", local-name(.), ",")))]', me.SAFE_ATTRIBUTES);
+            forEach(doc.evaluate(xpath, root, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null), function(attr) {
+                attr.ownerElement.removeAttribute(attr.name);
+            });
+            me.sanitizeAttributes(doc, root);
+            src = appendChildNodes(doc.createDocumentFragment(), root.childNodes);
+            
+            // 再度HTML文字列へ変換する
+            result = me(src);
+            
+            // HTMLをクリーンアップ
+            result = me.cleanNodes(result, doc);
+        }
+    } catch (e) {
+        result = '';
+    }
+    return Pot.StringUtil.trim(result);
+}
+
+// safe用プロパティを定義
+Pot.extend(potConvertToHTMLString, {
+    UNSAFE_ELEMENTS: Pot.StringUtil.trimAll(<>
+        frame,iframe,script,style,link,meta,base,basefont,
+        bgsound,xmp,plaintext,comment,html,body,head,form
+    </>),
+    SAFE_ATTRIBUTES: Pot.StringUtil.trimAll(<>
+        align,cellpadding,cellspacing,checked,cite,clear,
+        cols,color,colspan,content,coords,enctype,face,
+        for,href,label,method,nohref,nowrap,rel,rows,
+        rowspan,shape,size,span,src,style,type,usemap,valign,value
+    </>),
+    // 不正なアトリビュートを整形/除去
+    sanitizeAttributes: function(doc, root) {
+        let xpath, value, elem, name, removeAttr, patterns = {
+            protocol   : /^(?:http|ftp|file|data)s?:/i,
+            keyword    : /^https?:\/+[\w.-]+\/.*?\b(?:keywords?)\b.*$/i,
+            relative   : /^[.\/]+|^[^:]+$/i,
+            hidden     : /\b(?:display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*[0.]+)\b/i,
+            expression : /(?:\b|^)[^:\s]+\s*:\s*expression\b[\s\S]*$/gi
+        };
+        removeAttr = function(elem, attr) {
+            elem.removeAttribute(attr.name);
+        };
+        xpath = './/@*';
+        forEach(doc.evaluate(xpath, root, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null), function(attr) {
+            value = Pot.StringUtil.stringify(attr.value);
+            elem = attr.ownerElement;
+            name = Pot.StringUtil.stringify(attr.name).toLowerCase();
+            switch (name) {
+                case 'action':
+                case 'href':
+                case 'src':
+                case 'pluginurl':
+                case 'pluginspage':
+                case 'longdesc':
+                case 'lowsrc':
+                case 'dynsrc':
+                case 'background':
+                case 'urn':
+                case 'content':
+                case 'data':
+                case 'codebase':
+                case 'code':
+                case 'archive':
+                case 'profile':
+                    if (!patterns.protocol.test(value) && patterns.relative.test(value)) {
+                        value = Pot.resolveRelativeURI(value, doc);
+                        removeAttr(elem, attr);
+                        elem.setAttribute(name, value);
+                    }
+                    if (!Pot.StringUtil.trim(value)  || !patterns.protocol.test(value) ||
+                        patterns.keyword.test(value) ||
+                        (!patterns.protocol.test(value) && patterns.relative.test(value))
+                    ) {
+                        removeAttr(elem, attr);
+                        if (!elem.attributes.length) {
+                            if (tagName(elem) === 'a') {
+                                elem.parentNode.replaceChild(doc.createTextNode(elem.textContent), elem);
+                            } else {
+                                removeElement(elem);
+                            }
+                        }
+                    }
+                    break;
+                case 'style':
+                    if (!Pot.StringUtil.trim(value)) {
+                        removeAttr(elem, attr);
+                    } else if (patterns.hidden.test(value)) {
+                        removeElement(elem);
+                    } else {
+                        value = value.replace(patterns.expression, '');
+                        removeAttr(elem, attr);
+                        if (Pot.StringUtil.trim(value)) {
+                            elem.setAttribute(name, value);
+                        }
+                    }
+                    break;
+                default:
+                    if (name.slice(0, 2) === 'on') {
+                        removeAttr(elem, attr);
+                    }
+                    break;
+            }
+        });
+    },
+    /**
+     * 無効なタグなどを除去 
+     * (タグが破壊されないよう最小限にとどめる)
+     */
+    cleanNodes: function(html, doc) {
+        let s, patterns = [
+            /<([%?])[\s\S]*?\1>(?:\r\n|\r|\n|)/gi,
+            /(?:<!--[\s\S]*?-->|<!-*\[CDATA\[[\s\S]*?\]\]-*>)(?:\r\n|\r|\n|)/gi,
+            /<![^>]*>(?:\r\n|\r|\n|)/g,
+            /(?:<\s*(\w+:\w+|[\u007F-\uFFFF]+)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>)(?:\r\n|\r|\n|)/gi,
+            /(?:<\s*\/?\s*(?:\w+:\w+|[\u007F-\uFFFF]+)[^>]*\/?>)(?:\r\n|\r|\n|)/gi,
+            /(?:<[%?]|[%?]>|<!\S+|(?:\]\]|-+)>)(?:\r\n|\r|\n|)/gi,
+            new RegExp(Pot.StringUtil.trimAll(<><![CDATA[
+                <(   a|b|i|q|s|u|abbr|acronym|applet|big|cite
+                   | code|dfn|em|font|iframe|kbd|label|object
+                   | samp|small|span|strike|strong|sub|sup|tt
+                   | var|\w+:\w+
+                )>[\s\u3000]*</\1[\s\u3000]*>(?:\r\n|\r|\n|)
+            ]]></>), 'gi'),
+            /(?:(\s*(?:<p>\s*<\/p>|<div>\s*<\/div>)\s*){2,})(?=\s*(?:<p>\s*<\/p>|<div>\s*<\/div>))/gi
+        ];
+        s = Pot.StringUtil.stringify(html);
+        if (s) {
+            Pot.forEach(patterns.remove, function(re) {
+                s = s.replace(re, '');
+            });
+        }
+        return Pot.StringUtil.trim(s);
+    }
+});
+
+
+/**
+ * アップデート
+ */
+(function(globals) {
+/**
+ * convertToHTMLString に適応 (正常動作時のみ)
+ */
+addAround(globals, 'convertToHTMLString', function(proceed, args) {
+    let result;
+    try {
+        result = potConvertToHTMLString.apply(null, args);
+    } catch (e) {
+        result = proceed(args);
+    }
+    return Pot.StringUtil.stringify(result);
+});
+
+/**
+ * HTML表示状態のプレーンテキストを取得する
+ * 範囲選択をしてコピーした時に得られる文字列に類似
+ *
+ * @param  {Element || Selection}     src     DOM要素または選択範囲
+ * @return {String}                           プレーンテキスト
+ */
+/**
+ * Quote テキスト作成時に使用されるメソッド
+ * HTMLとPlainの差が生じるのを防ぐ
+ */
+addAround(globals, 'createFlavoredString', function(proceed, args) {
+    let result, plain, html, src;
+    try {
+        src = args[0];
+        html = Pot.StringUtil.trim(convertToHTMLString(src, true));
+        plain = Pot.StringUtil.trim(convertToPlainText(html));
+        result = new String(plain);
+        result.flavors = {
+            html: html
+        };
+    } catch (e) {
+        result = proceed(args);
+    }
+    return result;
+});
+
+// sanitizeHTML from 00_component.js (Modified)
+/**
+ * sanitizeHTMLメソッドをフィックス
+ *
+ * HTML文字列からobject/script/body/styleなどの要素を取り除く
+ * また不完全なタグなどを整形し正しいHTMLへ変換する
+ * (でもキレイにし過ぎるから用途に応じて...)
+ *
+ * @param  {String}  html  HTML文字列
+ * @return {String}        整形されたHTML文字列
+ */
+addAround(globals, 'sanitizeHTML', function(proceed, args) {
+    let result = null, html, uniqid, top, doc, root, fragment, patterns;
+    uniqid = Pot.sprintf('potSanitizeHTMLUniqueId%08d%s',
+        Pot.mtime(), Math.random().toString(36).split('.').pop()
+    );
+    patterns = [{
+        by: new RegExp(Pot.sprintf('^\\s*<%s[^>]*>|</%s>\\s*$', uniqid, uniqid), 'gi'),
+        to: ''
+    }, {
+        by: /<(\w+)\b\s*([\s\S]*?)\b(?:\s*xmlns(?:\s*:\s*[^=]*)?\s*=\s*["']https?:[^"']+["']\s*)([^>]*)>/gi,
+        to: '<$1 $2 $3>'
+    }, {
+        by: /<(\w+)\s+>/g,
+        to: '<$1>'
+    }, {
+        // 削除によってできた空タグを削除
+        by: new RegExp(Pot.sprintf('<(%s)></\\1>', Pot.StringUtil.trimAll(<>
+                    a|b|i|q|s|u|abbr|acronym|applet|big|cite|
+                    code|dfn|em|font|iframe|kbd|label|object|
+                    samp|small|span|strike|strong|sub|sup|tt|var
+                </>)), 'gi'),
+        to: ''
+    }];
+    try {
+        html = Pot.StringUtil.stringify(args && args[0]);
+        doc = (currentDocument() || document).implementation.createDocument('', '', null);
+        root = doc.appendChild(doc.createElement(uniqid));
+        fragment = UnescapeHTML.parseFragment(html, false, null, doc.documentElement);
+        doc.documentElement.appendChild(fragment);
+        if (root.childNodes.length) {
+            result = serializeToString(root);
+            patterns.forEach(function(re) {
+                result = result.replace(re.by, re.to);
+            });
+        }
+    } catch (e) {
+        result = proceed(args);
+    }
+    return result && result || '';
+});
+})(typeof grobal !== 'undefined' && grobal || {});
 
 
 })();
@@ -7787,7 +8765,7 @@ QuickPostForm.descriptionContextMenus.push(
                    ps[type].flavors && ps[type].flavors.html !== undefined;
         },
         // 複数のクイックポストフォームが開かれても対応できるよう
-        // いくつかプロパティを拡張している
+        // いくつかプロパティを拡張
         beforeShow: function(ps, type, win) {
             if (win && this.check(ps, type)) {
                 this.trigger.register(win, this);
@@ -8294,7 +9272,7 @@ QuickPostForm.descriptionContextMenus.push(
                     to: ' '
                 }, {
                     // ADを削除
-                    by: /\b(?:AD|PR|ＡＤ｜ＰＲ)\s*[:：]\s*(?:[^\r\n]+[\r\n]+|)/gi,
+                    by: /\b(?:AD|PR|ＡＤ｜ＰＲ)[\u0020\u3000]*[:：].*$/gim,
                     to: ' '
                 }, {
                     by: /\b(?:Ads[\u0020\u3000]+by[\u0020\u3000]+Google)\b/gi,
@@ -8327,7 +9305,7 @@ QuickPostForm.descriptionContextMenus.push(
                             (?:このエントリー?を|)
                             [\u0020\u3000]*
                             (?: (?:(?:はてな|Yahoo!)ブックマーク|del\.?icio\.?us|livedoorクリップ|Buzzurl)に(?:追加|登録)
-                              | (?:Twitterで?つぶやく|Facebookで?シェアする
+                              | (?:Twitterで?(?:つぶやく|投稿(?:する|))|Facebookで?シェアする
                                   |mixiチェック[\u0020\u3000]*はてなブックマーク[\u0020\u3000]*
                                   |Evernoteでクリップする|印刷する([\u0020\u3000]*ヘルプ|)
                                 )
@@ -8339,6 +9317,10 @@ QuickPostForm.descriptionContextMenus.push(
                 }, {
                     // はてなダイアリーのノイズを削除
                     by: /\b(?:CommentsAdd[\u0020\u3000]+\w{6,}|\w{24,})\b/gi,
+                    to: ' '
+                }, {
+                    // はてな *users を削除
+                    by: /\d+[\s\u0020\u3000]*users[\s\u0020\u3000]*\d*[.．\s\u00A0\u3000]{0,}/gi,
                     to: ' '
                 }, {
                     // ツイートボタン、はてなボタンのテキスト表示を削除
@@ -8354,15 +9336,15 @@ QuickPostForm.descriptionContextMenus.push(
                     to: ''
                 }, {
                     // カレンダーを削除
-                    by: /(?:\d+\s*月|Dec|Nov|Oct|Sep|Aug|Jul|Jun|May|Apr|Mar|Feb|Jan)\w*\s*(?:\(\s*\d+\s*\)|)/gi,
+                    by: /(?:\d+\s*\b(?:月|Dec|Nov|Oct|Sep|Aug|Jul|Jun|May|Apr|Mar|Feb|Jan)\w*)\s*(?:\(\s*\d+\s*\)|)/gi,
                     to: ' '
                 }, {
                     // リスト記号を削除
-                    by: /\b(?:[\w※＊＋－*+-]\s+[^一-龠々〆ァ-ヴｦ-ｯｱ-ﾝぁ-ん\w\s])\b/gi,
+                    by: /\b(?:[\w※＊＋－*+-]\s+[^一-龠々〆ァ-ヴｦ-ｯｱ-ﾝａ-ｚＡ-Ｚ０-９ぁ-ん\w\s])\b/gi,
                     to: ' '
                 }, {
                     // 連続した記号を削除
-                    by: /(?:([^一-龠々〆ァ-ヴｦ-ｯｱ-ﾝぁ-ん\w\s]{1,4})\s+\1\s*){1,}/gi,
+                    by: /(?:([^一-龠々〆ァ-ヴｦ-ｯｱ-ﾝぁ-んａ-ｚＡ-Ｚ０-９\w\s]{1,4})\s+\1\s*){1,}/gi,
                     to: ' '
                 }, {
                     // 連続した数字を削除
@@ -8374,7 +9356,7 @@ QuickPostForm.descriptionContextMenus.push(
                     to: ' '
                 }, {
                     // 各行のリスト記号を削除
-                    by: /^[\u0020\u3000]*[^一-龠々〆ァ-ヴｦ-ｯｱ-ﾝぁ-ん\w\s]{1}[\u0020\u3000]*/gim,
+                    by: /^[\u0020\u3000]*[^一-龠々〆ァ-ヴｦ-ｯｱ-ﾝぁ-んａ-ｚＡ-Ｚ０-９\w\s]{1}\b[\u0020\u3000]{0,}/gim,
                     to: ' '
                 }, {
                     // 同じ文字の繰り返しを削除
@@ -8844,6 +9826,12 @@ QuickPostForm.descriptionContextMenus.push(
                     }
                 }
                 desc.value = value;
+            }
+        },
+        {
+            name: '<br>を<br />に変換',
+            execute: function(elmText, desc) {
+                desc.value = Pot.StringUtil.stringify(desc.value).replace(/<br\s*>/gi, '<br />');
             }
         },
         {
@@ -10829,6 +11817,7 @@ Tombloo.Service.actions.register({
                 return true;
             },
             execute: function(ctx) {
+                //TODO: ChangeLog
                 Pot.SetupUtil.openAlert(
                     'Tombloo - Bookmarkパッチについて',
                     [
