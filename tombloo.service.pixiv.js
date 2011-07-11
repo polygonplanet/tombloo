@@ -31,8 +31,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version  1.28
- * @date     2011-06-15
+ * @version  1.29
+ * @date     2011-07-12
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -45,8 +45,8 @@
 (function(undefined) {
 //-----------------------------------------------------------------------------
 const LANG = (function(n) {
-    return ((n && n.language || n.userLanguage || n.browserLanguage ||
-           n.systemLanguage) || 'en').split('-').shift().toLowerCase();
+    return ((n && (n.language || n.userLanguage || n.browserLanguage ||
+           n.systemLanguage)) || 'en').split('-').shift().toLowerCase();
 })(navigator);
 
 /**
@@ -64,9 +64,9 @@ var pixivProto = {
     // すべてのタグを挿入する or '*'で始まるタグのみ挿入
     GET_ALL_TAGS: false,
     
-    ILLUST_PAGE_REGEXP: /^https?:\/\/(?:www\.)?pixiv\.net\/member_illust/i,
-    MANGA_PAGE_REGEXP: /\b(?:mode=manga)\b/,
-    PIXIV_HOST_REGEXP: /^(?:[\w-]+\.)*?pixiv\.net(?:\b|$)/,
+    ILLUST_PAGE_REGEXP : /^https?:\/\/(?:www\.)?pixiv\.net\/member_illust/i,
+    MANGA_PAGE_REGEXP  : /\b(?:mode=manga)\b/,
+    PIXIV_HOST_REGEXP  : /^(?:[\w-]+\.)*?pixiv\.net(?:\b|$)/,
     
     XPATH_NEXT_PAGE_HREF: pack(<><![CDATA[
         //*[contains(@class,"works_display")]//a/@href
@@ -101,11 +101,11 @@ var pixivProto = {
                 src = stringify(img.src);
                 href = stringify(link.href);
                 re = {
-                    host: /\bpixiv[.]net/,
-                    ext: /\.(?:jpe?g|png|gif|ico|svg)(?:[!?#].*)?$/i,
-                    illust: /\b(?:member_illust)/i,
-                    mode: /\b(?:mode=medium)\b/i,
-                    id: /\b(?:illust_?id)=\d+/i
+                    host   : /\bpixiv[.]net/,
+                    ext    : /\.(?:jpe?g|png|gif|ico|svg)(?:[!?#].*)?$/i,
+                    illust : /\b(?:member_illust)/i,
+                    mode   : /\b(?:mode=medium)\b/i,
+                    id     : /\b(?:illust_?id)=\d+/i
                 };
                 result = false;
                 if (re.host.test(src) && re.ext.test(src) &&
@@ -183,7 +183,7 @@ var pixivProto = {
     getMangaPageNumber: function(ctx) {
         var page, re;
         try {
-            re = /_p(\d+)[.](?:jpe?g|png|gif|ico|svg)$/i;
+            re = /_p(\d+)[.](?:jpe?g|png|gif|ico|svg)(?:[#?].*|)$/i;
             page = ctx.target.src.match(re)[1];
         } catch (e) {
             page = 0;
@@ -289,7 +289,8 @@ var pixivProto = {
             } catch (e) {
                 doc = getMostRecentWindow().content.document;
             }
-            doc = doc || currentDocument && currentDocument() || document;
+            doc = doc || (typeof currentDocument !== 'undefined' &&
+                    currentDocument()) || document;
         } catch (e) {
             doc = null;
         }
@@ -299,7 +300,7 @@ var pixivProto = {
         var img = image, attr = function(elem, name) {
             return stringify(elem.getAttribute(name)).toLowerCase();
         };
-        setTimeout(function() {
+        callLater(7.5, function() {
             try {
                 if (attr(img, 'loaded') !== 'true' ||
                     attr(img, 'downloaded') !== 'true') {
@@ -316,10 +317,10 @@ var pixivProto = {
                     } catch (e) {}
                 }
             } catch (e) {
-                setTimeout(arguments.callee, 200);
+                callLater(0.2, arguments.callee);
                 return;
             }
-        }, 7500);
+        });
     },
     appendImageElement: function(src) {
         var self = this, img, doc;
@@ -362,6 +363,15 @@ var pixivProto = {
             }
         } catch (e) {}
     },
+    // ログインチェック
+    resolveLogin: function(res) {
+        let expr, doc;
+        doc = convertToHTMLDocument(res.responseText);
+        expr = '//form[@name="loginForm"]';
+        if ($x(expr, doc)) {
+            throw new Error(getMessage('error.notLoggedin'));
+        }
+    },
     // イラストページ
     extractIllust: function(ctx, url) {
         var self = this, src, uri;
@@ -370,6 +380,8 @@ var pixivProto = {
         return request(url, {
             referrer: ctx.href
         }).addCallback(function(res) {
+            
+            self.resolveLogin(res);
             
             // download() は referrer を設定できない(と思う)ので
             // request() でバイナリデータ(キャッシュ)を取得
@@ -390,6 +402,9 @@ var pixivProto = {
         return request(url, {
             referrer: ctx.href
         }).addCallback(function(res) {
+            
+            self.resolveLogin(res);
+            
             src = self.getFullSizeImageURL(true, res);
             uri = self.getMangaFullSizePageURL(url);
             return request(uri, {
@@ -416,6 +431,9 @@ var pixivProto = {
         return request(tagPage, {
             referrer: url
         }).addCallback(function(res) {
+            
+            self.resolveLogin(res);
+            
             doc = convertToHTMLDocument(res.responseText);
             ctx.title = doc.title || $x('//title/text()', doc) || ctx.title;
             ctx.href = url;
@@ -458,6 +476,9 @@ var pixivProto = {
             referrer: ctx.href
         }).addCallback(function(res) {
             var d, uri, doc, tags, extractor;
+            
+            self.resolveLogin(res);
+            
             doc = convertToHTMLDocument(res.responseText);
             
             // document を置換してイラストページにいることにする
@@ -592,11 +613,11 @@ var pixivBookmark = update({
     ICON: pixivService.ICON,
     BASE_URL: pixivService.BASE_URL,
     
-    ILLUST_PAGE_REGEXP: pixivService.ILLUST_PAGE_REGEXP,
-    MANGA_PAGE_REGEXP: pixivService.MANGA_PAGE_REGEXP,
-    PIXIV_HOST_REGEXP: pixivService.PIXIV_HOST_REGEXP,
-    ILLUST_ID_REGEXP: /\b(?:illust_?id)=(\d+)/i,
-    USER_ID_REGEXP: /(?:(?=\buser_?).*|\b)id=(\d+)/i,
+    ILLUST_PAGE_REGEXP : pixivService.ILLUST_PAGE_REGEXP,
+    MANGA_PAGE_REGEXP  : pixivService.MANGA_PAGE_REGEXP,
+    PIXIV_HOST_REGEXP  : pixivService.PIXIV_HOST_REGEXP,
+    ILLUST_ID_REGEXP   : /\b(?:illust_?id)=(\d+)/i,
+    USER_ID_REGEXP     : /(?:(?=\buser_?).*|\b)id=(\d+)/i,
     
     XPATH_BOOKMARK: pack(<><![CDATA[
         (
@@ -748,10 +769,13 @@ var pixivBookmark = update({
             case 'changed':
                 url = this.BASE_URL + 'bookmark.php';
                 result = request(url).addCallback(function(res) {
-                    return self.token = $x(
-                        '//form[@id="f"]/input[@name="tt"]/@value',
-                        convertToHTMLDocument(res.responseText)
-                    );
+                    let expr, doc = convertToHTMLDocument(res.responseText);
+                    if ($x('//form[@name="loginForm"]', doc)) {
+                        throw new Error(getMessage('error.notLoggedin'));
+                    }
+                    expr = '//form[@id="f"]/input[@name="tt"]/@value';
+                    self.token = $x(expr, doc);
+                    return self.token;
                 });
                 break;
             default:
@@ -783,20 +807,24 @@ var pixivBookmark = update({
         return doc;
     },
     fixBookmarkPageLabel: function(node) {
-        var i, s, v, c, a = node.getElementsByTagName('a');
-        for (i = 0; i < a.length; i++) {
-            try {
-                s = v = a[i].innerHTML;
-                c = s.charCodeAt(0);
-                if (c !== 0x30d6 && c <= 0xff) {
-                    v = decodeURIComponent(escape(s));
+        var r, i, s, v, c, a;
+        try {
+            a = node.getElementsByTagName('a');
+            for (i = 0; i < a.length; i++) {
+                try {
+                    s = v = a[i].innerHTML;
+                    c = s.charCodeAt(0);
+                    if (c !== 0x30d6 && c <= 0xff) {
+                        v = decodeURIComponent(escape(s));
+                    }
+                } catch (er) {
+                    v = s;
                 }
-            } catch (er) {
-                v = s;
+                a[i].innerHTML = v;
             }
-            a[i].innerHTML = v;
-        }
-        return node.innerHTML;
+            r = node && node.innerHTML;
+        } catch (e) {}
+        return r;
     },
     /**
      * ブックマークに追加
@@ -974,6 +1002,8 @@ models.register(update(update({}, pixivBookmark), {
  * pixivThumbsExpander
  *
  * サムネイルイラスト画像を拡大表示できるようにするメニューを追加
+ *
+ * (無駄にソース量あるし便利とは言い難いので機能削除 or シンプル化に検討中...)
  */
 (function() {
 
@@ -1031,7 +1061,7 @@ update(pixivThumbsExpander, {
         if (this.inited) {
             if (this.expanding) {
                 this.clearProps();
-                callLater(1, function() {
+                callLater(0, function() {
                     self.initLoadingCanvas();
                     self.searchImageNodes();
                 });
@@ -1047,7 +1077,7 @@ update(pixivThumbsExpander, {
                 // あらゆるwindowの読み込みに適応されるので最低限の処理にする
                 // (TomblooのTabWatcherを使いたかったけどコールバック無理(?))
                 //
-                browser.addEventListener('load', function(event) {
+                browser.addEventListener('DOMContentLoaded', function(event) {
                     var doc, uri;
                     try {
                         if (!self.expanding) {
@@ -1058,8 +1088,10 @@ update(pixivThumbsExpander, {
                             uri = (doc.location && doc.location.host) ||
                                    doc.documentURI || doc.URL || doc.domain;
                             if (uri && self.check(uri)) {
-                                callLater(1, function() {
-                                    self.onPageLoaded.call(self);
+                                callLater(0, function() {
+                                    if (self.expanding) {
+                                        self.onPageLoaded.call(self);
+                                    }
                                 });
                             }
                         }
@@ -1070,11 +1102,11 @@ update(pixivThumbsExpander, {
                 
                 // メニューがクリックされたとき pixiv 内ならその場で実行
                 if (this.check()) {
-                    if (this.expanding) {
-                        callLater(1, function() {
+                    callLater(0, function() {
+                        if (self.expanding) {
                             self.onPageLoaded.call(self);
-                        });
-                    }
+                        }
+                    });
                 }
             } catch (e) {
                 this.debug(e);
@@ -1270,39 +1302,44 @@ update(pixivThumbsExpander, {
     },
     // ページ読み込み時の処理
     onPageLoaded: function() {
-        var self = this, win, doc, name, target;
-        win = this.getWindow();
-        doc = this.getDocument();
+        var self = this, win, doc, target;
+        if (!this.expanding) {
+            return;
+        }
         try {
+            win = this.getWindow();
+            doc = this.getDocument();
             // body が操作できる状態になるまで待機
             if (!doc.body) {
                 throw 'continue';
             }
         } catch (e) {
-            setTimeout(arguments.callee, 1000);
+            callLater(1, arguments.callee);
             return;
         }
         // ここで重複を遮断
         if (this.setStoragePoint()) {
             
             target = doc.defaultView || win;
-            name = 'beforeunload';
             
             // タブが閉じられるとき各プロパティを開放
-            target.addEventListener(name, function() {
-                target.removeEventListener(name, arguments.callee, true);
+            target.addEventListener('beforeunload', function() {
+                let lee = arguments.callee;
+                target.removeEventListener('beforeunload', lee, true);
                 self.clearProps(true);
             }, true);
             
-            callLater(1, function() {
+            callLater(0, function() {
                 if (self.expanding) {
                     self.initLoadingCanvas();
                     self.registerNodeInserted();
                     self.searchImageNodes();
                     
-                    // AutoPagerize用 (ページ下部で遷移して戻った時)
+                    // AutoPagerize/AutoPager用 (ページ下部で遷移して戻った時)
                     callLater(5, function() {
-                        self.searchImageNodes();
+                        if (self.expanding) {
+                            self.searchImageNodes();
+                        }
                     });
                 }
             });
@@ -1358,6 +1395,9 @@ update(pixivThumbsExpander, {
     // AutoPagerize系ライブラリ対応のためのイベント
     registerNodeInserted: function() {
         var self = this, win, doc, target, uri;
+        if (!this.expanding) {
+            return;
+        }
         win = this.getWindow();
         doc = this.getDocument();
         try {
@@ -1377,8 +1417,11 @@ update(pixivThumbsExpander, {
             this.debug(e);
             target = doc.body || doc;
         }
-        callLater(1, function() {
+        callLater(0, function() {
             try {
+                if (!self.expanding) {
+                    throw 'disabled';
+                }
                 //
                 // AutoPagerize: AutoPagerize_DOMNodeInserted
                 // AutoPager: AutoPagerAfterInsert
@@ -1387,8 +1430,10 @@ update(pixivThumbsExpander, {
                 //
                 target.addEventListener('DOMNodeInserted', function(event) {
                     if (self.expanding) {
-                        callLater(1, function() {
-                            self.searchImageNodes.call(self, event.target);
+                        callLater(0, function() {
+                            if (self.expanding) {
+                                self.searchImageNodes.call(self, event.target);
+                            }
                         });
                     }
                 }, true);
@@ -1399,6 +1444,9 @@ update(pixivThumbsExpander, {
     },
     getImageSource: function(url) {
         var self = this, win, doc, xpath, src, re;
+        if (!this.expanding) {
+            return;
+        }
         win = this.getWindow();
         doc = this.getDocument();
         re = {by: /@href[\s\S]*$/gi, to: 'img/@src'};
@@ -1412,11 +1460,13 @@ update(pixivThumbsExpander, {
     },
     onNodeInserted: function(event) {
         var elem;
-        elem = event.target;
-        if (this.expanding && elem && tagName(elem) === 'img' &&
-            pixivService.isThumbnailPage(event)) {
-            
-            this.setImageEvent(elem);
+        if (this.expanding) {
+            elem = event.target;
+            if (this.expanding && elem && tagName(elem) === 'img' &&
+                pixivService.isThumbnailPage(event)
+            ) {
+                this.setImageEvent(elem);
+            }
         }
     },
     searchImageNodes: function(context) {
@@ -1425,7 +1475,7 @@ update(pixivThumbsExpander, {
             doc = this.getDocument();
             images = (context || doc).getElementsByTagName('img');
             toArray(images).forEach(function(image) {
-                callLater(0.1, function() {
+                callLater(0, function() {
                     self.onNodeInserted.call(self, {target: image});
                 });
             });
@@ -1434,21 +1484,21 @@ update(pixivThumbsExpander, {
     // エレメントのサイズと座標を取得 (表示サイズ)
     getSizePos: function(elem) {
         var x, y, w, h, org, p;
-        if (elem.offsetParent === null && tagName(elem) !== 'body') {
-            
+        if ((elem.offsetParent === null ||
+            (elem.offsetWidth === 0 && elem.offsetHeight === 0)) &&
+            tagName(elem) !== 'body'
+        ) {
             // 非表示の場合サイズが取得できないのでvisibilityを使う
             org = {
                 display: elem.style.display,
                 position: elem.style.position,
                 visibility: elem.style.visibility
             };
-            attr(elem, {
-                style: {
-                    position: 'absolute',
-                    visibility: 'hidden'
-                }
+            css(elem, {
+                display: 'block',
+                position: 'absolute',
+                visibility: 'hidden'
             });
-            removeStyle(elem, 'display');
         }
         x = elem.offsetLeft   || elem.style.pixelLeft   || 0;
         y = elem.offsetTop    || elem.style.pixelTop    || 0;
@@ -1457,11 +1507,7 @@ update(pixivThumbsExpander, {
         if (org) {
             // スタイルを元に戻す
             for (p in org) {
-                if (org[p] === '' || org[p] === undefined) {
-                    removeStyle(elem, p);
-                } else {
-                    elem.style[p] = org[p];
-                }
+                elem.style[p] = org[p];
             }
         }
         return {
@@ -1471,12 +1517,51 @@ update(pixivThumbsExpander, {
             height: h - 0
         };
     },
+    getResizeSize: function(orgWidth, orgHeight, maxWidth, maxHeight) {
+        let result, percent, ratioX, ratioY, orgw, orgh, maxw, maxh;
+        orgw = orgWidth  - 0;
+        orgh = orgHeight - 0;
+        maxw = maxWidth  - 0;
+        maxh = maxHeight - 0;
+        if (orgw > maxw) {
+            ratioX = maxw / orgw * 100;
+        } else {
+            ratioX = 100;
+        }
+        if (orgh > maxh) {
+            ratioY = maxh / orgh * 100;
+        } else {
+            ratioY = 100;
+        }
+        if (ratioX < ratioY) {
+            percent = ratioX;
+        } else if (ratioX > ratioY) {
+            percent = ratioY;
+        } else {
+            percent = 0;
+        }
+        if (percent === 0) {
+            result = {
+                width  : orgw,
+                height : orgh
+            };
+        } else {
+            result = {
+                width  : Math.round(orgw * percent / 100),
+                height : Math.round(orgh * percent / 100)
+            };
+        }
+        return result;
+    },
     isVisible: function(elem) {
         return elem.style.display !== 'none';
     },
     // サムネイル用のイージング (easing animation) を実行
     toggleFadeTo: function(opts) {
         var self = this, params, before, after, li, nop;
+        if (!this.expanding) {
+            return;
+        }
         opts = opts || {};
         before = opts.before || (function() {});
         after = opts.after || (function() {});
@@ -1500,14 +1585,23 @@ update(pixivThumbsExpander, {
                 throw new Error('Illegal type of the parent node: ' + li);
             }
             try {
-                css(li, { width: opts.fromSize.width + 6 });
+                if (self.isRankingPage) {
+                    css(li, { width: 'auto' });
+                } else {
+                    css(li, { width: opts.fromSize.width + 6 });
+                }
             } catch (e) {}
         };
         params = this.getFadeParams(opts);
-        callLater(0, this.fadeTo.apply(this, params));
+        //callLater(0, function() {
+            self.fadeTo.apply(self, params);
+        //});
     },
     getFadeParams: function(opts) {
         var self, size, from, to, before, after, nop, li, simg, mimg, params;
+        if (!this.expanding) {
+            return;
+        }
         self = this;
         opts.before = opts.before || (function() {});
         opts.after = opts.after || (function() {});
@@ -1526,6 +1620,27 @@ update(pixivThumbsExpander, {
         if (!this.isParentNode(li)) {
             throw new Error('Illegal type of the parent node: ' + li);
         }
+        if (this.isRankingPage) {
+            css(li, { width: 'auto' });
+        }
+        
+        let (limit = 2000) {
+            // lazyloadが使われてる場合は表示が完了するまで待つ
+            till(function() {
+                let stop, sz;
+                if (--limit <= 0) {
+                    stop = true;
+                } else {
+                    sz = self.getSizePos(mimg);
+                    if (sz.width === 0 && sz.width === 0) {
+                        stop = false;
+                    } else {
+                        stop = true;
+                    }
+                }
+                return stop;
+            });
+        }
         opts.orgSize = size = {
             s: this.getSizePos(simg),
             m: this.getSizePos(mimg)
@@ -1538,6 +1653,20 @@ update(pixivThumbsExpander, {
             width: size.m.width || this.viewSize.m.width,
             height: size.m.height || this.viewSize.m.height
         };
+        if (to.width < from.width || to.height < from.height) {
+            // 遅延読み込みの影響で正確に計れない時がある
+            let (resize = this.getResizeSize(
+                mimg.naturalWidth,
+                mimg.naturalHeight,
+                this.viewSize.m.width,
+                this.viewSize.m.height
+            )) {
+                to.width  = resize.width;
+                to.height = resize.height;
+                opts.orgSize.m.width  = size.m.width  = to.width;
+                opts.orgSize.m.height = size.m.height = to.height;
+            }
+        }
         before = function() {
             css(li, {
                 width: 'auto',
@@ -1546,9 +1675,6 @@ update(pixivThumbsExpander, {
             });
             if (opts.show === mimg && self.isWrappedImagePage) {
                 self.fixWrappedPageLayoutBefore(li);
-            }
-            if (opts.show === mimg && self.isRankingPage) {
-                self.fixRankingPageLayout(li);
             }
             removeStyle(li, 'width');
             css(nop, {
@@ -1613,6 +1739,9 @@ update(pixivThumbsExpander, {
                 css(li, { position: 'static' });
                 removeStyle(li, 'textAlign');
                 removeStyle(li, 'position');
+                if (self.isRankingPage) {
+                    css(li, { width: 'auto' });
+                }
             };
             params = [simg, from, to, before, after];
         }
@@ -1622,6 +1751,9 @@ update(pixivThumbsExpander, {
     fadeTo: function(elem, from, to, before, after) {
         var self, size, props, parse, p, t, easing,
             times, count, interval, duration, now;
+        if (!this.expanding) {
+            return;
+        }
         self = this;
         try {
             if (inArray(this.fadings, elem) !== -1) {
@@ -1708,7 +1840,7 @@ update(pixivThumbsExpander, {
                     });
                 }
                 if (++count < 65535 && times.now <= times.finish) {
-                    setTimeout(arguments.callee, interval);
+                    callLater(interval / 1000, arguments.callee);
                 } else {
                     try {
                         self.fadings.splice(
@@ -1717,10 +1849,10 @@ update(pixivThumbsExpander, {
                     after.call(self, elem);
                 }
             };
-            setTimeout(function() {
+            callLater(0, function() {
                 before.call(self);
                 fade.call(self);
-            }, 0);
+            });
         } catch (e) {
             try {
                 this.fadings.splice(inArray(this.fadings, elem), 1);
@@ -1729,10 +1861,29 @@ update(pixivThumbsExpander, {
             }
         }
     },
-    createImage: function() {
-        var self = this, doc, img;
-        doc = this.getDocument();
-        img = doc.createElement('img');
+    createImage: function(simg) {
+        var img, attrs;
+        if (!this.expanding) {
+            return;
+        }
+        // 'ui-lazy-image' を除去
+        simg.removeAttribute('class');
+        
+        /*
+        // クローンした要素を使う (やっぱやめた)
+        img = simg.cloneNode(false);
+        attrs = [];
+        forEach(img.attributes, function(attr) {
+            attrs.push(attr);
+        });
+        attrs.forEach(function(attr) {
+            img.removeAttribute(attr.name);
+        });
+        */
+        
+        img = this.getDocument().createElement('img');
+        
+        
         attr(img, {
             className: this.imageId,
             style: {
@@ -1745,6 +1896,9 @@ update(pixivThumbsExpander, {
         return img;
     },
     setImageStyle: function(img) {
+        if (!this.expanding) {
+            return;
+        }
         css(img, {
             border: '1px solid #568fd9',
             MozBorderRadius: 3,
@@ -1757,6 +1911,9 @@ update(pixivThumbsExpander, {
         return img;
     },
     setNopStyle: function(nop) {
+        if (!this.expanding) {
+            return;
+        }
         css(nop, {
             //cursor: 'zoom-in',
             cursor: '-moz-zoom-in'
@@ -1765,6 +1922,9 @@ update(pixivThumbsExpander, {
     },
     onErrorLoadImage: function(loading, nop, simg, mimg) {
         var self = this, doc, errmsg;
+        if (!this.expanding) {
+            return;
+        }
         doc = this.getDocument();
         this.loadingCanvas.stop();
         hide(loading);
@@ -1784,17 +1944,20 @@ update(pixivThumbsExpander, {
         errmsg.appendChild(doc.createTextNode('Connection error!!'));
         hide(simg);
         nop.appendChild(errmsg);
-        setTimeout(function() {
+        callLater(2.5, function() {
             fadeOut(errmsg, function() {
                 removeNode(errmsg);
                 fadeIn(simg, function() {
                     show(simg, 'block');
                 });
             });
-        }, 2500);
+        });
     },
     startLoadingImage: function(nop, simg) {
         var self = this, doc, loading;
+        if (!this.expanding) {
+            return;
+        }
         doc = this.getDocument();
         loading = this.loadingCanvas.canvas;
         if (loading.parentNode) {
@@ -1808,31 +1971,35 @@ update(pixivThumbsExpander, {
         return succeed(loading);
     },
     insertImage: function(src, nop, simg, mimg, callback) {
-        var self = this, doc, loading, loaded, error, failed, timerId;
+        var self = this, doc, loading, loaded, raise, failed, d;
+        if (!this.expanding) {
+            return;
+        }
         doc = this.getDocument();
         callback = callback || (function() {});
         try {
             loading = this.loadingCanvas.canvas;
             failed = false;
             loaded = false;
-            error = function() {
+            raise = function() {
                 failed = true;
                 self.onErrorLoadImage.call(self, loading, nop, simg, mimg);
             };
             // 画像キャッシュが残ってる場合 onload の信頼性が薄いので
             // 規定秒以上経っても onload が呼ばれない場合エラーとみなす
-            timerId = setTimeout(function() {
+            d = callLater(this.loadTimeLimit, function() {
                 if (!loaded) {
-                    error();
+                    raise();
                 }
-            }, this.loadTimeLimit * 1000);
-            mimg.addEventListener('error', error, true);
+            });
+            // onerror は使わない
             mimg.addEventListener('load', function() {
                 loaded = true;
-                clearTimeout(timerId);
+                failed = false;
+                d.cancel();
                 
                 // 規定秒間経ってから onload が呼ばれた場合は遅延させる
-                callLater(failed ? 3.5 : 0, function() {
+                callLater(failed ? 3.5 : 0.075, function() {
                     try {
                         self.loadingCanvas.stop();
                         hide(loading);
@@ -1851,6 +2018,9 @@ update(pixivThumbsExpander, {
     },
     toggleImage: function(nop) {
         var self = this, simg, mimg, width, cn;
+        if (!this.expanding) {
+            return;
+        }
         images = nop.getElementsByTagName('img');
         if (images.length > 1) {
             toArray(images).forEach(function(img) {
@@ -1867,7 +2037,7 @@ update(pixivThumbsExpander, {
                 }
             });
             if (simg && mimg) {
-                // これも同じくタイミングによって両方表示されてる時の対処
+                // まれに両方表示される時の対処 (lazyLoadの影響)
                 if (this.isVisible(simg) && this.isVisible(mimg)) {
                     this.toggleFadeTo({ hide: mimg, show: simg });
                 } else if (!this.isVisible(simg) && !this.isVisible(mimg)) {
@@ -1885,6 +2055,9 @@ update(pixivThumbsExpander, {
     emitImage: function(a, nop, simg) {
         var self = this, mimg, url;
         try {
+            if (!this.expanding) {
+                throw 'disabled';
+            }
             url = pixivService.getNextPageURL({target: simg});
             if (!url) {
                 throw new Error('Error: pixivService.getNextPageURL: ' + url);
@@ -1893,7 +2066,7 @@ update(pixivThumbsExpander, {
                 !nop.querySelector('.' + this.loadingId)) {
                 this.startLoadingImage(nop, simg).addCallback(function() {
                     self.getImageSource(url).addCallback(function(src) {
-                        mimg = self.createImage();
+                        mimg = self.createImage(simg);
                         self.insertImage(src, nop, simg, mimg, function() {
                             self.toggleImage(nop);
                         });
@@ -1909,6 +2082,9 @@ update(pixivThumbsExpander, {
     },
     ensureBasicPageEvent: function(li, a, simg) {
         var self = this, doc, nop;
+        if (!this.expanding) {
+            return;
+        }
         doc = this.getDocument();
         if (li && this.isParentNode(li) &&
             !li.querySelector('.' + this.nopId)) {
@@ -1921,10 +2097,12 @@ update(pixivThumbsExpander, {
             a.parentNode.insertBefore(nop, a);
             a.removeChild(simg);
             if (this.isBasicPage()) {
-                callLater(0.5, function() {
-                    if (trim(String(a.innerHTML)).length === 0 &&
-                        trim(String(li.textContent)).length === 0) {
-                        a.appendChild(doc.createTextNode('...'));
+                callLater(0, function() {
+                    if (self.expanding) {
+                        if (trim(String(a.innerHTML)).length === 0 &&
+                            trim(String(li.textContent)).length === 0) {
+                            a.appendChild(doc.createTextNode('...'));
+                        }
                     }
                 });
             }
@@ -1934,8 +2112,10 @@ update(pixivThumbsExpander, {
                     event.preventDefault();
                     event.stopPropagation();
                 } catch (e) {}
-                callLater(0.1, function() {
-                    self.emitImage.call(self, a, nop, simg);
+                callLater(0, function() {
+                    if (self.expanding) {
+                        self.emitImage.call(self, a, nop, simg);
+                    }
                 });
                 return false;
             }, true);
@@ -1944,37 +2124,112 @@ update(pixivThumbsExpander, {
             show(li, 'inline-block');
         }
     },
-    // ランキングページ用
-    // 拡大表示すると横の文字と重なるのでwidthを解除する
-    fixRankingPageLayout: function(first) {
-        var self = this, doc, actions, node, target;
-        doc = this.getDocument();
-        actions = {
-            image: {
-                selector: '.r_left',
-                action: function(elem) {
-                    css(elem, { width: 'auto' });
-                }
-            }
-        };
-        try {
-            node = first.parentNode;
-            while (node = node.parentNode) {
-                target = node.querySelector(actions.image.selector);
-                if (target) {
-                    actions.image.action(target);
-                    break;
-                }
-            }
-        } catch (e) {
-            this.debug(e);
+    // スタックフィードページ用レイアウト調整
+    fixStaccfeedPageLayoutBefore: function(first) {
+        let self = this, actions;
+        if (!this.expanding) {
+            return;
         }
+        actions = [
+        {
+            selector: 'post-img',
+            action: function(elem) {
+                css(elem, {
+                    width: 'auto'
+                });
+            }
+        }];
+        actions.forEach(function(methods) {
+            let node, target;
+            try {
+                node = first;
+                while (node) {
+                    target = node.querySelector(methods.selector);
+                    if (target) {
+                        methods.action(target);
+                        break;
+                    }
+                    node = node.parentNode;
+                }
+            } catch (e) {
+                self.debug(e);
+            }
+        });
+    },
+    // ランキングページ用
+    // 拡大表示すると崩れるので調節
+    fixRankingPageLayoutBefore: function(first) {
+        let self = this, actions;
+        if (!this.expanding) {
+            return;
+        }
+        actions = [
+        {
+            selector: '.rank',
+            action: function(elem) {
+                css(elem, {
+                    float: 'left',
+                    position: 'static'
+                });
+            }
+        },
+        {
+            selector: '.' + this.nopId,
+            action: function(elem) {
+                let a;
+                css(elem, {
+                    float: 'left',
+                    position: 'static'
+                });
+                try {
+                    a = elem.nextSibling;
+                    while (a && a.nodeType != 1) {
+                        a = a.nextSibling;
+                    }
+                    if (!a || !/image-thumbnail/.test(a.className)) {
+                        a = elem.parentNode.querySelector('.image-thumbnail');
+                    }
+                    if (a) {
+                        a.parentNode.removeChild(a);
+                    }
+                } catch (e) {}
+            }
+        },
+        {
+            selector: '.data',
+            action: function(elem) {
+                css(elem, {
+                    float: 'left',
+                    position: 'static',
+                    marginLeft: '20px'
+                });
+            }
+        }];
+        actions.forEach(function(methods) {
+            let node, target;
+            try {
+                node = first;
+                while (node) {
+                    target = node.querySelector(methods.selector);
+                    if (target) {
+                        methods.action(target);
+                        break;
+                    }
+                    node = node.parentNode;
+                }
+            } catch (e) {
+                self.debug(e);
+            }
+        });
     },
     // 検索系ページ用
     // <p><img/></p> となっているのを整形する
     // レイアウト調整
     fixWrappedPage: function(simg) {
         var p, pc, parent, remove = false;
+        if (!this.expanding) {
+            return;
+        }
         if (this.isWrappedPage(simg)) {
             p = simg.parentNode;
             pc = p.cloneNode(false);
@@ -1993,6 +2248,9 @@ update(pixivThumbsExpander, {
     },
     fixWrappedPageLayoutBefore: function(li) {
         var self = this;
+        if (!this.expanding) {
+            return;
+        }
         ['height', 'overflow'].forEach(function(prop) {
             self.wrappedPageDefaultLayout.li[prop] = li.style[prop];
         });
@@ -2002,12 +2260,18 @@ update(pixivThumbsExpander, {
         });
     },
     fixWrappedPageLayoutAfter: function(li) {
+        if (!this.expanding) {
+            return;
+        }
         forEach(this.wrappedPageDefaultLayout.li, function([key, val]) {
             css(li, key, val);
         });
     },
     setImageEvent: function(simg) {
         var self = this, doc, a, parent, uri;
+        if (!this.expanding) {
+            return;
+        }
         doc = this.getDocument();
         a = simg.parentNode;
         while (a && tagName(a) !== 'a') {
@@ -2024,11 +2288,13 @@ update(pixivThumbsExpander, {
                 // http://www.pixiv.net/stacc/*
                 //
                 this.isStaccfeedPage = true;
+                this.fixStaccfeedPageLayoutBefore(simg);
             } else if (uri.indexOf('/ranking') >= 15) {
                 // Ranking
                 // http://www.pixiv.net/ranking*
                 //
                 this.isRankingPage = true;
+                this.fixRankingPageLayoutBefore(simg);
             }
             if (this.isWrappedPage(simg)) {
                 //
@@ -2039,8 +2305,10 @@ update(pixivThumbsExpander, {
             }
             parent = a.parentNode;
             if (this.isParentNode(parent)) {
-                callLater(0.5, function() {
-                    self.ensureBasicPageEvent(parent, a, simg);
+                callLater(0, function() {
+                    if (self.expanding) {
+                        self.ensureBasicPageEvent(parent, a, simg);
+                    }
                 });
             }
         }
@@ -2054,12 +2322,14 @@ update(pixivThumbsExpander, {
     isParentNode: function(node) {
         var parents = {
             li: true,
-            div: true
+            div: true,
+            article: true
         };
         return node && (tagName(node) in parents);
     },
     debug: function(object, title) {
         if (this.debugMode) {
+            setPref('debug', true);
             debug(title || arguments.callee.caller);
             debug(object);
         }
@@ -2100,7 +2370,7 @@ Tombloo.Service.actions.register({
             this.inited = true;
             pte.expanding = getPref(this.PREF_KEY) || false;
             if (pte.expanding) {
-                callLater(1, function() {
+                callLater(0, function() {
                     pte.init();
                 });
             }
@@ -2113,7 +2383,7 @@ Tombloo.Service.actions.register({
         }
     },
     check: function(ctx) {
-        return ctx.host.match(pixivService.PIXIV_HOST_REGEXP);
+        return ctx.host && ctx.host.match(pixivService.PIXIV_HOST_REGEXP);
     },
     changeIcon: function() {
         if (pixivThumbsExpander.expanding) {
@@ -2123,13 +2393,13 @@ Tombloo.Service.actions.register({
         }
     },
     execute: function(ctx) {
-        var self = this;
-        with (pixivThumbsExpander) {
-            expanding = !expanding;
-            setPref(self.PREF_KEY, expanding);
-            if (expanding) {
-                init();
-            }
+        var pte = pixivThumbsExpander;
+        pte.expanding = !pte.expanding;
+        setPref(this.PREF_KEY, pte.expanding);
+        if (pte.expanding) {
+            callLater(0, function() {
+                pte.init();
+            });
         }
         this.changeIcon();
     }
@@ -2418,7 +2688,7 @@ function fadeIn(elem, speed, callback) {
             css(elem, { opacity: 1 });
             callback.call(elem, elem);
         } else {
-            setTimeout(function() { fade(alpha) }, 0);
+            callLater(0, function() { fade(alpha) });
         }
     };
     if (typeof speed === 'function') {
@@ -2435,7 +2705,7 @@ function fadeIn(elem, speed, callback) {
     step = Math.max(0.001, step || 0);
     css(elem, { opacity: 0 });
     show(elem);
-    setTimeout(function() { fade(0) }, 0);
+    callLater(0, function() { fade(0) });
     return elem;
 }
 
@@ -2455,7 +2725,7 @@ function fadeOut(elem, speed, callback) {
             hide(elem);
             callback.call(elem, elem);
         } else {
-            setTimeout(function() { fade(alpha) }, 0);
+            callLater(0, function() { fade(alpha) });
         }
     };
     if (typeof speed === 'function') {
@@ -2472,7 +2742,7 @@ function fadeOut(elem, speed, callback) {
     step = Math.max(0.001, step || 0);
     css(elem, { opacity: 1 });
     show(elem);
-    setTimeout(function() { fade(1) }, 0);
+    callLater(0, function() { fade(1) });
     return elem;
 }
 
@@ -2518,51 +2788,53 @@ function defineLoadingCanvas() {
         sz: {},
         init: function(options) {
             var opts, doc;
-            with (this) {
-                if (typeof options !== 'object') {
-                    options = {target: String(options)};
-                }
-                opts = extend(defaultOpts, options || {});
-                if (opts.target) {
-                    if (opts.target.nodeType == 1) {
-                        target = opts.target;
-                    } else if (opts.target.substring) {
-                        target = opts.doc.querySelector(opts.target);
-                    }
-                }
-                size = opts.size;
-                interval = opts.interval;
-                if (!target || !size || !interval) {
-                    throw new Error('Invalid parameters on init');
-                }
-                canvas = opts.doc.createElement('canvas');
-                if (opts.hidden) {
-                    canvas.style.display = 'none';
-                }
-                target.appendChild(canvas);
-                ctx = canvas.getContext('2d');
-                setSize();
+            if (typeof options !== 'object') {
+                options = {target: String(options)};
             }
+            opts = this.extend(this.defaultOpts, options || {});
+            if (opts.target) {
+                if (opts.target.nodeType == 1) {
+                    this.target = opts.target;
+                } else if (opts.target.substring) {
+                    this.target = opts.doc.querySelector(opts.target);
+                }
+            }
+            this.size = opts.size;
+            this.interval = opts.interval;
+            if (!this.target || !this.size || !this.interval) {
+                throw new Error('Invalid parameters on init');
+            }
+            this.canvas = opts.doc.createElement('canvas');
+            if (opts.hidden) {
+                this.canvas.style.display = 'none';
+            }
+            this.target.appendChild(this.canvas);
+            this.ctx = this.canvas.getContext('2d');
+            this.setSize();
             return this;
         },
         draw: function(interval) {
-            var self = this;
-            this.timer = setInterval(function() {
+            var self = this, time, callback;
+            time = (interval || this.interval) / 1000;
+            callback = function() {
                 self.drawImage();
-            }, interval || this.interval);
+                if (self.timer) {
+                    callLater(time, callback);
+                }
+            };
+            this.timer = true;
+            callLater(time, callback);
             return this;
         },
         setSize: function () {
-            with (this) {
-                canvas.width = size;
-                canvas.height = size;
-                sz = {
-                    r: size / 2,
-                    w: Math.round(size * 0.1),
-                    h: Math.round(size * 0.25)
-                };
-                ctx.setTransform(1, 0, 0, 1, sz.r, sz.r);
-            }
+            this.canvas.width = this.size;
+            this.canvas.height = this.size;
+            this.sz = {
+                r: this.size / 2,
+                w: Math.round(this.size * 0.1),
+                h: Math.round(this.size * 0.25)
+            };
+            this.ctx.setTransform(1, 0, 0, 1, this.sz.r, this.sz.r);
             return this;
         },
         drawImage: function() {
@@ -2585,25 +2857,23 @@ function defineLoadingCanvas() {
                     ].join(','),
                     ')'
                 ].join('');
-                with (this.ctx) {
-                    fillStyle = color;
-                    strokeStyle = 'transparent';
-                    beginPath();
-                    moveTo(0 - w / 4, r - h);
-                    quadraticCurveTo(0, r - h - w / 2, 0 + w / 4, r - h);
-                    lineTo(0 + w / 2, r - w / 3);
-                    quadraticCurveTo(0, r + w / 3, 0 - w / 2, r - w / 3);
-                    closePath();
-                    fill();
-                    stroke();
-                    rotate(30 * Math.PI / 180);
-                }
+                this.ctx.fillStyle = color;
+                this.ctx.strokeStyle = 'transparent';
+                this.ctx.beginPath();
+                this.ctx.moveTo(0 - w / 4, r - h);
+                this.ctx.quadraticCurveTo(0, r - h - w / 2, 0 + w / 4, r - h);
+                this.ctx.lineTo(0 + w / 2, r - w / 3);
+                this.ctx.quadraticCurveTo(0, r + w / 3, 0 - w / 2, r - w / 3);
+                this.ctx.closePath();
+                this.ctx.fill();
+                this.ctx.stroke();
+                this.ctx.rotate(30 * Math.PI / 180);
             }
             this.alphas.splice(0, 0, this.alphas[11]).pop();
             return this;
         },
         stop: function() {
-            clearInterval(this.timer);
+            this.timer = false;
             return this;
         },
         extend: function(a, b) {
