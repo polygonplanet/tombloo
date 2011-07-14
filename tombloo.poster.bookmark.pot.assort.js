@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.38
- * @date     2011-07-10
+ * @version  1.39
+ * @date     2011-07-14
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -197,7 +197,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.38',
+    VERSION: '1.39',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -3942,6 +3942,7 @@ Pot.extend(Pot.StringUtil, {
                 'マリサ'                         : '魔理沙',
                 'サクヤ'                         : '咲夜',
                 'ヨウジョ'                       : /^ょぅι[ﾞ゛]ょ$/,
+                'ユネ'                           : '湯音',
                 'シンザン'                       : '新参',
                 'コサン'                         : '古参',
                 'ハゲドウ'                       : '禿同',
@@ -8388,7 +8389,7 @@ Pot.extend(potConvertToHTMLString, {
         ];
         s = Pot.StringUtil.stringify(html);
         if (s) {
-            Pot.forEach(patterns.remove, function(re) {
+            Pot.forEach(patterns, function(re) {
                 s = s.replace(re, '');
             });
         }
