@@ -20,7 +20,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.00
+ * @version  1.01
  * @date     2011-07-17
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
@@ -182,7 +182,7 @@ function generateModel(ops) {
         // aclEntries を変更するためだけにメソッドまるごと定義...
         _post : function(ps, oz) {
             const YOUTUBE_REGEXP = /^[^\/]+\/+(?:\w+[.])*?youtube[.]com(?:\/|$)/;
-            let self = this, spar = [], link, isYoutube;
+            let self = this, spar = [], link = [], isYoutube;
             isYoutube = ps.type == 'video' && YOUTUBE_REGEXP.test(ps.itemUrl);
             {
                 let description;
