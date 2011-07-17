@@ -44,6 +44,11 @@ Firefox アドオン [Tombloo](https://github.com/to/tombloo/wiki) で利用で�
    ポスト完了時に通知メッセージを表示するパッチ。  
    [POST完了時に通知メッセージを表示するTomblooパッチ | 圧縮電子精神音楽浮遊構造体][tombloo.service.post.notify.js]
 
+*  **tombloo.model.googleplus.circle.js**  
+   Google+で指定のサークルにポストできるようにするパッチ。  
+   ※ このスクリプトは [YungSangさん製の Google+ モデル][model.gplus.js] が必要です  
+   [Google+で指定のサークルにポストできるようにするTomblooパッチ | 圧縮電子精神音楽浮遊構造体][tombloo.model.googleplus.circle.js]
+
 
 
 
@@ -66,6 +71,11 @@ Firefox アドオン [Tombloo](https://github.com/to/tombloo/wiki) で利用で�
 
 
 [tombloo.service.post.notify.js]: http://polygon-planet.blogspot.com/2011/05/posttombloo.html "POST完了時に通知メッセージを表示するTomblooパッチ | 圧縮電子精神音楽浮遊構造体"
+
+
+[model.gplus.js]: https://github.com/YungSang/Scripts-for-Tombloo "YungSang/Scripts-for-Tombloo - GitHub"
+
+[tombloo.model.googleplus.circle.js]: http://polygon-planet.blogspot.com/2011/07/googletombloo_17.html "Google+で指定のサークルにポストできるようにするTomblooパッチ | 圧縮電子精神音楽浮遊構造体"
 
 
 
