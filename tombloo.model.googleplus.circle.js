@@ -20,7 +20,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.02
+ * @version  1.03
  * @date     2011-07-18
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
@@ -129,14 +129,30 @@ try {
  * @return {String}          変換したテキスト
  */
 function toPlainText(text) {
-    let s, p, tags, restores;
+    let s, p, tags, restores, re, br, indent;
     s = stringify(text);
     if (s) {
+        re = {
+            nl    : /(\r\n|\r|\n)/g,
+            bold  : /<strong\b([^>]*)>([\s\S]*?)<\/strong>/gi,
+            space : /^[\u0009\u0020]+/gm,
+            split : /\s+/
+        };
+        br = function(a) {
+            return a.trim().replace(re.nl, '<br />$1');
+        };
+        indent = function(a) {
+            return a.trim().replace(re.space, function(m) {
+                return new Array(m.length + 1).join('&nbsp;');
+            });
+        };
+        // <strong>は無視されるため <b> に変換
+        s = indent(s).replace(re.bold, '<b$1>$2</b>');
         tags = stringify(<>
-            a b strong i font u s strike blockquote
-            q ins del sub sup em acronym abbr cite
-            dfn code kbd img pre ruby rb rt rp
-        </>).trim().split(/\s+/);
+            a b strong s strike kbd em acronym
+            q blockquote ins del sub sup u dfn
+            i abbr cite font img ruby rb rt rp
+        </>).trim().split(re.split);
         p = '';
         do {
             p += '~' + Math.random().toString(36).slice(-1);
@@ -164,9 +180,7 @@ function toPlainText(text) {
                 s = s.split(o.from).join(o.to);
             });
         }
-        s = s.trim().replace(/^[\u0009\u0020]+/gm, function(m) {
-            return new Array(m.length + 1).join('&nbsp;');
-        }).replace(/(\r\n|\r|\n)/g, '<br />$1');
+        s = br(indent(s));
     }
     return s;
 }
@@ -232,15 +246,6 @@ function formatName(circle) {
 function generateModel(ops) {
     let model = update(update({}, models[GOOGLE_PLUS_NAME]), {
         name : formatName(ops),
-        // fix
-        OZDATA_REGEX : /<script\b[^>]*>[\s\S]*?\btick\b[\s\S]*?\bvar\s+OZ_initData\s*=\s*([{]+(?:(?:(?![}]\s*;[\s\S]{0,24}\btick\b[\s\S]{0,12}<\/script>)[\s\S])*)*[}])\s*;[\s\S]{0,24}\btick\b[\s\S]{0,12}<\/script>/i,
-        getOZData : function() {
-            let self = this;
-            return request(this.HOME_URL).addCallback(function(res) {
-                let OZ_initData = res.responseText.match(self.OZDATA_REGEX)[1];
-                return evalInSandbox('(' + OZ_initData + ')', self.HOME_URL);
-            });
-        },
         createScopeSpar : function(oz) {
             return JSON.stringify({
                 aclEntries : [{
