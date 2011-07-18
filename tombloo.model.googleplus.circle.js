@@ -20,8 +20,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.01
- * @date     2011-07-17
+ * @version  1.02
+ * @date     2011-07-18
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -30,7 +30,7 @@
  *
  * Tombloo: https://github.com/to/tombloo/wiki
  */
-(function(undefined) {
+callLater(0, function() {
 
 
 // モデル名
@@ -38,7 +38,7 @@ const GOOGLE_PLUS_NAME = 'Google+';
 
 
 // Google+ model が読み込まれるまで待つ (定義されてなければエラー)
-let (limit = 5 * 60 * 1000, time = +new Date) {
+let (limit = 8 * 1000, time = +new Date) {
     till(function() {
         let end = false;
         if (models[GOOGLE_PLUS_NAME]) {
@@ -119,6 +119,59 @@ try {
     });
 } catch (e) {}
 
+
+/**
+ * HTMLテキストをプレーンテキストに変換 (一部のタグは残す)
+ *
+ * ポスト時に殆どのタグは除去されるため改行を合わせる
+ *
+ * @param  {String}   text   対象のテキスト
+ * @return {String}          変換したテキスト
+ */
+function toPlainText(text) {
+    let s, p, tags, restores;
+    s = stringify(text);
+    if (s) {
+        tags = stringify(<>
+            a b strong i font u s strike blockquote
+            q ins del sub sup em acronym abbr cite
+            dfn code kbd img pre ruby rb rt rp
+        </>).trim().split(/\s+/);
+        p = '';
+        do {
+            p += '~' + Math.random().toString(36).slice(-1);
+        } while (~s.indexOf(p));
+        restores = [];
+        tags.forEach(function(tag) {
+            let re;
+            if (~s.indexOf(tag)) {
+                re = new RegExp('</?' + tag + '\\b[^>]*>', 'gi');
+                s = s.replace(re, function(match) {
+                    let len = restores.length, from = p + len + p;
+                    restores[len] = {
+                        from : from,
+                        to   : match
+                    };
+                    return from;
+                });
+            }
+        });
+        // リスト(<li>)などを整形するためconvertToPlainTextを使用する
+        s = convertToPlainText(s);
+        // 保持したタグを元に戻す
+        if (restores && restores.length) {
+            restores.forEach(function(o) {
+                s = s.split(o.from).join(o.to);
+            });
+        }
+        s = s.trim().replace(/^[\u0009\u0020]+/gm, function(m) {
+            return new Array(m.length + 1).join('&nbsp;');
+        }).replace(/(\r\n|\r|\n)/g, '<br />$1');
+    }
+    return s;
+}
+
+
 /**
  * アイコンに各サークル別で色をつける
  *
@@ -177,177 +230,52 @@ function formatName(circle) {
  * @return {Object}       モデル
  */
 function generateModel(ops) {
-    return update(update({}, models[GOOGLE_PLUS_NAME]), {
+    let model = update(update({}, models[GOOGLE_PLUS_NAME]), {
         name : formatName(ops),
-        // aclEntries を変更するためだけにメソッドまるごと定義...
-        _post : function(ps, oz) {
-            const YOUTUBE_REGEXP = /^[^\/]+\/+(?:\w+[.])*?youtube[.]com(?:\/|$)/;
-            let self = this, spar = [], link = [], isYoutube;
-            isYoutube = ps.type == 'video' && YOUTUBE_REGEXP.test(ps.itemUrl);
-            {
-                let description;
-                if (ps.type == 'regular') {
-                    description = joinText([ps.item, ps.description], '\n\n');
-                } else {
-                    description = ps.description;
-                }
-                spar.push(
-                    description,
-                    this.getToken(oz),
-                    null, null, null, null
-                );
-            }
-            if (ps.type == 'regular') {
-                link = [];
-            } else {
-                link.push(
-                    null, null, null,
-                    ps.item || ps.page,
-                    null
-                );
-                if (isYoutube) {
-                    let (videoUrl = ps.itemUrl.replace(this.YOUTUBE_REGEX,
-                        'http://www.youtube.com/v/$1&hl=en&fs=1&autoplay=1')
-                    ) {
-                        link.push([null, videoUrl, 385, 640]);
-                    }
-                } else {
-                    link.push(null);
-                }
-                link.push(null, null, null);
-                if (isYoutube) {
-                    link.push([[null, ps.author, 'uploader']]);
-                } else {
-                    link.push([]);
-                }
-                link.push(
-                    null, null, null, null, null,
-                    null, null, null, null, null, null,
-                    ps.body,
-                    null, null
-                );
-                link.push((function() {
-                    switch (ps.type) {
-                        case 'video':
-                            return [null, ps.pageUrl, null, 'application/x-shockwave-flash', 'video'];
-                        case 'photo':
-                            return [null, ps.pageUrl, null, 'text/html', 'document'];
-                        default:
-                            return [null, ps.itemUrl || ps.pageUrl, null, 'text/html', 'document'];
-                    }
-                })());
-                link.push(
-                    null, null, null, null, null,
-                    null, null, null, null, null,
-                    null, null, null, null, null, null
-                );
-                if (isYoutube) {
-                    let (imageUrl = ps.itemUrl.replace(this.YOUTUBE_REGEX,
-                        'http://ytimg.googleusercontent.com/vi/$1/default.jpg')
-                    ) {
-                        link.push([
-                            [null, imageUrl, null, null],
-                            [null, imageUrl, null, null]
-                        ]);
-                    }
-                } else {
-                    let (imageUrl = '//s2.googleusercontent.com/s2/favicons?domain=' +
-                        createURI(ps.pageUrl).host
-                    ) {
-                        link.push([
-                            [null, imageUrl, null, null],
-                            [null, imageUrl, null, null]
-                        ]);
-                    }
-                }
-                link.push(null, null, null, null, null);
-                if (isYoutube) {
-                    link.push([
-                        [null, 'youtube', 'http://google.com/profiles/media/provider']
-                    ]);
-                } else {
-                    link.push([
-                        [null, '', 'http://google.com/profiles/media/provider']
-                    ]);
-                }
-            }
-            link = JSON.stringify(link);
-            if (ps.type == 'photo') {
-                {
-                    let mime = this.getMIMEType(ps.itemUrl), photo = [
-                        null, null, null, null, null,
-                        [null, ps.itemUrl],
-                        null, null, null,
-                        [],
-                        null, null, null, null, null,
-                        null, null, null, null, null,
-                        null, null, null, null,
-                        [
-                            null, ps.pageUrl, null, mime, 'photo',
-                            null, null, null, null, null, null, null, null, null
-                        ],
-                        null, null, null, null, null,
-                        null, null, null, null, null,
-                        null, null, null, null, null, null,
-                        [
-                            [null, ps.itemUrl, null, null],
-                            [null, ps.itemUrl, null, null]
-                        ],
-                        null, null, null, null, null,
-                        [
-                            [null, 'images', 'http://google.com/profiles/media/provider']
-                        ]
-                    ];
-                    photo = JSON.stringify(photo);
-                    spar.push(JSON.stringify([link, photo]));
-                }
-            } else {
-                spar.push(JSON.stringify([link]));
-            }
-            spar.push(null);
-            {
-                let aclEntries = {
-                    aclEntries : [{
-                        scope : {
-                            scopeType   : 'focusGroup',
-                            name        : ops.name,
-                            id          : [oz[2][0], ops.code].join('.'),
-                            me          : false,
-                            requiresKey : false,
-                            groupType   : 'p'
-                        },
-                        role : 20
-                    }, {
-                        scope : {
-                            scopeType   : 'focusGroup',
-                            name        : ops.name,
-                            id          : [oz[2][0], ops.code].join('.'),
-                            me          : false,
-                            requiresKey : false,
-                            groupType   : 'p'
-                        },
-                        role : 60
-                    }]
-                };
-                spar.push(JSON.stringify(aclEntries));
-            }
-            spar.push(true, [], true, true, null, [], false, false);
-            spar = JSON.stringify(spar);
-            return request(this.POST_URL + '?_reqid=' + this.getReqid() + '&rt=j', {
-                method : 'POST',
-                redirectionLimit : 0,
-                sendContent : {
-                    spar : spar,
-                    at   : oz[1][15]
-                },
-                headers : {
-                    Origin : self.HOME_URL
-                }
-            }).addCallback(function(res) {
-                return res.responseText;
+        // fix
+        OZDATA_REGEX : /<script\b[^>]*>[\s\S]*?\btick\b[\s\S]*?\bvar\s+OZ_initData\s*=\s*([{]+(?:(?:(?![}]\s*;[\s\S]{0,24}\btick\b[\s\S]{0,12}<\/script>)[\s\S])*)*[}])\s*;[\s\S]{0,24}\btick\b[\s\S]{0,12}<\/script>/i,
+        getOZData : function() {
+            let self = this;
+            return request(this.HOME_URL).addCallback(function(res) {
+                let OZ_initData = res.responseText.match(self.OZDATA_REGEX)[1];
+                return evalInSandbox('(' + OZ_initData + ')', self.HOME_URL);
+            });
+        },
+        createScopeSpar : function(oz) {
+            return JSON.stringify({
+                aclEntries : [{
+                    scope : {
+                        scopeType   : 'focusGroup',
+                        name        : ops.name,
+                        id          : [oz[2][0], ops.code].join('.'),
+                        me          : false,
+                        requiresKey : false,
+                        groupType   : 'p'
+                    },
+                    role : 20
+                }, {
+                    scope : {
+                        scopeType   : 'focusGroup',
+                        name        : ops.name,
+                        id          : [oz[2][0], ops.code].join('.'),
+                        me          : false,
+                        requiresKey : false,
+                        groupType   : 'p'
+                    },
+                    role : 60
+                }]
             });
         }
     });
+    // Quoteテキストを引用符で囲い除去される改行やタグの差をできるだけ抑える
+    addAround(model, 'createLinkSpar', function(proceed, args) {
+        let ps = args[0];
+        if (ps && ps.body) {
+            ps.body = toPlainText(ps.body).wrap('&quot;');
+        }
+        return proceed(args);
+    });
+    return model;
 }
 
 
@@ -388,5 +316,5 @@ function stringify(x) {
 }
 
 
-})();
+});
 
