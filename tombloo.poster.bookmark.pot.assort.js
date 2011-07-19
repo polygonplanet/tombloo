@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.39
- * @date     2011-07-14
+ * @version  1.40
+ * @date     2011-07-20
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -197,7 +197,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.39',
+    VERSION: '1.40',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -5409,7 +5409,7 @@ Pot.extend(Pot.BookmarkUtil, {
         return ps && Pot.BookmarkUtil.checkPattern.test(ps.type) && !ps.file;
     },
     /*
-     * *** 未使用 ***
+     * *** 未使用の方向で... ***
      * ブックマークするURLの拡張子が画像の場合 TumblrにPOSTしてるとみなし
      * 無意味なブックマークを避ける
      *
@@ -5483,7 +5483,7 @@ Pot.extend(Pot.BookmarkUtil, {
         }
         return result;
     },
-    // ### 未使用 ###
+    // ### 未使用の方向で... ###
     //FIXME: このメソッドは勝手にユーザーのブックマークを抑制してるので邪魔な機能かも
     isDisableURI: function(url) {
         let result = false, disables = {
@@ -8389,7 +8389,7 @@ Pot.extend(potConvertToHTMLString, {
         ];
         s = Pot.StringUtil.stringify(html);
         if (s) {
-            Pot.forEach(patterns, function(re) {
+            Pot.forEach(patterns, function(x, re) {
                 s = s.replace(re, '');
             });
         }
@@ -9764,11 +9764,11 @@ QuickPostForm.descriptionContextMenus.push(
                     nl   : /\r\n|\r|\n/g,
                     top  : /^[\s\u00A0\u3000]*<\s*(\/|)\s*(\w+(?::\w+|))\b[^>]*(\/|)>/g,
                     end  : /<\s*(\/|)\s*(\w+(?::\w+|))\b[^>]*(\/|)>[\s\u00A0\u3000]*$/g,
-                    code : /(<(pre|code|style|script)\b[^>]*>[\s\S]*?<\/\2\s*>|<!--[\s\S]*?-->|<!\[CDATA[[\s\S]*?]]>)/gi,
+                    code : /(<(pre|style|script)\b[^>]*>[\s\S]*?<\/\2\s*>|<!--[\s\S]*?-->|<!\[CDATA[[\s\S]*?]]>)/gi,
                 };
                 value = Pot.StringUtil.stringify(desc.value);
                 if (value) {
-                    // pre や code, コメント内はそのままにする
+                    // pre や コメント内はそのままにする
                     mark = '';
                     do {
                         mark += String.fromCharCode(
@@ -10168,6 +10168,27 @@ Pot.extend(Pot.RomaReadingUtil, {
         params = null;
         return Pot.toDataURI.encodeURI(Pot.StringUtil.trim(xul), 'xul', 'utf-8');
     }
+});
+
+
+})();
+//-----------------------------------------------------------------------------
+// YouTube - キャプションの位置が変わったことでタイトルとれないので修正
+//-----------------------------------------------------------------------------
+(function() {
+
+
+addAround(Tombloo.Service.extractors['Video - YouTube'], 'extract', function(proceed, args, self) {
+    let ctx, result;
+    ctx = args[0];
+    result = proceed(args);
+    if (ctx && result) {
+        update(result, {
+            item: Pot.StringUtil.spacerize(ctx.title).trim(),
+            authorDescription: $x('//*[@id="eow-description"]/text()', ctx.document)
+        });
+    }
+    return result;
 });
 
 
