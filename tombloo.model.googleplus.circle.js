@@ -20,8 +20,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.03
- * @date     2011-07-18
+ * @version  1.04
+ * @date     2011-07-20
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -29,6 +29,7 @@
  * @license  Same as Tombloo
  *
  * Tombloo: https://github.com/to/tombloo/wiki
+ * Special thanks to base Model: YungSang (http://topl.us/yungsang)
  */
 callLater(0, function() {
 
@@ -50,11 +51,11 @@ let (limit = 8 * 1000, time = +new Date) {
     });
 }
 
-// Bookmark対応
+// Bookmark対応 + file
 addAround(models[GOOGLE_PLUS_NAME], 'check', function(proceed, args) {
     let ps = args[0], result = proceed(args);
     if (!result && ps) {
-        result = /bookmark/.test(ps.type) && !ps.file;
+        result = /(?:regular|photo|quote|link|video|bookmark)/.test(ps.type);
     }
     return result;
 });
@@ -91,17 +92,23 @@ try {
     }).addCallback(function(circles) {
         const GOOGLE_PLUS_ICON_HASH = 'f1212ee736a41ae21b56dff60b53fe35';
         return convertToDataURL(models[GOOGLE_PLUS_NAME].ICON).addCallback(function(uri) {
-            let prev, hash, draw;
+            let prev, hash, draw, done;
             // アイコンデザインが変わった場合おかしなことになるのを防ぐ
             hash = stringify(uri).md5();
             draw = hash === GOOGLE_PLUS_ICON_HASH;
             prev = GOOGLE_PLUS_NAME;
             circles.forEach(function(circle) {
                 let model = generateModel(circle);
-                if (prev === GOOGLE_PLUS_NAME) {
+                if (!done) {
                     update(models[GOOGLE_PLUS_NAME], {
-                        _post : model._post
+                        createLinkSpar : model.createLinkSpar,
+                        post           : model.post,
+                        _post          : model._post,
+                        download       : model.download,
+                        upload         : model.upload,
+                        doUpload       : model.doUpload
                     });
+                    done = true;
                 }
                 if (draw) {
                     callLater(0, function() {
@@ -118,7 +125,6 @@ try {
         });
     });
 } catch (e) {}
-
 
 /**
  * HTMLテキストをプレーンテキストに変換 (一部のタグは残す)
@@ -270,15 +276,281 @@ function generateModel(ops) {
                     role : 60
                 }]
             });
+        },
+        createLinkSpar : function(ps) {
+            let isYoutube, uris, link, title, body;
+            if (ps.type === 'regular') {
+                return JSON.stringify([]);
+            }
+            isYoutube = !!(ps.type === 'video' && ps.itemUrl.match(this.YOUTUBE_REGEX));
+            title = stringify(stringify(ps.item).length > stringify(ps.page).length ? ps.item : ps.page);
+            body = '';
+            if (ps.type === 'quote' && ps.body) {
+                // Quoteテキストを引用符で囲い除去される改行やタグの差をできるだけ抑える
+                body = toPlainText(ps.body).wrap('&quot;');
+            } else {
+                if (isYoutube) {
+                    body = stringify(ps.authorDescription || ps.author || '');
+                }
+            }
+            if (isYoutube) {
+                {
+                    let from = this.YOUTUBE_REGEX, uri = stringify(ps.itemUrl), re = {
+                        video : {
+                            from : from,
+                            to   : 'http://www.youtube.com/v/$1&hl=en&fs=1&autoplay=1'
+                        },
+                        image : {
+                            from : from,
+                            to   : 'https://ytimg.googleusercontent.com/vi/$1/hqdefault.jpg'
+                        }
+                    };
+                    uris = {
+                        video : uri.replace(re.video.from, re.video.to),
+                        image : uri.replace(re.image.from, re.image.to)
+                    };
+                }
+            } else {
+                uris = {
+                    video : '',
+                    image : '//s2.googleusercontent.com/s2/favicons?domain=' + createURI(ps.pageUrl).host
+                };
+            }
+            if (ps.upload && ps.upload.url) {
+                uris.image = ps.upload.url;
+            }
+            link = [
+                null, null, null,
+                ps.upload ? '' : title,
+                null,
+                    isYoutube ? [null, uris.video] : 
+                    ps.upload ? [null, ps.upload.url, ps.upload.height, ps.upload.width] : null,
+                null, null, null,
+                [],
+                null, null, null, null, null,
+                null, null, null, null, null, null,
+                body,
+                null, null
+            ];
+            link.push((function() {
+                switch (ps.type) {
+                    case 'video':
+                        return [null, ps.pageUrl, null, 'application/x-shockwave-flash', 'video'];
+                    case 'photo':
+                        return ps.upload ? [null, ps.upload.photoPageUrl, null, ps.upload.mimeType, 'image']
+                                         : [null, ps.pageUrl, null, 'text/html', 'document'];
+                    default:
+                        return [null, ps.itemUrl || ps.pageUrl, null, 'text/html', 'document'];
+                }
+            })());
+            link.push(
+                null, null, null, null, null,
+                null, null, null, null, null,
+                null, null, null, null, null, null,
+                [
+                    [null, uris.image, 120, 160],
+                    [null, uris.image, 120, 160]
+                ],
+                null, null, null, null, null
+            );
+            if (ps.upload) {
+                link.push([
+                    [null, 'picasa', 'http://google.com/profiles/media/provider'],
+                    [
+                        null,
+                        queryString({
+                            albumid : ps.upload.albumid,
+                            photoid : ps.upload.photoid
+                        }),
+                        'http://google.com/profiles/media/onepick_media_id'
+                    ]
+                ]);
+            } else {
+                link.push([
+                    [null, isYoutube ? 'youtube' : '', 'http://google.com/profiles/media/provider']
+                ]);
+            }
+            return JSON.stringify(link);
+        },
+        post : function(ps) {
+            let self = this;
+            if (!this.getAuthCookie()) {
+                throw new Error(getMessage('error.notLoggedin'));
+            }
+            return this.getOZData().addCallback(function(oz) {
+                return self._post(ps, oz);
+            });
+        },
+        _post : function(ps, oz) {
+            let self = this, spar, link, description;
+            return this.upload(ps, oz).addCallback(function() {
+                if (ps.type === 'regular') {
+                    description = joinText([ps.item, ps.description], '\n\n');
+                } else {
+                    description = stringify(ps.description);
+                }
+                spar = [
+                    description,
+                    self.getToken(oz),
+                    null,
+                    ps.upload && ps.upload.albumid || null,
+                    null, null
+                ];
+                link = self.createLinkSpar(ps);
+                if (!ps.upload && ps.type === 'photo') {
+                    let (photo = self.craetePhotoSpar(ps)) {
+                        spar.push(JSON.stringify([link, photo]));
+                    }
+                } else {
+                    spar.push(JSON.stringify([link]));
+                }
+                spar.push(null);
+                spar.push(self.createScopeSpar(oz)),
+                spar.push(true, [], true, true, null, [], false, false);
+                if (ps.upload) {
+                    spar.push(null, null, oz[2][0]);
+                }
+                spar = JSON.stringify(spar);
+                return request(self.POST_URL + '?' + queryString({
+                    _reqid : self.getReqid(),
+                    rt     : 'j'
+                }), {
+                    method : 'POST',
+                    redirectionLimit : 0,
+                    sendContent : {
+                        spar : spar,
+                        at   : oz[1][15]
+                    },
+                    headers : {
+                        Origin : self.HOME_URL
+                    }
+                });
+            });
+        },
+        download : function(ps) {
+            const UPLOAD_AUTH_URI = 'https://plus.google.com/_/upload/photos/resumable?authuser=0';
+            return (ps.file ? succeed(ps.file) : download(ps.itemUrl, getTempDir())).addCallback(function(file) {
+                let sendContent = JSON.stringify({
+                    protocolVersion : '0.8',
+                    createSessionRequest : {
+                        fields : [{
+                            external : {
+                                name     : 'file',
+                                filename : file.leafName,
+                                formPost : {},
+                                size     : file.fileSize
+                            }
+                        }, {
+                            inlined : {
+                                name        : 'batchid',
+                                content     : (new Date()).getTime().toString(),
+                                contentType : 'text/plain'
+                            }
+                        }, {
+                            inlined : {
+                                name         : 'disable_asbe_notification',
+                                content      : 'true',
+                                contentType  : 'text/plain'
+                            }
+                        }, {
+                            inlined : {
+                                name         : 'streamid',
+                                content      : 'updates',
+                                contentType  : 'text/plain'
+                            }
+                        }, {
+                            inlined : {
+                                name         : 'use_upload_size_pref',
+                                content      : 'true',
+                                contentType  : 'text/plain'
+                            }
+                        }]
+                    }
+                });
+                return request(UPLOAD_AUTH_URI, {
+                    sendContent : sendContent
+                }).addCallback(function(res) {
+                    return {
+                        res  : res,
+                        file : file
+                    };
+                });
+            });
+        },
+        // Picasa(GooglePhoto)にアップロードしてから表示しないと小さくなる
+        upload : function(ps, oz) {
+            let d;
+            if (ps && ps.type === 'photo') {
+                d = this.doUpload(ps, oz);
+            } else {
+                d = succeed();
+            }
+            return maybeDeferred(d);
+        },
+        doUpload : function(ps, oz) {
+            let d;
+            d = this.download(ps);
+            d.addCallback(function(res) {
+                let json, uri, type, ext, file;
+                file = res.file;
+                json = JSON.parse(res.res.responseText);
+                ext  = json.sessionStatus.externalFieldTransfers;
+                if (ext[0]) {
+                    ext = ext[0];
+                }
+                uri  = ext.formPostInfo.url;
+                type = ext.content_type;
+                return upload(uri, {
+                    redirectionLimit : 0,
+                    headers : {
+                        'Content-Type' : type
+                    },
+                    sendContent : {
+                        file : file
+                    }
+                }).addCallback(function(res) {
+                    let info, json = JSON.parse(res.responseText);
+                    if (json && json.errorMessage) {
+                        // サイズが大きいとエラー (キャプチャで発生しやすい)
+                        error(json);
+                        {
+                            let errmsg;
+                            try {
+                                errmsg = json.errorMessage
+                                    .additionalInfo['uploader_service.GoogleRupioAdditionalInfo']
+                                    .completionInfo.customerSpecificInfo.message;
+                                if (!errmsg) {
+                                    throw errmsg;
+                                }
+                            } catch (e) {
+                                errmsg = json.errorMessage.reason || json;
+                            }
+                            throw new Error(errmsg);
+                        }
+                    } else {
+                        info = json.sessionStatus
+                                .additionalInfo['uploader_service.GoogleRupioAdditionalInfo']
+                                .completionInfo.customerSpecificInfo;
+                        if (info) {
+                            ps.upload = info;
+                        }
+                    }
+                    return true;
+                }).addBoth(function(res) {
+                    try {
+                        // テンポラリファイルを削除
+                        file.remove(false);
+                    } catch (e) {}
+                    
+                    if (res instanceof Error) {
+                        error(res);
+                        throw res;
+                    }
+                    return succeed();
+                });
+            });
+            return d;
         }
-    });
-    // Quoteテキストを引用符で囲い除去される改行やタグの差をできるだけ抑える
-    addAround(model, 'createLinkSpar', function(proceed, args) {
-        let ps = args[0];
-        if (ps && ps.body) {
-            ps.body = toPlainText(ps.body).wrap('&quot;');
-        }
-        return proceed(args);
     });
     return model;
 }
@@ -318,6 +590,149 @@ function stringify(x) {
         }
     }
     return result.toString();
+}
+
+
+/**
+ * アップロード (request関数をGoogle+ Photo用に少し変更)
+ *
+ * @param  {String}    url      リクエストURL
+ * @param  {Object}    options  オプション
+ * @return {Deferred}
+ */
+function upload(url, options) {
+    let d, opts, uri, contents, channel, contentType, file;
+    d = new Deferred()
+    opts = options || {};
+    uri = createURI(joinText([url, queryString(opts.queryString)], '?'));
+    channel = broad(IOService.newChannelFromURI(uri), [Ci.nsIUploadChannel, IHttpChannel]);
+    if (opts.referrer) {
+        channel.referrer = createURI(opts.referrer);
+    }
+    if (opts.headers) {
+        items(opts.headers).forEach(function([key, value]) {
+            if (/^Content-?Type$/i.test(key)) {
+                channel.contentType = contentType = value;
+            }
+            channel.setRequestHeader(key, value, true);
+        });
+    }
+    setCookie(channel);
+    if (opts.sendContent) {
+        contents = opts.sendContent;
+        if (typeof contents === 'object') {
+            let (name, value) {
+                for (name in contents) {
+                    value = contents[name];
+                    if (value instanceof IInputStream || value instanceof IFile) {
+                        file = value;
+                        value = contents[name] = {file : value};
+                    }
+                }
+            }
+        }
+        if (!file && typeof contents !== 'string') {
+            contents = queryString(contents);
+        }
+        channel.setUploadStream(
+            // nsIFileInputStreamを利用してアップロード
+            (file && new FileInputStream(file, -1, 0, false)) || new StringInputStream(contents),
+            contentType || 'application/x-www-form-urlencoded',
+            -1
+        );
+    }
+    {
+        let redirectionCount = 0, listener = {
+            QueryInterface : createQueryInterface([
+                'nsIStreamListener',
+                'nsIProgressEventSink',
+                'nsIHttpEventSink',
+                'nsIInterfaceRequestor',
+                'nsIChannelEventSink'
+            ]),
+            isAppOfType : function(val) {
+                return val == 0;
+            },
+            onProgress   : function(req, ctx, progress, progressMax) {},
+            onStatus     : function(req, ctx, status, statusArg) {},
+            getInterface : function(iid) {
+                try {
+                    return this.QueryInterface(iid);
+                } catch (e) {
+                    throw Cr.NS_NOINTERFACE;
+                }
+            },
+            onRedirect             : function(oldChannel, newChannel) {},
+            onRedirectResult       : function() {},
+            asyncOnChannelRedirect : function(oldChannel, newChannel, flags, redirectCallback) {
+                this.onChannelRedirect(oldChannel, newChannel, flags);
+                redirectCallback.onRedirectVerifyCallback(0);
+            },
+            onChannelRedirect : function(oldChannel, newChannel, flags) {
+                let res;
+                redirectionCount++;
+                if (opts.redirectionLimit != null && redirectionCount > opts.redirectionLimit) {
+                    newChannel.cancel(2152398879);
+                    res = {
+                        channel      : newChannel,
+                        responseText : '',
+                        status       : oldChannel.responseStatus,
+                        statusText   : oldChannel.responseStatusText
+                    };
+                    d.callback(res);
+                    return;
+                }
+                broad(oldChannel);
+                setCookie(newChannel);
+            },
+            onStartRequest : function(req, ctx) {
+                this.data = [];
+            },
+            onDataAvailable : function(req, ctx, stream, sourceOffset, length) {
+                this.data.push(new InputStream(stream).read(length));
+            },
+            onStopRequest : function(req, ctx, status) {
+                let text, charset, res;
+                if (opts.redirectionLimit != null && redirectionCount > opts.redirectionLimit) {
+                    return;
+                }
+                broad(req);
+                text = this.data.join('');
+                try {
+                    charset = opts.charset || req.contentCharset ||
+                        text.extract(/content=["'].*charset=(.+?)[;"']/i);
+                    text = charset ? text.convertToUnicode(charset) : text;
+                    res = {
+                        channel      : req,
+                        responseText : text,
+                        status       : req.responseStatus,
+                        statusText   : req.responseStatusText
+                    };
+                } catch (e) {
+                    res = {
+                        channel      : req,
+                        responseText : text,
+                        status       : null,
+                        statusText   : null
+                    };
+                }
+                if (Components.isSuccessCode(status) && res.status < 400) {
+                    d.callback(res);
+                } else {
+                    error(res);
+                    res.message = getMessage('error.http.' + res.status);
+                    d.errback(res);
+                }
+            }
+        };
+        channel.requestMethod = opts.method ? opts.method :
+                                opts.sendContent ? 'POST' : 'GET';
+        channel.notificationCallbacks = listener;
+        channel.asyncOpen(listener, null);
+        broad(channel);
+        listener = channel = null;
+    }
+    return d;
 }
 
 
