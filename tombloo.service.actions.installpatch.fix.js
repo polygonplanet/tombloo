@@ -3,7 +3,7 @@
  *
  * 「パッチのインストール」を簡単に行えるようにするパッチ
  *
- * Version 1.01, 2011-05-04 polygon planet <http://polygonplanet.tumblr.com/>
+ * Version 1.02, 2011-07-20 polygon planet <http://polygonplanet.tumblr.com/>
  */
 (function(undefined) {
 
@@ -15,11 +15,8 @@ update(Tombloo.Service.actions[getMessage('label.action.installPatch')], {
         var filename, url = ctx.linkURL;
         filename = String(url).replace(/[!?#].*$/g, '');
         return ctx.onLink &&
-            filename.split('.').pop().toLowerCase() === 'js';
-            //
-            // nsIURI での判断はバージョン依存になるのでやめておく
-            //String((createURI(url).fileExtension).toLowerCase() === 'js');
-            //
+            (filename.split('.').pop().toLowerCase() === 'js' ||
+            String(createURI(url).fileExtension).toLowerCase() === 'js');
     },
     execute: function(ctx) {
         var self = this, url = ctx.linkURL;
@@ -27,12 +24,13 @@ update(Tombloo.Service.actions[getMessage('label.action.installPatch')], {
         // ファイルタイプを取得しチェックする
         // HEADの場合text/htmlで返ってきちゃうのでGETにする
         return request(url).addCallback(function(res) {
-            var result, type, ok = false, invalid;
+            var result, type, ok = false, invalid, text;
             try {
-                type = String(res.channel.contentType).toLowerCase();
+                text = res.responseText;
+                type = String(res.channel && res.channel.contentType);
                 
                 // 条件を緩くする
-                if (/script|plain/.test(type)) {
+                if (/script|plain/i.test(type) || !/^\s*<[^>]*>/.test(text)) {
                     ok = true;
                 }
             } catch (e) {
