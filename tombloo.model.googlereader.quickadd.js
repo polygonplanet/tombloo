@@ -11,8 +11,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.00
- * @date     2011-07-12
+ * @version  1.01
+ * @date     2011-07-20
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog: http://polygon-planet.blogspot.com/
  *            - Twitter: http://twitter.com/polygon_planet
@@ -31,7 +31,7 @@ models.register({
     ICON: 'http://www.google.com/reader/ui/favicon.ico',
     check: function(ps) {
         let re = /(?:photo|quote|link|conversation|video|audio|bookmark)/;
-        return re.test(ps.type) && !ps.file && !!this.getFeeds();
+        return re.test(ps.type) && !ps.file && !!this.getFeeds(true);
     },
     getAuthCookie: function() {
         return getCookieString('www.google.com', 'SID');
