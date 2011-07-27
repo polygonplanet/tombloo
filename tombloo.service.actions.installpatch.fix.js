@@ -1,9 +1,25 @@
-/*
- * Tombloo - Service.action.installPatch patches
+/**
+ * Service.Actions.InstallPatch.Fix - Tombloo patches
  *
  * 「パッチのインストール」を簡単に行えるようにするパッチ
  *
- * Version 1.02, 2011-07-20 polygon planet <http://polygonplanet.tumblr.com/>
+ * 機能:
+ * --------------------------------------------------------------------------
+ * [Service Actions InstallPatch Fix patch]
+ *
+ * - 「パッチのインストール」に成功するよう条件を緩くする
+ *
+ * --------------------------------------------------------------------------
+ *
+ * @version  1.03
+ * @date     2011-07-27
+ * @author   polygon planet <polygon.planet@gmail.com>
+ *            - Blog    : http://polygon-planet.blogspot.com/
+ *            - Twitter : http://twitter.com/polygon_planet
+ *            - Tumblr  : http://polygonplanet.tumblr.com/
+ * @license  Same as Tombloo
+ *
+ * Tombloo: https://github.com/to/tombloo/wiki
  */
 (function(undefined) {
 
@@ -13,7 +29,7 @@ update(Tombloo.Service.actions[getMessage('label.action.installPatch')], {
         // 簡単にインストールできるように
         // GitHubじゃなくてもJavaScriptなら許可する
         var filename, url = ctx.linkURL;
-        filename = String(url).replace(/[!?#].*$/g, '');
+        filename = String(url).replace(/[?#].*$/g, '');
         return ctx.onLink &&
             (filename.split('.').pop().toLowerCase() === 'js' ||
             String(createURI(url).fileExtension).toLowerCase() === 'js');
@@ -26,8 +42,11 @@ update(Tombloo.Service.actions[getMessage('label.action.installPatch')], {
         return request(url).addCallback(function(res) {
             var result, type, ok = false, invalid, text;
             try {
-                text = res.responseText;
-                type = String(res.channel && res.channel.contentType);
+                text = String(res.responseText);
+                type = String(res.channel && res.channel.contentType || '');
+                try {
+                    text = text.convertToUnicode();
+                } catch (er) {}
                 
                 // 条件を緩くする
                 if (/script|plain/i.test(type) || !/^\s*<[^>]*>/.test(text)) {
@@ -53,8 +72,8 @@ update(Tombloo.Service.actions[getMessage('label.action.installPatch')], {
             } catch (e) {
                 invalid = true;
             }
-            return invalid ? false : download(url, getPatchDir()).
-                addCallback(function(file) {
+            return invalid ? false : download(url, getPatchDir())
+                .addCallback(function(file) {
                     // 異常なスクリプトが含まれているとここで停止する
                     reload();
                     notify(
