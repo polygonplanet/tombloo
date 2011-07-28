@@ -11,13 +11,14 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.01
- * @date     2011-07-02
- * @author   polygon planet <polygon.planet@gmail.com>
- *            - Blog: http://polygon-planet.blogspot.com/
- *            - Twitter: http://twitter.com/polygon_planet
- *            - Tumblr: http://polygonplanet.tumblr.com/
- * @license  Same as Tombloo
+ * @version    1.02
+ * @date       2011-07-29
+ * @author     polygon planet <polygon.planet@gmail.com>
+ *              - Blog    : http://polygon-planet.blogspot.com/
+ *              - Twitter : http://twitter.com/polygon_planet
+ *              - Tumblr  : http://polygonplanet.tumblr.com/
+ * @license    Same as Tombloo
+ * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.evernote.relogin.js
  *
  * Tombloo: https://github.com/to/tombloo/wiki
  */
