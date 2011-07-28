@@ -31,13 +31,14 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version  1.29
- * @date     2011-07-12
- * @author   polygon planet <polygon.planet@gmail.com>
- *            - Blog: http://polygon-planet.blogspot.com/
- *            - Twitter: http://twitter.com/polygon_planet
- *            - Tumblr: http://polygonplanet.tumblr.com/
- * @license  Same as Tombloo
+ * @version    1.30
+ * @date       2011-07-29
+ * @author     polygon planet <polygon.planet@gmail.com>
+ *              - Blog    : http://polygon-planet.blogspot.com/
+ *              - Twitter : http://twitter.com/polygon_planet
+ *              - Tumblr  : http://polygonplanet.tumblr.com/
+ * @license    Same as Tombloo
+ * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.pixiv.js
  *
  * Tombloo: https://github.com/to/tombloo/wiki
  */
@@ -249,11 +250,11 @@ var pixivProto = {
         var self = this, tags = [], xpath, re, text, push;
         if (this.APPEND_TAGS) {
             re = {
-                trim: /^[\s\u3000]+|[\s\u3000]+$/g,
-                space: /[\s\u3000]+/g,
-                clean: /[\x00-\x20*\/-]+/g,
-                fix: /([*]+)[\s\u3000]*(\S)/g,
-                ast: /^[*]+/
+                trim  : /^[\s\u3000]+|[\s\u3000]+$/g,
+                space : /[\s\u3000]+/g,
+                clean : /[\x00-\x20*\/-]+/g,
+                fix   : /([*]+)[\s\u3000]*(\S)/g,
+                ast   : /^[*]+/
             };
             push = function(s) {
                 tags.push(
@@ -554,15 +555,15 @@ var pixivProto = {
                     delete self.pixivDocuments[ctx.pixivDocKey];
                 } catch (e) {}
                 return {
-                    type: 'photo',
-                    item: ctx.title,
-                    itemUrl: src,
-                    file: file,
-                    tags: tags,
-                    pretends: {
-                        href: ctx.href,
-                        doc: ctx.target,
-                        title: ctx.title
+                    type    : 'photo',
+                    item    : ctx.title,
+                    itemUrl : src,
+                    file    : file,
+                    tags    : tags,
+                    pretends : {
+                        href  : ctx.href,
+                        doc   : ctx.target,
+                        title : ctx.title
                     }
                 };
             });
@@ -840,13 +841,13 @@ var pixivBookmark = update({
         return token.addCallback(function(token) {
             return request(addUrl, {
                 sendContent: {
-                    mode: 'add',
-                    tt: token,
-                    id: self.getIllustId(psc, doc),
-                    type: 'illust',
-                    restrict: 0, // 1 = 非公開, 0 = 公開
-                    tag: joinText(psc.tags || [], ' '),
-                    comment: joinText([psc.body, psc.description], ' ', true)
+                    mode     : 'add',
+                    tt       : token,
+                    id       : self.getIllustId(psc, doc),
+                    type     : 'illust',
+                    restrict : 0, // 1 = 非公開, 0 = 公開
+                    tag      : joinText(psc.tags || [], ' '),
+                    comment  : joinText([psc.body, psc.description], ' ', true)
                 }
             }).addCallback(function(res) {
                 var uri = psc.pageUrl, curDoc = self.getDocument(psc, true);
@@ -910,13 +911,13 @@ var pixivBookmark = update({
         psc = update({}, ps);
         return token.addCallback(function(token) {
             return request(addUrl, {
-                sendContent: {
-                    mode: 'add',
-                    tt: token,
-                    type: 'user',
-                    user_id: self.getUserId(psc, doc),
-                    restrict: 0, // 1 = 非公開, 0 = 公開
-                    left_column: 'OK'
+                sendContent : {
+                    mode        : 'add',
+                    tt          : token,
+                    type        : 'user',
+                    user_id     : self.getUserId(psc, doc),
+                    restrict    : 0, // 1 = 非公開, 0 = 公開
+                    left_column : 'OK'
                 }
             }).addCallback(function(res) {
                 var uri = psc.pageUrl, curDoc = self.getDocument(psc, true);
@@ -1259,10 +1260,10 @@ update(pixivThumbsExpander, {
         wins = WindowMediator.getXULWindowEnumerator(null);
         while (wins.hasMoreElements()) {
             try {
-                win = wins.getNext().
-                    QueryInterface(Ci.nsIXULWindow).docShell.
-                    QueryInterface(Ci.nsIInterfaceRequestor).
-                    getInterface(Ci.nsIDOMWindow);
+                win = wins.getNext()
+                    .QueryInterface(Ci.nsIXULWindow).docShell
+                    .QueryInterface(Ci.nsIInterfaceRequestor)
+                    .getInterface(Ci.nsIDOMWindow);
                 if (win.location &&
                     win.location.href == pref || win.location == pref) {
                     result = win;
@@ -1972,9 +1973,11 @@ update(pixivThumbsExpander, {
     },
     insertImage: function(src, nop, simg, mimg, callback) {
         var self = this, doc, loading, loaded, raise, failed, d;
+        var limit, onError, onLoad, onTimeLimit;
         if (!this.expanding) {
             return;
         }
+        limit = 2;
         doc = this.getDocument();
         callback = callback || (function() {});
         try {
@@ -1987,13 +1990,44 @@ update(pixivThumbsExpander, {
             };
             // 画像キャッシュが残ってる場合 onload の信頼性が薄いので
             // 規定秒以上経っても onload が呼ばれない場合エラーとみなす
-            d = callLater(this.loadTimeLimit, function() {
+            onTimeLimit = function() {
                 if (!loaded) {
                     raise();
                 }
-            });
-            // onerror は使わない
-            mimg.addEventListener('load', function() {
+            };
+            d = callLater(this.loadTimeLimit, onTimeLimit);
+            onError = function() {
+                if (!self.expanding) {
+                    return;
+                }
+                if (loaded) {
+                    return;
+                }
+                try {
+                    mimg.removeEventListener('error', onError, true);
+                    mimg.removeEventListener('load', onLoad, true);
+                    d.cancel();
+                } catch (er) {}
+                
+                if (--limit >= 0) {
+                    // エラーが起きても数回は再試行する
+                    mimg.removeAttribute('src');
+                    removeNode(mimg);
+                    
+                    loaded = false;
+                    failed = false;
+                    d = callLater(this.loadTimeLimit, onTimeLimit);
+                    
+                    mimg.addEventListener('error', onError, true);
+                    mimg.addEventListener('load', onLoad, true);
+                    
+                    attr(mimg, {src: src});
+                    nop.insertBefore(mimg, simg);
+                } else {
+                    raise();
+                }
+            };
+            onLoad = function() {
                 loaded = true;
                 failed = false;
                 d.cancel();
@@ -2009,7 +2043,9 @@ update(pixivThumbsExpander, {
                     show(simg, 'block');
                     callback.call(self);
                 });
-            }, true);
+            };
+            mimg.addEventListener('error', onError, true);
+            mimg.addEventListener('load', onLoad, true);
             attr(mimg, {src: src});
             nop.insertBefore(mimg, simg);
         } catch (e) {
