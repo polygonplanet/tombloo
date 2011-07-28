@@ -11,13 +11,14 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.03
- * @date     2011-07-27
- * @author   polygon planet <polygon.planet@gmail.com>
- *            - Blog    : http://polygon-planet.blogspot.com/
- *            - Twitter : http://twitter.com/polygon_planet
- *            - Tumblr  : http://polygonplanet.tumblr.com/
- * @license  Same as Tombloo
+ * @version    1.03
+ * @date       2011-07-29
+ * @author     polygon planet <polygon.planet@gmail.com>
+ *              - Blog    : http://polygon-planet.blogspot.com/
+ *              - Twitter : http://twitter.com/polygon_planet
+ *              - Tumblr  : http://polygonplanet.tumblr.com/
+ * @license    Same as Tombloo
+ * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.actions.installpatch.fix.js
  *
  * Tombloo: https://github.com/to/tombloo/wiki
  */
@@ -49,7 +50,7 @@ update(Tombloo.Service.actions[getMessage('label.action.installPatch')], {
                 } catch (er) {}
                 
                 // 条件を緩くする
-                if (/script|plain/i.test(type) || !/^\s*<[^>]*>/.test(text)) {
+                if (type && /script|plain/i.test(type) || !/^\s*<[^>]*>/.test(text)) {
                     ok = true;
                 }
             } catch (e) {
@@ -72,16 +73,15 @@ update(Tombloo.Service.actions[getMessage('label.action.installPatch')], {
             } catch (e) {
                 invalid = true;
             }
-            return invalid ? false : download(url, getPatchDir())
-                .addCallback(function(file) {
-                    // 異常なスクリプトが含まれているとここで停止する
-                    reload();
-                    notify(
-                        self.name,
-                        getMessage('message.install.success'),
-                        notify.ICON_INFO
-                    );
-                });
+            return invalid ? false : download(url, getPatchDir()).addCallback(function(file) {
+                // 異常なスクリプトが含まれているとここで停止する
+                reload();
+                notify(
+                    self.name,
+                    getMessage('message.install.success'),
+                    notify.ICON_INFO
+                );
+            });
         });
     }
 });
