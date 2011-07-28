@@ -10,13 +10,14 @@
  * ※通知はウザイ可能性があるのでその場合はパッチ削除
  *
  *
- * @version  1.05
- * @date     2011-07-01
- * @author   polygon planet <polygon.planet@gmail.com>
- *            - Blog: http://polygon-planet.blogspot.com/
- *            - Twitter: http://twitter.com/polygon_planet
- *            - Tumblr: http://polygonplanet.tumblr.com/
- * @license  Same as Tombloo
+ * @version    1.06
+ * @date       2011-07-29
+ * @author     polygon planet <polygon.planet@gmail.com>
+ *              - Blog    : http://polygon-planet.blogspot.com/
+ *              - Twitter : http://twitter.com/polygon_planet
+ *              - Tumblr  : http://polygonplanet.tumblr.com/
+ * @license    Same as Tombloo
+ * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.post.notify.js
  *
  * Tombloo: https://github.com/to/tombloo/wiki
  */
@@ -194,10 +195,10 @@ update(Tombloo.Service, {
                 }
             }
             return {
-                doneNames: doneNames,
-                failNames: failNames,
-                retry: called && retryName || null,
-                postSuccess: !postCancel
+                doneNames   : doneNames,
+                failNames   : failNames,
+                retry       : called && retryName || null,
+                postSuccess : !postCancel
             };
         }).addErrback(function(err) {
             
@@ -268,24 +269,32 @@ function isNumeric(n) {
 
 
 function stringify(x) {
-    var result = '';
+    let result = '', c;
     if (x !== null) {
         switch (typeof x) {
             case 'string':
-                result = x;
-                break;
-            case 'xml':
             case 'number':
-                result = x.toString();
+            case 'xml':
+                result = x;
                 break;
             case 'boolean':
                 result = x ? 1 : '';
+                break;
+            case 'object':
+                if (x) {
+                    c = x.constructor;
+                    if (c === String || c === Number) {
+                        result = x;
+                    } else if (c === Boolean) {
+                        result = x ? 1 : '';
+                    }
+                }
                 break;
             default:
                 break;
         }
     }
-    return String(result);
+    return result.toString();
 }
 
 
