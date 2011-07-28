@@ -38,20 +38,21 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.40
- * @date     2011-07-20
- * @author   polygon planet <polygon.planet@gmail.com>
- *            - Blog: http://polygon-planet.blogspot.com/
- *            - Twitter: http://twitter.com/polygon_planet
- *            - Tumblr: http://polygonplanet.tumblr.com/
- * @license  Same as Tombloo
+ * @version    1.41
+ * @date       2011-07-29
+ * @author     polygon planet <polygon.planet@gmail.com>
+ *              - Blog    : http://polygon-planet.blogspot.com/
+ *              - Twitter : http://twitter.com/polygon_planet
+ *              - Tumblr  : http://polygonplanet.tumblr.com/
+ * @license    Same as Tombloo
+ * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.poster.bookmark.pot.assort.js
  *
  * Tombloo: https://github.com/to/tombloo/wiki
  */
 //-----------------------------------------------------------------------------
 (function(undefined) {
 //-----------------------------------------------------------------------------
-// デバッグ用
+// for debugging
 //-----------------------------------------------------------------------------
 //setPref('debug', true);
 
@@ -130,7 +131,7 @@ const YAHOO_API_PARSE_MAX_TEXT_SIZE = 1024 * 80; // 80KB
 // 1アプリケーションのリクエスト最大回数
 // http://developer.yahoo.co.jp/appendix/rate.html
 //
-const YAHOO_API_PARSE_MAX_COUNT = 50000;
+const YAHOO_API_PARSE_MAX_COUNT = 50000 - 1;
 
 //
 // Yahoo!キーワード抽出API
@@ -142,7 +143,7 @@ const YAHOO_API_KEYWORD_MAX_TEXT_SIZE = 1024 * 9; // 9KB
 // 1アプリケーションのリクエスト最大回数
 // http://developer.yahoo.co.jp/appendix/rate.html
 //
-const YAHOO_API_KEYWORD_MAX_COUNT = 50000;
+const YAHOO_API_KEYWORD_MAX_COUNT = 50000 - 1;
 
 // setPref/getPref で使うキー名
 //
@@ -1370,10 +1371,10 @@ Pot.extend({
         wins = WindowMediator.getXULWindowEnumerator(null);
         while (wins.hasMoreElements()) {
             try {
-                win = wins.getNext().
-                    QueryInterface(Ci.nsIXULWindow).docShell.
-                    QueryInterface(Ci.nsIInterfaceRequestor).
-                    getInterface(Ci.nsIDOMWindow);
+                win = wins.getNext()
+                    .QueryInterface(Ci.nsIXULWindow).docShell
+                    .QueryInterface(Ci.nsIInterfaceRequestor)
+                    .getInterface(Ci.nsIDOMWindow);
                 if (win && win.location &&
                     (win.location.href == pref || win.location == pref)) {
                     result = win;
@@ -3498,7 +3499,7 @@ Pot.extend(Pot.StringUtil, {
      * @return {String}        変換された文字列
      */
     toHankakuCase: function(text) {
-        var r = [], c, s, i, len;
+        let r = [], c, s, i, len;
         s = Pot.StringUtil.stringify(text);
         if (s) {
             i = 0;
@@ -3508,7 +3509,7 @@ Pot.extend(Pot.StringUtil, {
                 if (0xFF01 <= c && c <= 0xFF5E) {
                     c -= 0xFEE0;
                 }
-                r.push(c);
+                r[r.length] = c;
             }
         }
         return String.fromCharCode.apply(null, r);
@@ -3523,7 +3524,7 @@ Pot.extend(Pot.StringUtil, {
      * @return {String}        変換された文字列
      */
     toZenkakuCase: function(text) {
-        var r = [], c, s, i, len;
+        let r = [], c, s, i, len;
         s = Pot.StringUtil.stringify(text);
         if (s) {
             i = 0;
@@ -3533,7 +3534,7 @@ Pot.extend(Pot.StringUtil, {
                 if (0x21 <= c && c <= 0x7E) {
                     c += 0xFEE0;
                 }
-                r.push(c);
+                r[r.length] = c;
             }
         }
         return String.fromCharCode.apply(null, r);
@@ -3566,7 +3567,7 @@ Pot.extend(Pot.StringUtil, {
      * @return {String}        ひらがなに変換された文字列
      */
     toHiraganaCase: function(text) {
-        var r = [], c, i, s, len, code;
+        let r = [], c, i, s, len, code;
         s = Pot.StringUtil.stringify(text);
         if (s) {
             i = 0;
@@ -3577,12 +3578,12 @@ Pot.extend(Pot.StringUtil, {
                     code = c - 0x0060;
                     // 「ヴ」を「う」+「゛」に変換する
                     if (c === 0x30F4) {
-                        r.push(0x3046);
+                        r[r.length] = 0x3046;
                         code = 0x309B;
                     }
                     c = code;
                 }
-                r.push(c);
+                r[r.length] = c;
             }
         }
         return String.fromCharCode.apply(null, r);
@@ -3597,7 +3598,7 @@ Pot.extend(Pot.StringUtil, {
      * @return {String}        カタカナに変換された文字列
      */
     toKatakanaCase: function(text) {
-        var r = [], c, d, i, code, len, s;
+        let r = [], c, d, i, code, len, s;
         s = Pot.StringUtil.stringify(text);
         if (s) {
             i = 0;
@@ -3616,7 +3617,7 @@ Pot.extend(Pot.StringUtil, {
                     }
                     c = code;
                 }
-                r.push(c);
+                r[r.length] = c;
             }
         }
         return String.fromCharCode.apply(null, r);
@@ -3649,7 +3650,7 @@ Pot.extend(Pot.StringUtil, {
             0x30F4:0xFF73, 0x30F7:0xFF9C, 0x30FA:0xFF66
         };
         return function(text) {
-            var r = [], i, s, len, c;
+            let r = [], i, s, len, c;
             s = Pot.StringUtil.stringify(text);
             if (s) {
                 i = 0;
@@ -3657,7 +3658,7 @@ Pot.extend(Pot.StringUtil, {
                 while (i < len) {
                     c = s.charCodeAt(i++);
                     if (c in map) {
-                        r.push(map[c]);
+                        r[r.length] = map[c];
                     } else if (c in exc) {
                         r.push(exc[c], 0xFF9E);
                     } else if (0x30AB <= c && c <= 0x30C9) {
@@ -3665,7 +3666,7 @@ Pot.extend(Pot.StringUtil, {
                     } else if (0x30CF <= c && c <= 0x30DD) {
                         r.push(map[c - c % 3], [0xFF9E, 0xFF9F][c % 3 - 1]);
                     } else {
-                        r.push(c);
+                        r[r.length] = c;
                     }
                 }
             }
@@ -3694,7 +3695,7 @@ Pot.extend(Pot.StringUtil, {
             0x30EB, 0x30EC, 0x30ED, 0x30EF, 0x30F3, 0x309B, 0x309C
         ];
         return function(text) {
-            var code, codes = [], i, len, s, c, next, last;
+            let code, codes = [], i, len, s, c, next, last;
             s = Pot.StringUtil.stringify(text);
             if (s) {
                 len = s.length;
@@ -3724,7 +3725,7 @@ Pot.extend(Pot.StringUtil, {
                         }
                         c = code;
                     }
-                    codes.push(c);
+                    codes[codes.length] = c;
                 }
             }
             return String.fromCharCode.apply(null, codes);
@@ -3862,7 +3863,7 @@ Pot.extend(Pot.StringUtil, {
             return result.join('');
         };
         return function(text) {
-            var result = [], chars, c, s, i, len, translate;
+            let result = [], chars, c, s, i, len, translate;
             translate = function(a) {
                 var r, b;
                 if (/^\d{2,}$/.test(a)) {
@@ -3879,7 +3880,7 @@ Pot.extend(Pot.StringUtil, {
                 len = chars.length;
                 for (i = 0; i < len; i++) {
                     c = chars[i];
-                    result.push(translate(c));
+                    result[result.length] = translate(c);
                 }
                 s = result.join('');
                 result = [];
@@ -3887,7 +3888,7 @@ Pot.extend(Pot.StringUtil, {
                 len = chars.length;
                 for (i = 0; i < len; i++) {
                     c = chars[i];
-                    result.push(translate(c));
+                    result[result.length] = translate(c);
                 }
             }
             return result.join('');
@@ -6475,7 +6476,7 @@ update(models.HatenaBookmark, {
         Pot.BookmarkUtil.normalizeTags(tags).forEach(function(tag) {
             tag = tag.replace(re.by, re.to);
             if (tag && tag.length) {
-                result.push(tag);
+                result[result.length] = tag;
             }
         });
         return result;
@@ -10175,7 +10176,7 @@ Pot.extend(Pot.RomaReadingUtil, {
 //-----------------------------------------------------------------------------
 // YouTube - キャプションの位置が変わったことでタイトルとれないので修正
 //-----------------------------------------------------------------------------
-(function() {
+callLater(5, function() {
 
 
 addAround(Tombloo.Service.extractors['Video - YouTube'], 'extract', function(proceed, args, self) {
@@ -10192,7 +10193,7 @@ addAround(Tombloo.Service.extractors['Video - YouTube'], 'extract', function(pro
 });
 
 
-})();
+});
 //-----------------------------------------------------------------------------
 // Audio - Audio対応
 //-----------------------------------------------------------------------------
@@ -10858,9 +10859,12 @@ Pot.extend(Pot.SetupUtil, {
             callLater(0, function() {
                 Pot.SetupUtil.openAlert(PSU_INSTALL_TITLE, [
                         'インストール完了しました。',
-                        'ブラウザを再起動するとパッチが適応されます。'
+                        'ブラウザを再起動すると完全にパッチが適応されます。'
                     ].join('\n'),
-                    'そうですか'
+                    {
+                        label       : 'OK',
+                        tooltiptext : 'OK (閉じても勝手に再起動はしません)'
+                    }
                 );
             });
         }).addErrback(function(err) {
@@ -10989,9 +10993,12 @@ Pot.extend(Pot.SetupUtil, {
                 callLater(0, function() {
                     Pot.SetupUtil.openAlert(PSU_UNINSTALL_TITLE, [
                             'アンインストールが完了しました。',
-                            'ブラウザを再起動すると適応されます。'
+                            'ブラウザを再起動すると完全に適応されます。'
                         ].join('\n'),
-                        'そうですか'
+                        {
+                            label       : 'OK',
+                            tooltiptext : 'OK (閉じても勝手に再起動はしません)'
+                        }
                     );
                 });
             }
@@ -11124,7 +11131,7 @@ Pot.extend(Pot.SetupUtil, {
                             Pot.SetupUtil.openAlert(
                                 PSU_UPDATECHECK_TITLE,
                                 'すでに最新バージョンです',
-                                'そうですか'
+                                'OK'
                             );
                         }
                     } else {
@@ -11594,6 +11601,7 @@ Pot.extend(Pot.SetupUtil, {
     },
     // 自動アップデート
     autoUpdaterSignal: null,
+    autoUpdaterEnabled: true,
     autoUpdaterConnected: null,
     autoUpdaterUserCanceled: false,
     autoUpdater: function() {
@@ -11601,6 +11609,9 @@ Pot.extend(Pot.SetupUtil, {
         const UPDATE_INTERVAL = 60 * 60 * 2;
         const UPDATE_DELAY    = 10;
         let called = false;
+        if (!Pot.SetupUtil.autoUpdaterEnabled) {
+            return called;
+        }
         // ユーザーがキャンセルした場合は再度実行しない
         if (!Pot.SetupUtil.autoUpdaterUserCanceled) {
             if (Pot.SetupUtil.isInstalled()) {
@@ -11683,22 +11694,36 @@ Pot.extend(Pot.SetupUtil, {
             </dialog>
         ]]></>);
         return function(title, message, button, extra) {
-            let data, reps;
+            let data, reps, params = {};
             reps = {
-                '{TITLE}': Pot.escapeHTML(Pot.StringUtil.stringify(title)),
-                '{MESSAGE}': Pot.escapeHTML(Pot.StringUtil.stringify(message)).split(/(?:\r\n|\r|\n)/).map(function(s) {
+                '{TITLE}'   : Pot.escapeHTML(Pot.StringUtil.stringify(title)),
+                '{MESSAGE}' : Pot.escapeHTML(Pot.StringUtil.stringify(message)).split(/(?:\r\n|\r|\n)/).map(function(s) {
                                 return Pot.sprintf('<label value="%s"/>', s);
-                             }).join('\n'),
-                '{BUTTON}': Pot.escapeHTML(Pot.StringUtil.stringify(button) || 'OK'),
-                '{EXTRA}': Pot.StringUtil.stringify(/<\w[^>]*>/.test(extra) ? extra : ''),
-                '{SCRIPT}': ['<![CDATA[', ']]>'].join(Pot.StringUtil.mtrim(<><![CDATA[
+                            }).join('\n'),
+                '{BUTTON}'  : Pot.escapeHTML(Pot.StringUtil.stringify(button) || 'OK'),
+                '{EXTRA}'   : Pot.StringUtil.stringify(/<\w[^>]*>/.test(extra) ? extra : ''),
+                '{SCRIPT}'  : ['<![CDATA[', ']]>'].join(Pot.StringUtil.mtrim(<><![CDATA[
+                                var args = arguments[0];
                                 var env = Components.classes['@brasil.to/tombloo-service;1'].getService().wrappedJSObject;
+                                window.addEventListener('load', function() {
+                                    var p, submit = document.getElementById('submit-button');
+                                    if (args && args.button) {
+                                        for (p in args.button) {
+                                            submit.setAttribute(p, args.button[p]);
+                                        }
+                                    }
+                                }, true);
                             ]]></>).wrap('\n'))
             };
             data = Pot.StringUtil.stringify(xul);
             forEach(reps, function([key, val]) {
                 data = data.replace(key, val);
             });
+            if (Pot.isObject(button)) {
+                params = update(params || {}, {
+                    button: button
+                });
+            }
             openDialog(
                 Pot.toDataURI.encodeURI(data, 'xul', 'utf-8'),
                 Pot.implode({
@@ -11709,7 +11734,8 @@ Pot.extend(Pot.SetupUtil, {
                     dependent    : 'yes',
                     titlebar     : 'yes',
                     close        : 'yes'
-                }, '=', ',')
+                }, '=', ','),
+                params
             );
         };
     })()
@@ -11723,8 +11749,9 @@ Pot.RomaReadingUtil.initDefaultKeymap();
 callLater(1, function() {
     // ローマ字入力キーマップを初期化
     Pot.RomaReadingUtil.assign(Pot.RomaReadingUtil.load());
-    // 自動アップデートを確認
-    Pot.SetupUtil.autoUpdater.call();
+    // 自動アップデートを確認 (初期状態は無効にする)
+    Pot.SetupUtil.autoUpdaterEnabled = false;
+    //Pot.SetupUtil.autoUpdater.call();
     // インストール状況を確認
     Pot.SetupUtil.ensureInstall();
 });
