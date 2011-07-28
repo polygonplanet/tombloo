@@ -20,13 +20,14 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.04
- * @date     2011-07-20
- * @author   polygon planet <polygon.planet@gmail.com>
- *            - Blog: http://polygon-planet.blogspot.com/
- *            - Twitter: http://twitter.com/polygon_planet
- *            - Tumblr: http://polygonplanet.tumblr.com/
- * @license  Same as Tombloo
+ * @version    1.05
+ * @date       2011-07-29
+ * @author     polygon planet <polygon.planet@gmail.com>
+ *              - Blog    : http://polygon-planet.blogspot.com/
+ *              - Twitter : http://twitter.com/polygon_planet
+ *              - Tumblr  : http://polygonplanet.tumblr.com/
+ * @license    Same as Tombloo
+ * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.googleplus.circle.js
  *
  * Tombloo: https://github.com/to/tombloo/wiki
  * Special thanks to base Model: YungSang (http://topl.us/yungsang)
@@ -125,6 +126,22 @@ try {
         });
     });
 } catch (e) {}
+
+
+// YouTube - 動画ポスト時のキャプションFix暫定
+addAround(Tombloo.Service.extractors['Video - YouTube'], 'extract', function(proceed, args) {
+    let ctx, result;
+    ctx = args[0];
+    result = proceed(args);
+    if (ctx && result) {
+        update(result, {
+            item              : trim(ctx.title).replace(/[\s\u3000]+/g, ' ').trim(),
+            authorDescription : $x('//*[@id="eow-description"]/text()', ctx.document)
+        });
+    }
+    return result;
+});
+
 
 /**
  * HTMLテキストをプレーンテキストに変換 (一部のタグは残す)
@@ -590,6 +607,17 @@ function stringify(x) {
         }
     }
     return result.toString();
+}
+
+
+/**
+ * 全角スペースも含めたtrim
+ *
+ * @param  {String}   s   対象の文字列
+ * @return {String}       結果の文字列
+ */
+function trim(s) {
+    return stringify(s).replace(/^[\s\u00A0\u3000]+|[\s\u00A0\u3000]+$/g, '');
 }
 
 
