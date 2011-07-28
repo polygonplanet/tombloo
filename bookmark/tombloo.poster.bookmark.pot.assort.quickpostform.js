@@ -18,12 +18,12 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.15
- * @date     2011-07-10
+ * @version  1.16
+ * @date     2011-07-29
  * @author   polygon planet <polygon.planet@gmail.com>
- *            - Blog: http://polygon-planet.blogspot.com/
- *            - Twitter: http://twitter.com/polygon_planet
- *            - Tumblr: http://polygonplanet.tumblr.com/
+ *            - Blog    : http://polygon-planet.blogspot.com/
+ *            - Twitter : http://twitter.com/polygon_planet
+ *            - Tumblr  : http://polygonplanet.tumblr.com/
  * @license  Same as Tombloo
  *
  * Tombloo: https://github.com/to/tombloo/wiki
