@@ -38,7 +38,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.41
+ * @version    1.42
  * @date       2011-07-29
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -198,7 +198,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.40',
+    VERSION: '1.42',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -10858,13 +10858,19 @@ Pot.extend(Pot.SetupUtil, {
         }).addCallback(function() {
             Pot.SetupUtil.progress.close();
             callLater(0, function() {
-                Pot.SetupUtil.openAlert(PSU_INSTALL_TITLE, [
+                Pot.SetupUtil.openAlert(
+                    PSU_INSTALL_TITLE,
+                    [
                         'インストール完了しました。',
                         'ブラウザを再起動すると完全にパッチが適応されます。'
                     ].join('\n'),
                     {
                         label       : 'OK',
                         tooltiptext : 'OK (閉じても勝手に再起動はしません)'
+                    },
+                    null,
+                    function() {
+                        Pot.SetupUtil.setupCompleted = true;
                     }
                 );
             });
@@ -10895,7 +10901,6 @@ Pot.extend(Pot.SetupUtil, {
             } catch (e) {}
         }).addBoth(function() {
             Pot.SetupUtil.blocked = false;
-            Pot.SetupUtil.setupCompleted = true;
         });
         d.callback();
         return d;
@@ -11695,7 +11700,7 @@ Pot.extend(Pot.SetupUtil, {
                 </hbox>
             </dialog>
         ]]></>);
-        return function(title, message, button, extra) {
+        return function(title, message, button, extra, onClose) {
             let data, reps, params = {};
             reps = {
                 '{TITLE}'   : Pot.escapeHTML(Pot.StringUtil.stringify(title)),
@@ -11715,6 +11720,13 @@ Pot.extend(Pot.SetupUtil, {
                                         }
                                     }
                                 }, true);
+                                window.addEventListener('unload', function() {
+                                    if (args && args.onClose) {
+                                        setTimeout(function() {
+                                            args.onClose();
+                                        }, 10);
+                                    }
+                                }, true);
                             ]]></>).wrap('\n'))
             };
             data = Pot.StringUtil.stringify(xul);
@@ -11724,6 +11736,11 @@ Pot.extend(Pot.SetupUtil, {
             if (Pot.isObject(button)) {
                 params = update(params || {}, {
                     button: button
+                });
+            }
+            if (Pot.isFunction(onClose)) {
+                params = update(params || {}, {
+                    onClose: onClose
                 });
             }
             openDialog(
