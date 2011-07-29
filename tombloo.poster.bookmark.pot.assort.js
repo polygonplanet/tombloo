@@ -38,7 +38,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.43
+ * @version    1.44
  * @date       2011-07-29
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -198,7 +198,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.43',
+    VERSION: '1.44',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -10458,6 +10458,7 @@ if (!Local.Audio) {
 Pot.SetupUtil = {};
 Pot.extend(Pot.SetupUtil, {
     blocked: false,
+    setupCanceled: false,
     setupCompleted: false,
     progress: {},
     progressLog: function() {
@@ -10892,6 +10893,9 @@ Pot.extend(Pot.SetupUtil, {
                     'エラーが起きてしまいました…ごめんなさい…\n\n%s',
                     err && err.message || err
                 );
+                callLater(10, function() {
+                    Pot.SetupUtil.setupCanceled = true;
+                });
                 callLater(30, function() {
                     try {
                         Pot.SetupUtil.progress.close();
@@ -11096,6 +11100,7 @@ Pot.extend(Pot.SetupUtil, {
         if (Pot.SetupUtil.blocked) {
             return;
         }
+        Pot.SetupUtil.setupCanceled = false;
         re = {
             version: /[*]\s*@version\s*([\d.abcr-]+)/i
         };
@@ -11173,6 +11178,7 @@ Pot.extend(Pot.SetupUtil, {
                             df = Pot.SetupUtil.update(code);
                         } else {
                             // ユーザーがキャンセルした場合は再度表示しない
+                            Pot.SetupUtil.setupCanceled = true;
                             if (silent) {
                                 Pot.SetupUtil.autoUpdaterUserCanceled = true;
                             }
