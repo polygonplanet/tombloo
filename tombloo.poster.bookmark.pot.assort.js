@@ -10458,6 +10458,7 @@ if (!Local.Audio) {
 Pot.SetupUtil = {};
 Pot.extend(Pot.SetupUtil, {
     blocked: false,
+    setupCompleted: false,
     progress: {},
     progressLog: function() {
         let msg = '', args = Pot.ArrayUtil.toArray(arguments);
@@ -10894,6 +10895,7 @@ Pot.extend(Pot.SetupUtil, {
             } catch (e) {}
         }).addBoth(function() {
             Pot.SetupUtil.blocked = false;
+            Pot.SetupUtil.setupCompleted = true;
         });
         d.callback();
         return d;
