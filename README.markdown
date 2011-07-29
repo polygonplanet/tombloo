@@ -49,6 +49,10 @@ Firefox アドオン [Tombloo](https://github.com/to/tombloo/wiki) で利用で�
    ※ このスクリプトは [YungSangさん製の Google+ モデル][model.gplus.js] が必要です  
    [Google+で指定のサークルにポストできるようにするTomblooパッチ | 圧縮電子精神音楽浮遊構造体][tombloo.model.googleplus.circle.js]
 
+*  **tombloo.extension.update.patches.js**
+   インストール済みのパッチすべてを一括でアップデートできるパッチ。  
+   [インストールされてる全てのパッチを一括でアップデートできるTomblooパッチ | 圧縮電子精神音楽浮遊構造体][tombloo.extension.update.patches.js]
+
 
 
 
@@ -77,6 +81,8 @@ Firefox アドオン [Tombloo](https://github.com/to/tombloo/wiki) で利用で�
 
 [tombloo.model.googleplus.circle.js]: http://polygon-planet.blogspot.com/2011/07/googletombloo_17.html "Google+で指定のサークルにポストできるようにするTomblooパッチ | 圧縮電子精神音楽浮遊構造体"
 
+
+[tombloo.extension.update.patches.js]: http://polygon-planet.blogspot.com/2011/07/tombloo.html "インストールされてる全てのパッチを一括でアップデートできるTomblooパッチ | 圧縮電子精神音楽浮遊構造体"
 
 
 
