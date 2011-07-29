@@ -1,20 +1,20 @@
 /**
  * Extension.Update.Patches - Tombloo patches
  *
- * 各パッチを一括でアップデートするTomblooパッチ
+ * インストール済みのパッチすべてを一括でアップデートできるパッチ
  *
  * 機能:
  * --------------------------------------------------------------------------
  * [Extension Update Patches patch]
  *
- * - インストールされているパッチを一括でアップデートする
+ * - インストールされている各パッチを一括でアップデートする
  *
  * --------------------------------------------------------------------------
  * ↓のように updateURL を記述すると自動認識される
  * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.extension.update.patches.js
  *
  *
- * @version    1.00
+ * @version    1.01
  * @date       2011-07-29
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -57,6 +57,27 @@ const BASE_UPDATE_URLS = {
 const MOVE_TO_ENDS = {
     'tombloo.poster.bookmark.pot.assort.js' : -1,
     'tombloo.extension.update.patches.js'   :  0
+};
+
+// 特殊なパッチ
+var SPECIAL_PATCHES = {
+    'tombloo.poster.bookmark.pot.assort.js' : {
+        name : 'bookmark.pot.assort',
+        update : function(item) {
+            if (typeof Pot !== 'undefined' && Pot.SetupUtil) {
+                Pot.callLazy(function() {
+                    Pot.SetupUtil.autoUpdaterUserCanceled = false;
+                    Pot.SetupUtil.isUpdatable(true);
+                });
+            }
+        },
+        canceled : function() {
+            return !!(Pot.SetupUtil.setupCanceled);
+        },
+        completed : function() {
+            return !!(Pot.SetupUtil.setupCompleted);
+        }
+    }
 };
 
 
@@ -106,6 +127,7 @@ Tombloo.Service.actions.register({
             SCRIPT_DOCCOMMENT_SIZE : SCRIPT_DOCCOMMENT_SIZE,
             UPDATE_PATTERNS        : UPDATE_PATTERNS,
             MOVE_TO_ENDS           : MOVE_TO_ENDS,
+            SPECIAL_PATCHES        : SPECIAL_PATCHES,
             extendUpdateURL        : extendUpdateURL,
             potUpdatePatchUtil     : definePotUpdatePatchUtil()
         };
@@ -628,6 +650,7 @@ function generateXUL() {
             updateItems = [];
             d = new Deferred();
             d.addCallback(function() {
+                byId('update-button').style.display = 'none';
                 byId('richlist-description').style.display = 'none';
             });
             toArray(listScripts.querySelectorAll(expr)).forEach(function(item, index) {
@@ -804,16 +827,14 @@ function generateXUL() {
         }
         
         function updateScriptsAllFinish() {
-            let d, updateCount = 0, progressBar, progressStatus, updateProgress, updateStatus, max;
+            let d, updateCount, progressBar, progressStatus, updateProgress, updateStatus, max;
             if (byId('x-update-status').value !== 'finish' || !updateItems || !updateItems.length) {
                 return;
             }
+            updateCount = 0;
             max = updateItems.length;
             updateProgress = function(v) {
                 progressBar.value = Math.max(0, Math.min(100, Math.floor(Number(v) / max * 100)));
-                if (progressBar.value >= 95) {
-                    progressBar.value = 100;
-                }
             };
             updateStatus = function(v) {
                 progressStatus.value = v;
@@ -859,6 +880,25 @@ function generateXUL() {
                 dd.callback();
                 return dd;
             });
+            
+            let (specials = [], newItems = [], item, name) {
+                while (updateItems && updateItems.length) {
+                    item = updateItems.shift();
+                    if (item) {
+                        name = getFileName(item.org && item.org.uri);
+                        if (name) {
+                            if (name in args.SPECIAL_PATCHES) {
+                                specials.push(item);
+                            } else {
+                                newItems.push(item);
+                            }
+                        }
+                    }
+                }
+                updateItems = [].concat(newItems).concat(specials);
+            }
+            
+            // ソート済みが条件
             updateItems.forEach(function(item, index) {
                 let className, check, name, updateUrl, icon;
                 name = getFileName(item.org && item.org.uri);
@@ -867,35 +907,99 @@ function generateXUL() {
                 className = 'x-check-' + item.index;
                 check = listScripts.querySelector('.' + className);
                 if (check && check.checked && updateUrl) {
-                    d.addCallback(function() {
-                        return wait(2.275);
-                    }).addCallback(function() {
-                        return download(updateUrl, getPatchDir()).addCallback(function(file) {
-                            reload();
-                            updateCount++;
-                            notify(
-                                name,
-                                getMessage('message.install.success'),
-                                notify.ICON_INFO
-                            );
+                    if (name in args.SPECIAL_PATCHES) {
+                        // インストールが特殊なパッチ
+                        d.addCallback(function() {
+                            return wait(1.5);
+                        }).addCallback(function() {
+                            let result, special, timeout, startTime;
+                            updateStatus('Updating... ' + name);
+                            try {
+                                timeout = 5 * 60 * 1000;
+                                startTime = (new Date()).getTime();
+                                special = args.SPECIAL_PATCHES[name];
+                                try {
+                                    window.blur();
+                                } catch (er) {}
+                                result = special.update(item);
+                                if (result instanceof Error) {
+                                    throw result;
+                                }
+                                if (special.completed) {
+                                    till(function() {
+                                        let end = false;
+                                        if (special.completed()) {
+                                            updateCount++;
+                                            end = true;
+                                        } else if (special.canceled()) {
+                                            end = true;
+                                        } else if (startTime - (new Date()).getTime() > timeout) {
+                                            end = true;
+                                        }
+                                        return end;
+                                    });
+                                }
+                                try {
+                                    byId('update-patches-dialog').centerWindowOnScreen();
+                                    window.focus();
+                                } catch (er) {}
+                            } catch (e) {
+                                throw e;
+                            }
+                            return wait(0.1);
+                        }).addErrback(function(err) {
+                            try {
+                                byId('update-patches-dialog').centerWindowOnScreen();
+                                window.focus();
+                            } catch (er) {}
+                            icon.src = icons.failed;
+                            alert('Error! ' + extractErrorMessage(err));
+                            throw (err instanceof Error) ? err : new Error(err);
+                        }).addCallback(function() {
+                            icon.src = icons.checked;
+                            return wait(0.525);
+                        }).addBoth(function(err) {
+                            updateProgress(index + 1);
+                            if (err instanceof Error) {
+                                updateStatus('Failed: ' + name);
+                                throw err;
+                            } else {
+                                updateStatus('Updated: ' + name);
+                            }
+                            return wait(1.25);
                         });
-                    }).addErrback(function(err) {
-                        icon.src = icons.failed;
-                        alert('Error! ' + extractErrorMessage(err));
-                        throw (err instanceof Error) ? err : new Error(err);
-                    }).addCallback(function() {
-                        icon.src = icons.checked;
-                        return wait(0.525);
-                    }).addBoth(function(err) {
-                        updateProgress(index + 1);
-                        if (err instanceof Error) {
-                            updateStatus('Failed: ' + name);
-                            throw err;
-                        } else {
-                            updateStatus('Updated: ' + name);
-                        }
-                        return wait(0.1);
-                    });
+                    } else {
+                        d.addCallback(function() {
+                            updateStatus('Updating... ' + name);
+                            return wait(2.275);
+                        }).addCallback(function() {
+                            return download(updateUrl, getPatchDir()).addCallback(function(file) {
+                                reload();
+                                updateCount++;
+                                notify(
+                                    name,
+                                    getMessage('message.install.success'),
+                                    notify.ICON_INFO
+                                );
+                            });
+                        }).addErrback(function(err) {
+                            icon.src = icons.failed;
+                            alert('Error! ' + extractErrorMessage(err));
+                            throw (err instanceof Error) ? err : new Error(err);
+                        }).addCallback(function() {
+                            icon.src = icons.checked;
+                            return wait(0.525);
+                        }).addBoth(function(err) {
+                            updateProgress(index + 1);
+                            if (err instanceof Error) {
+                                updateStatus('Failed: ' + name);
+                                throw err;
+                            } else {
+                                updateStatus('Updated: ' + name);
+                            }
+                            return wait(1.25);
+                        });
+                    }
                 }
             });
             d.addErrback(function(err) {
