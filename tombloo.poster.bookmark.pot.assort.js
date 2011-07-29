@@ -38,7 +38,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.42
+ * @version    1.43
  * @date       2011-07-29
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -198,7 +198,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.42',
+    VERSION: '1.43',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -11722,9 +11722,7 @@ Pot.extend(Pot.SetupUtil, {
                                 }, true);
                                 window.addEventListener('unload', function() {
                                     if (args && args.onClose) {
-                                        setTimeout(function() {
-                                            args.onClose();
-                                        }, 10);
+                                        args.onClose();
                                     }
                                 }, true);
                             ]]></>).wrap('\n'))
