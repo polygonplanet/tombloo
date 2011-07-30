@@ -6,15 +6,16 @@
  *
  * 機能:
  * -----------------------------------------------------------------------
- * [Service TINAMI Extractor patch]
+ * [Service TINAMI patch]
  *
- * - TINAMIの作品/イラスト画像をオリジナルサイズで取得する
+ * - TINAMIの作品/イラストなどの画像をオリジナルサイズで取得する
  * - ポストと同時にクリエイターを「お気に入りに追加」できるモデル
  * - ポストと同時に作品を「コレクションに追加」できるモデル
+ * - サムネイルからオリジナルサイズの画像を取得しポスト可能
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.00
+ * @version    1.01
  * @date       2011-07-30
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -47,6 +48,8 @@ Tombloo.Service.extractors.register({
             } else if (~ctx.href.indexOf('/view/') &&
                         ctx.onImage && this.getOriginalUrlByAttr(ctx)) {
                 valid = true;
+            } else if (this.getViewLinkByThumbnail(ctx)) {
+                valid = true;
             }
         }
         return valid;
@@ -64,13 +67,39 @@ Tombloo.Service.extractors.register({
         }
         return url;
     },
+    // サムネイルからviewページURLを取得
+    getViewLinkByThumbnail : function(ctx) {
+        let result, part, link;
+        if (ctx && ctx.target && ctx.onLink) {
+            part = '/img.tinami.com/illust/';
+            if (~String(ctx.target.src).indexOf(part) ||
+                ctx.target.querySelector('img[src*="' + part + '"]')
+            ) {
+                link = ctx.target;
+                if (tagName(link) === 'img') {
+                    let (limit = 5) {
+                        while (--limit >= 0) {
+                            link = link.parentNode;
+                            if (tagName(link) === 'a') {
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (link && ~String(link.href).indexOf('/view/')) {
+                    result = link.href;
+                }
+            }
+        }
+        return result || '';
+    },
     // 画像キャッシュを生成
     createImageCache : function(ctx, src) {
         const LOADING_TIMEOUT = 15;
         const REMOVE_DELAY = 1;
-        let d, doc, img, remback, timer;
+        let that = this, d, doc, img, remback, timer;
         d = new Deferred();
-        doc = ctx.document;
+        doc = getMostRecentWindow().content.document;
         img = doc.createElement('img');
         remback = function() {
             callLater(REMOVE_DELAY, function() {
@@ -89,7 +118,6 @@ Tombloo.Service.extractors.register({
             } catch (e) {}
             remback();
         }, true);
-        img.setAttribute('src', src);
         img.setAttribute('style', <>
             width    : 1px;
             height   : 1px;
@@ -99,6 +127,7 @@ Tombloo.Service.extractors.register({
             top      : -99999px;
         </>.toString());
         doc.body.appendChild(img);
+        img.setAttribute('src', src);
         return d;
     },
     // 作品に付けられたタグを抽出
@@ -134,12 +163,15 @@ Tombloo.Service.extractors.register({
         let tags, src;
         tags = this.extractTags(ctx);
         src  = this.getOriginalUrlByAttr(ctx);
-        ctx.target = update(ctx.target || {}, {
-            src : src
-        });
-        return Tombloo.Service.extractors['Photo'].extract(ctx).addCallback(function(res) {
-            return update(res || {}, {
-                tags : tags
+        return this.createImageCache(ctx, src).addCallback(function() {
+            return download(createURI(src), getTempDir()).addCallback(function(file) {
+                return {
+                    type    : 'photo',
+                    item    : ctx.title,
+                    itemUrl : src,
+                    tags    : tags,
+                    file    : file
+                };
             });
         });
     },
@@ -151,16 +183,27 @@ Tombloo.Service.extractors.register({
         sendContent = formContents(form);
         tags = this.extractTags(ctx);
         return request(url, {
-            redirectionLimit : 0,
+            redirectionLimit : 5,
             referrer         : url,
             sendContent      : sendContent,
             headers          : {
                 Origin : BASE_URL
             }
         }).addCallback(function(res) {
-            let src, doc;
+            let src, doc, exprs = [
+                '//*[@class="viewbody"]//img[@rel="caption"][@class="captify"]/@src',
+                '//img[@rel="caption"][@class="captify"]/@src',
+                '//img[@rel="caption"][contains(@class,"capt")]/@src',
+                '//img[@rel="caption"]/@src',
+                '//img[@class="captify"]/@src',
+                '//a//img/@src'
+            ];
             doc = convertToHTMLDocument(res.responseText);
-            src = $x('//a//img/@src', doc);
+            exprs.forEach(function(expr) {
+                if (!src) {
+                    src = $x(expr, doc);
+                }
+            });
             return that.createImageCache(ctx, src).addCallback(function() {
                 return download(createURI(src), getTempDir()).addCallback(function(file) {
                     return {
@@ -175,11 +218,32 @@ Tombloo.Service.extractors.register({
         });
     },
     extract : function(ctx) {
-        if (this.getOriginalUrlByAttr(ctx)) {
-            return this.extractManga(ctx);
+        let that = this, d, url = this.getViewLinkByThumbnail(ctx);
+        if (url) {
+            // サムネイルから
+            d = request(url).addCallback(function(res) {
+                let img, doc = convertToHTMLDocument(res.responseText);
+                img = $x('//*[@class="viewbody"]//img', doc);
+                ctx.href = url;
+                ctx.target = img;
+                ctx.document = doc;
+                if (ctx.target.getAttribute('rel') === 'caption') {
+                    return that.extractIllust(ctx);
+                } else {
+                    if (!/^https?:/.test(ctx.target.getAttribute('original'))) {
+                        ctx.target.setAttribute('original', ctx.target.getAttribute('src'));
+                    }
+                    return that.extractManga(ctx);
+                }
+            });
+        } else if (this.getOriginalUrlByAttr(ctx)) {
+            // 漫画
+            d = this.extractManga(ctx);
         } else {
-            return this.extractIllust(ctx);
+            // イラスト/モデル/コスプレ
+            d = this.extractIllust(ctx);
         }
+        return maybeDeferred(d);
     }
 }, 'Photo', false);
 
@@ -231,7 +295,9 @@ models.register({
         let doc, panel;
         doc = getMostRecentWindow().content.document;
         panel = $x('//*[@class="prof"]//a[contains(@href,"/bookmark/add/")]', doc);
-        removeElement(panel);
+        if (panel) {
+            removeElement(panel);
+        }
     },
     post : function(ps) {
         const ADD_URL = BASE_URL + 'bookmark/add/';
