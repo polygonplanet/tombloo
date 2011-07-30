@@ -53,6 +53,10 @@ Firefox アドオン [Tombloo](https://github.com/to/tombloo/wiki) で利用で�
    インストール済みのパッチすべてを一括でアップデートできるパッチ。  
    [インストールされてる全てのパッチを一括でアップデートできるTomblooパッチ | 圧縮電子精神音楽浮遊構造体][tombloo.extension.update.patches.js]
 
+*  **tombloo.service.tinami.js**  
+   TINAMIの画像をオリジナルサイズでサムネイルからでもポストできるパッチ。  
+   [TINAMIの画像をオリジナルサイズでサムネイルからでもポストできるTomblooパッチ | 圧縮電子精神音楽浮遊構造体][tombloo.service.tinami.js]
+
 
 
 
@@ -83,6 +87,10 @@ Firefox アドオン [Tombloo](https://github.com/to/tombloo/wiki) で利用で�
 
 
 [tombloo.extension.update.patches.js]: http://polygon-planet.blogspot.com/2011/07/tombloo.html "インストールされてる全てのパッチを一括でアップデートできるTomblooパッチ | 圧縮電子精神音楽浮遊構造体"
+
+
+[tombloo.service.tinami.js]: http://polygon-planet.blogspot.com/2011/07/tinamitombloo.html "TINAMIの画像をオリジナルサイズでサムネイルからでもポストできるTomblooパッチ | 圧縮電子精神音楽浮遊構造体"
+
 
 
 
