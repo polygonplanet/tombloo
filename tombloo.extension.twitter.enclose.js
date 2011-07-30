@@ -17,8 +17,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.13
- * @date       2011-07-29
+ * @version    1.14
+ * @date       2011-07-30
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -42,8 +42,8 @@ const LANG = (function(n) {
 
 // メニューのラベル
 const MENU_LABEL = ({
-    ja: 'Twitter括弧で囲うパッチの設定',
-    en: 'Twitter enclosure settings'
+    ja : 'Twitter括弧で囲うパッチの設定',
+    en : 'Twitter enclosure settings'
 })[LANG === 'ja' && LANG || 'en'];
 
 
@@ -54,39 +54,51 @@ const SAMPLE_SHORT_URL = 'http://bit.ly/-*-*-*-*-*';
 var potTwitterEncUtil = definePotTwitterEncUtil();
 
 
-// postの前に代替テキストとセパレータを設定
-addBefore(Twitter, 'post', function(ps) {
-    let ops = {}, name, prefs = {
-        enclose   : true, 
+// Twitter.post アップデート
+addAround(Twitter, 'post', function(proceed, args, that) {
+    let ps = args[0], ops = {}, name, prefs = {
+        enclose   : true,
         prefix    : '',
-        separator : ''
+        separator : '',
+        suffix    : ''
     };
     for (name in prefs) {
         ops[name] = potTwitterEncUtil.getPref(name, prefs[name]);
     }
     ops.enclose = !!ops.enclose;
+    // postの前に代替テキスト、接尾語の付加や文字数調整を行う
     beforeFilter(ps, ops);
+    return that.update(joinText([
+        stringify(ps.description),
+        trim(ps.body) ? trim(ps.body).wrap('"') : '',
+        stringify(ps.item),
+        stringify(ps.itemUrl),
+        stringify(ps.suffix)
+    ], ' '));
 });
+
 
 // コンテキストメニューに設定ダイアログを登録
 Tombloo.Service.actions.register({
-    name: MENU_LABEL,
-    type: 'context',
-    icon: Twitter.ICON,
-    check: function(ctx) {
+    name  : MENU_LABEL,
+    type  : 'context',
+    icon  : Twitter.ICON,
+    check : function(ctx) {
         return true;
     },
-    execute: function(ctx) {
+    execute : function(ctx) {
         let params = {
             enclose   : !!potTwitterEncUtil.getPref('enclose', true),
             prefix    : stringify(potTwitterEncUtil.getPref('prefix')),
             separator : stringify(potTwitterEncUtil.getPref('separator')),
+            suffix    : stringify(potTwitterEncUtil.getPref('suffix')),
             ps : {
                 item        : ctx.title || ctx.document && ctx.document.title,
                 itemUrl     : ctx.href,
                 body        : '',
                 description : ''
             },
+            trim              : trim,
             window            : window,
             joinText          : joinText,
             stringify         : stringify,
@@ -104,8 +116,8 @@ Tombloo.Service.actions.register({
 
 // 区切り線を登録
 Tombloo.Service.actions.register({
-    name: '----',
-    type: 'context'
+    name : '----',
+    type : 'context'
 }, MENU_LABEL);
 
 
@@ -117,6 +129,7 @@ Tombloo.Service.actions.register({
  *                           - enclose   : タイトルを括弧で囲うかどうか
  *                           - prefix    : 先頭に付けるテキスト
  *                           - separator : テキストとタイトルを区切るときの文字
+ *                           - suffix    : 末尾に付けるテキスト
  */
 function beforeFilter(ps, ops) {
     const MAX_LENGTH = ops.enclose ? 138 : 140;
@@ -133,10 +146,10 @@ function beforeFilter(ps, ops) {
     });
     word = /[一-龠々〆ぁ-んァ-ヶｦ-ｯｱ-ﾝﾞ゛ﾟ゜ａ-ｚＡ-Ｚ０-９\w\u301Cー～－ｰ-]/i;
     make = function(o) {
-        return trim(joinText([o.desc, o.body, o.item, o.itemUrl], ' '));
+        return trim(joinText([o.desc, o.body, o.item, o.itemUrl, o.suffix], ' '));
     };
     update(make, {
-        desc: function(o) {
+        desc : function(o) {
             let desc = trim(o.desc), sep = rtrim(spacize(o.sep));
             // 記号以外の文字で終わってたらセパレータを付加
             if (desc && sep &&
@@ -146,7 +159,7 @@ function beforeFilter(ps, ops) {
             }
             o.desc = desc;
         },
-        truncateAll: function(o) {
+        truncateAll : function(o) {
             // 同じ記号になってしまった場合、続かないようにする
             if (o.desc && o.sep && word.test(o.desc.slice(-1))) {
                 while (o.sep && o.desc.slice(-1) === o.sep.charAt(0)) {
@@ -168,10 +181,11 @@ function beforeFilter(ps, ops) {
             make.desc(o);
             
             make.truncate(o, 'desc');
+            make.truncate(o, 'suffix');
             return o;
         },
         // 140文字以上ならそれ以上付加しない。可能なかぎり切り詰める
-        truncate: function(o, key) {
+        truncate : function(o, key) {
             let maked = make(o);
             while (o[key] && o[key].length > 1 && maked.length >= MAX_LENGTH) {
                 o[key] = spacize(o[key]).slice(0, -2) + '…';
@@ -187,8 +201,9 @@ function beforeFilter(ps, ops) {
         // 余分なスペースなどを除去する
         desc    : ltrim(spacize(stringify(ps.description || stringify(ops.prefix) || ''))),
         sep     : rtrim(spacize(stringify(ops.separator))),
+        suffix  : trim(spacize(stringify(ops.suffix))),
         item    : trim(spacize(stringify(ps.item))),
-        body    : wrap(ps.body),
+        body    : wrap(trim(ps.body)),
         itemUrl : ps.itemUrl ? SAMPLE_SHORT_URL : ''
     };
     
@@ -215,7 +230,8 @@ function beforeFilter(ps, ops) {
     update(ps, {
         item        : psd.item,
         body        : unwrap(psd.body),
-        description : psd.desc
+        description : psd.desc,
+        suffix      : psd.suffix
     });
 }
 
@@ -225,28 +241,36 @@ function generateXUL() {
     let head, template, script, code, labels;
     labels = {
         '{TITLE}': {
-            ja: MENU_LABEL,
-            en: MENU_LABEL
+            ja : MENU_LABEL,
+            en : MENU_LABEL
         },
         '{ENCLOSE}': {
-            ja: 'タイトルを括弧で囲う',
-            en: 'Enclose the title with brackets.'
+            ja : 'タイトルを括弧で囲う',
+            en : 'Enclose the title with brackets.'
         },
         '{PREFIX}': {
-            ja: '何も入力しなかったときの代替テキスト：',
-            en: 'Alternative(prefix) text when input field is empty:'
+            ja : '何も入力しなかったときの代替テキスト：',
+            en : 'Alternative(prefix) text when input field is empty:'
         },
         '{SEPARATOR}': {
-            ja: '代替テキストの後に付くセパレータ：',
-            en: 'Separator which adheres after alternative text:'
+            ja : '代替テキストの後に付くセパレータ：',
+            en : 'Separator which adheres after alternative text:'
+        },
+        '{SUFFIX}': {
+            ja : '末尾に付くテキスト：',
+            en : 'Text to put on end (suffix):'
         },
         '{SEPARATOR_NOTE}': {
-            ja: 'セパレータは代替テキストの末尾が記号の場合は付きません',
-            en: 'If the symbolic end of the alt text, then separator is not appended.'
+            ja : 'セパレータは代替テキストの末尾が記号の場合は付きません',
+            en : 'If the symbolic end of the alt text, then separator is not appended.'
+        },
+        '{SUFFIX_NOTE}': {
+            ja : '末尾テキストは常に優先的に付加されます',
+            en : 'Suffix is always appended preferentially.'
         },
         '{SUBMIT_TIP}': {
-            ja: '保存',
-            en: 'Save'
+            ja : '保存',
+            en : 'Save'
         }
     };
     head = 'data:application/vnd.mozilla.xul+xml;charset=utf-8,';
@@ -292,6 +316,12 @@ function generateXUL() {
                            style="margin: 0.5em; font-size: small;"/>
                     <textbox id="separator" rows="1" multiline="false" flex="1"
                              maxlength="140" value=""/>
+                    <spacer height="5"/>
+                    <label value="{SUFFIX}"/>
+                    <label value="{SUFFIX_NOTE}"
+                           style="margin: 0.5em; font-size: small;"/>
+                    <textbox id="suffix" rows="1" multiline="false" flex="1"
+                             maxlength="140" value=""/>
                     <spacer height="10"/>
                     <textbox id="preview" rows="5" multiline="true" flex="1"
                              readonly="true" value=""/>
@@ -315,7 +345,7 @@ function generateXUL() {
     
     script = <><![CDATA[
         var args = arguments, params = args[0], env;
-        var encloseCheck, prefixBox, separatorBox, previewBox, previewLength;
+        var encloseCheck, prefixBox, separatorBox, suffixBox, previewBox, previewLength;
         
         env = Components.classes['@brasil.to/tombloo-service;1'].getService().wrappedJSObject;
         
@@ -326,14 +356,17 @@ function generateXUL() {
             encloseCheck  = byId('enclose');
             prefixBox     = byId('prefix');
             separatorBox  = byId('separator');
+            suffixBox     = byId('suffix');
             previewBox    = byId('preview');
             previewLength = byId('length');
             encloseCheck.checked = !!params.potTwitterEncUtil.getPref('enclose', true);
             prefixBox.value      = params.stringify(params.potTwitterEncUtil.getPref('prefix'));
             separatorBox.value   = params.stringify(params.potTwitterEncUtil.getPref('separator'));
+            suffixBox.value      = params.stringify(params.potTwitterEncUtil.getPref('suffix'));
             encloseCheck.addEventListener('command', build, true);
             prefixBox.addEventListener('input', build, true);
             separatorBox.addEventListener('input', build, true);
+            suffixBox.addEventListener('input', build, true);
             build();
         }
         
@@ -341,9 +374,11 @@ function generateXUL() {
             params.enclose   = !!byId('enclose').checked;
             params.prefix    = params.stringify(byId('prefix').value);
             params.separator = params.stringify(byId('separator').value);
+            params.suffix    = params.stringify(byId('suffix').value);
             params.potTwitterEncUtil.setPref('enclose', params.enclose);
             params.potTwitterEncUtil.setPref('prefix', params.prefix);
             params.potTwitterEncUtil.setPref('separator', params.separator);
+            params.potTwitterEncUtil.setPref('suffix', params.suffix);
         }
         
         function build() {
@@ -351,13 +386,15 @@ function generateXUL() {
             params.beforeFilter(psc, {
                 enclose   : !!encloseCheck.checked,
                 prefix    : params.stringify(prefixBox.value),
-                separator : params.stringify(separatorBox.value)
+                separator : params.stringify(separatorBox.value),
+                suffix    : params.stringify(suffixBox.value)
             });
             status = params.joinText([
-                psc.description,
-                psc.body ? q + params.stringify(psc.body) + q : '',
-                psc.item,
-                psc.itemUrl
+                params.stringify(psc.description),
+                params.trim(psc.body) ? q + params.trim(psc.body) + q : '',
+                params.stringify(psc.item),
+                params.stringify(psc.itemUrl),
+                params.stringify(psc.suffix)
             ], ' ');
             if (status.length >= 140) {
                 status = shortenUrls(status);
@@ -467,14 +504,14 @@ function definePotTwitterEncUtil() {
      */
     const PREF_PREFIX = 'patches.polygonplanet.extension.twitter.enclose.';
     var potTwitterEncUtil = {
-        getPref: function(key, def) {
+        getPref : function(key, def) {
             let value = getPref(PREF_PREFIX + key);
             if (value === undefined) {
                 value = def;
             }
             return value;
         },
-        setPref: function(key, val) {
+        setPref : function(key, val) {
             return setPref(PREF_PREFIX + key, val);
         }
     };
