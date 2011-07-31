@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.44
- * @date       2011-07-29
+ * @version    1.45
+ * @date       2011-08-01
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -198,7 +198,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.44',
+    VERSION: '1.45',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -6590,7 +6590,7 @@ update(models.HatenaBookmark, {
                 form = update(form, {
                     description : entry.bookmarked_data.comment,
                     tags        : entry.bookmarked_data.tags,
-                    private     : privateMode ? 1 : entry.bookmarked_data.private
+                    private     : privateMode ? 1 : entry.bookmarked_data['private']
                 });
             }
             return {
@@ -6851,7 +6851,6 @@ update(models.Delicious, {
             user = decodeURIComponent(getCookieString('www.delicious.com', '_user')).match(/user=(.*?)\s+/)[1];
         } catch (e) {
             user = null;
-            throw e;
         }
         if (!user) {
             throw new Error(getMessage('error.notLoggedin'));
