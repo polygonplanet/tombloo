@@ -1,7 +1,7 @@
 /**
  * Service.TINAMI - Tombloo patches
  *
- * TINAMIの画像をオリジナルサイズでポストできるパッチ
+ * TINAMIの画像をオリジナルサイズでサムネイルからでもポストできるパッチ
  * http://www.tinami.com/
  *
  * 機能:
@@ -15,8 +15,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.01
- * @date       2011-07-30
+ * @version    1.02
+ * @date       2011-08-01
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -225,6 +225,7 @@ Tombloo.Service.extractors.register({
                 let img, doc = convertToHTMLDocument(res.responseText);
                 img = $x('//*[@class="viewbody"]//img', doc);
                 ctx.href = url;
+                ctx.title = doc.title || $x('//title/text()', doc) || ctx.title;
                 ctx.target = img;
                 ctx.document = doc;
                 if (ctx.target.getAttribute('rel') === 'caption') {
