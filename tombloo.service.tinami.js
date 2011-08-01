@@ -15,7 +15,7 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.02
+ * @version    1.03
  * @date       2011-08-01
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -40,10 +40,10 @@ Tombloo.Service.extractors.register({
     check : function(ctx) {
         let valid = false, expr;
         if (ctx && ctx.target && /^(?:\w+[.])*?tinami[.]com$/.test(ctx.host)) {
-            expr = 'img[contains(@class,"capt")]';
+            expr = 'img[contains(@class,"capt") or contains(@rel,"capt")]';
             if ($x(expr, ctx.target)) {
                 valid = true;
-            } else if (ctx.target.parentNode && $x(expr, ctx.target.parentNode)) {
+            } else if (ctx.target.parentNode && $x('//' + expr, ctx.target.parentNode)) {
                 valid = true;
             } else if (~ctx.href.indexOf('/view/') &&
                         ctx.onImage && this.getOriginalUrlByAttr(ctx)) {
@@ -87,7 +87,11 @@ Tombloo.Service.extractors.register({
                     }
                 }
                 if (link && ~String(link.href).indexOf('/view/')) {
-                    result = link.href;
+                    // 小説は省く
+                    //TODO: 小説のQuoteモデル実装
+                    if (!link.querySelector('.title .nv')) {
+                        result = link.href;
+                    }
                 }
             }
         }
@@ -130,22 +134,63 @@ Tombloo.Service.extractors.register({
         img.setAttribute('src', src);
         return d;
     },
+    // 画像をダウンロード
+    download : function(ctx, src, tags) {
+        return this.createImageCache(ctx, src).addCallback(function() {
+            return download(createURI(src), getTempDir()).addCallback(function(file) {
+                return {
+                    type    : 'photo',
+                    item    : ctx.title,
+                    itemUrl : src,
+                    tags    : tags || [],
+                    file    : file
+                };
+            });
+        });
+    },
+    // 作品のコンテナを取得
+    selectViewNode : function(ctx) {
+        let org, node, re;
+        re = /\bviewbody\b/
+        org = ctx.target || ctx.document;
+        try {
+            node = org;
+            if (re.test(node.className)) {
+                throw node;
+            }
+            if (node.nodeType == 1) {
+                do {
+                    node = node.parentNode;
+                } while (node && !re.test(node.className));
+            }
+            if (!node) {
+                throw node;
+            }
+        } catch (e) {
+            node = org;
+        }
+        return node;
+    },
     // 作品に付けられたタグを抽出
     extractTags : function(ctx) {
-        let results = [], doc, tags, exprs, patterns;
-        doc = ctx.document;
+        let results = [], tags, exprs, patterns, context;
         patterns = {
             ignore : /[\s\u3000,[\]]+/g,
             remove : /[\u0000-\u0020*\/-]+/g
         };
+        // AutoPagerize/AutoPager対応として最初のSiblingを選択
         exprs = [
-            '//*[@class="comment"]//*[@class="tag"]//a/text()',
-            '//*[@class="tag"]//a/text()',
-            '//*[contains(@class,"tag")]//a/text()'
+            '.[@class="viewbody"]/..//*[@class="tag"]//a/text()',
+            '.[contains(@class,"viewbody")]/..//*[contains(@class,"tag")]//a/text()',
+            '//*[@class="comment"]/parent::node()[not(preceding-sibling::*)]//*[@class="tag"]//a/text()',
+            '//*[contains(@class,"comment")]/parent::node()[not(preceding-sibling::*)]//*[contains(@class,"tag")]//a/text()',
+            '//*[*[@class="tag"]]/parent::node()[not(preceding-sibling::*)]//*[@class="tag"]//a/text()',
+            '//*[*[contains(@class,"tag")]]/parent::node()[not(preceding-sibling::*)]//*[contains(@class,"tag")]//a/text()'
         ];
+        context = this.selectViewNode(ctx);
         exprs.forEach(function(expr) {
             if (!tags) {
-                tags = $x(expr, doc, true);
+                tags = $x(expr, context, true);
             }
         });
         if (tags && tags.length) {
@@ -163,59 +208,31 @@ Tombloo.Service.extractors.register({
         let tags, src;
         tags = this.extractTags(ctx);
         src  = this.getOriginalUrlByAttr(ctx);
-        return this.createImageCache(ctx, src).addCallback(function() {
-            return download(createURI(src), getTempDir()).addCallback(function(file) {
-                return {
-                    type    : 'photo',
-                    item    : ctx.title,
-                    itemUrl : src,
-                    tags    : tags,
-                    file    : file
-                };
-            });
-        });
+        return this.download(ctx, src, tags);
     },
     // イラスト
     extractIllust : function(ctx) {
-        let that = this, url, form, sendContent, tags;
-        url = ctx.href;
-        form = ctx.document.getElementById('open_original_content');
-        sendContent = formContents(form);
-        tags = this.extractTags(ctx);
-        return request(url, {
-            redirectionLimit : 5,
-            referrer         : url,
-            sendContent      : sendContent,
-            headers          : {
-                Origin : BASE_URL
+        let that = this, src, url, form, sendContent, tags, exprs, context;
+        exprs = [
+            '.[@class="viewbody"]//img[@rel="caption"][@class="captify"]/@src',
+            '.[contains(@class,"viewbody")]//img[@rel="caption"][contains(@class,"captify")]/@src',
+            '.[contains(@class,"viewbody")]//img[@rel="caption"]/@src',
+            '//*[@class="viewbody"]//img[@rel="caption"][@class="captify"]/@src',
+            '//img[@rel="caption"][@class="captify"]/@src',
+            '//img[@rel="caption"][contains(@class,"capt")]/@src',
+            '//img[@rel="caption"]/@src',
+            '//img[@class="captify"]/@src',
+            '//a//img/@src'
+        ];
+        context = this.selectViewNode(ctx);
+        exprs.forEach(function(expr) {
+            if (!src) {
+                src = $x(expr, context);
             }
-        }).addCallback(function(res) {
-            let src, doc, exprs = [
-                '//*[@class="viewbody"]//img[@rel="caption"][@class="captify"]/@src',
-                '//img[@rel="caption"][@class="captify"]/@src',
-                '//img[@rel="caption"][contains(@class,"capt")]/@src',
-                '//img[@rel="caption"]/@src',
-                '//img[@class="captify"]/@src',
-                '//a//img/@src'
-            ];
-            doc = convertToHTMLDocument(res.responseText);
-            exprs.forEach(function(expr) {
-                if (!src) {
-                    src = $x(expr, doc);
-                }
-            });
-            return that.createImageCache(ctx, src).addCallback(function() {
-                return download(createURI(src), getTempDir()).addCallback(function(file) {
-                    return {
-                        type    : 'photo',
-                        item    : ctx.title,
-                        itemUrl : src,
-                        tags    : tags,
-                        file    : file
-                    };
-                });
-            });
         });
+        ctx.target = context;
+        tags = this.extractTags(ctx);
+        return this.download(ctx, src, tags);
     },
     extract : function(ctx) {
         let that = this, d, url = this.getViewLinkByThumbnail(ctx);
