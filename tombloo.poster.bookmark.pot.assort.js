@@ -38,7 +38,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.45
+ * @version    1.46
  * @date       2011-08-01
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -198,7 +198,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.45',
+    VERSION: '1.46',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -5767,25 +5767,27 @@ Pot.extend(Pot.BookmarkUtil, {
         } else {
             cutText = function(s) {
                 let ret, sizes, chars, size, text = Pot.StringUtil.stringify(s);
-                switch (unit) {
-                    case 'byte':
-                        chars = text.split('');
-                        sizes = chars.map(function(c) {
-                            return c.charCodeAt(0) > 0xff ? 3 : 1;
-                        });
-                        size = sizes.reduce(function(a, b) {
-                            return a + b;
-                        });
-                        while (chars.length && size > max) {
-                            chars.pop();
-                            size -= sizes.pop();
-                        }
-                        ret = chars.join('');
-                        break;
-                    case 'uni':
-                    default:
-                        ret = text.slice(0, max);
-                        break;
+                if (text) {
+                    switch (unit) {
+                        case 'byte':
+                            chars = text.split('');
+                            sizes = chars.map(function(c) {
+                                return c.charCodeAt(0) > 0xff ? 3 : 1;
+                            });
+                            size = sizes.reduce(function(a, b) {
+                                return a + b;
+                            });
+                            while (chars.length && size > max) {
+                                chars.pop();
+                                size -= sizes.pop();
+                            }
+                            ret = chars.join('');
+                            break;
+                        case 'uni':
+                        default:
+                            ret = text.slice(0, max);
+                            break;
+                    }
                 }
                 return ret;
             };
