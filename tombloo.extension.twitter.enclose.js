@@ -17,7 +17,7 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.15
+ * @version    1.16
  * @date       2011-08-03
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -67,6 +67,11 @@ addAround(Twitter, 'post', function(proceed, args, that) {
     }
     ops.enclose = !!ops.enclose;
     // postの前に代替テキスト、接尾語の付加や文字数調整を行う
+    if (ps.twitterSuffix !== undefined) {
+        ps.suffix = stringify(ps.twitterSuffix);
+        delete ps.twitterSuffix;
+        ops.suffix = ps.suffix;
+    }
     beforeFilter(ps, ops);
     return that.update(trim(joinText([
         stringify(ps.description),
@@ -75,6 +80,111 @@ addAround(Twitter, 'post', function(proceed, args, that) {
         stringify(ps.itemUrl),
         stringify(ps.suffix)
     ], ' ')));
+});
+
+
+// QuickPostFormに接尾語入力フィールドを追加
+addAround(QuickPostForm, 'show', function(proceed, args) {
+    const QUICKPOSTFORM_XUL_PATH = 'chrome://tombloo/content/quickPostForm.xul';
+    let [ps, position, message] = args;
+    let win, result, orgOpenDialog, globals, isDisplayFields;
+    globals = typeof grobal !== 'undefined' && grobal || {};
+    orgOpenDialog = globals.openDialog;
+    isDisplayFields = function() {
+        return !!potTwitterEncUtil.getPref('displayForm', true);
+    };
+    update(ps || {}, {
+        twitterSuffix : stringify(potTwitterEncUtil.getPref('suffix'))
+    });
+    win = orgOpenDialog(
+        QUICKPOSTFORM_XUL_PATH,
+        'chrome,alwaysRaised=yes,resizable=yes,dependent=yes,titlebar=no',
+        ps, position, message
+    );
+    try {
+        // 他のパッチが利用してる可能性があるため一旦ダミーを作る
+        update(globals, {
+            openDialog : function() {
+                return win;
+            }
+        });
+        win.addEventListener('load', function() {
+            let doc, formPanel, suffixBox, wrapper, make = {};
+            doc = win.document;
+            formPanel = win.dialogPanel.formPanel;
+            'vbox textbox'.split(' ').forEach(function(tag) {
+                make[tag.toUpperCase()] = bind(E, null, tag);
+            });
+            if (!models.Twitter.check(ps)) {
+                return;
+            }
+            withDocument(doc, function() {
+                // テキストボックスを配置
+                wrapper = make.VBOX({
+                    flex  : 1,
+                    style : 'max-height: 3em;'
+                });
+                suffixBox = make.TEXTBOX({
+                    name      : 'twitterSuffix',
+                    emptytext : 'Twitter Suffix',
+                    value     : stringify(ps.twitterSuffix),
+                    multiline : false,
+                    rows      : 1,
+                    style     : [
+                        'margin-top: 0.7em',
+                        'margin-bottom: 0.5em'
+                    ].join(';')
+                });
+                appendChildNodes(wrapper, suffixBox);
+                appendChildNodes(doc.getElementById('form'), wrapper);
+                if (!isDisplayFields()) {
+                    wrapper.style.display = 'none';
+                }
+                formPanel.fields.twitterSuffix = suffixBox;
+                {
+                    let toggleFields = function() {
+                        let posters;
+                        if (isDisplayFields()) {
+                            posters = formPanel.postersPanel.checked.filter(function(poster) {
+                                return poster && poster.name === Twitter.name;
+                            });
+                        }
+                        wrapper.style.display = (posters && posters.length) ? '' : 'none';
+                    };
+                    try {
+                        toggleFields();
+                    } catch (er) {}
+                    
+                    // アイコンがONの時のみ表示する
+                    callLater(0.25, function() {
+                        addAround(formPanel.postersPanel, 'setDisabled', function(func, params, that) {
+                            let res, poster;
+                            res = func(params);
+                            toggleFields();
+                            return res;
+                        });
+                        try {
+                            toggleFields();
+                        } catch (er) {}
+                    });
+                    // フォームのサイズを調整
+                    callLater(0.5, function() {
+                        try {
+                            toggleFields();
+                        } catch (er) {}
+                        formPanel.dialogPanel.sizeToContent();
+                    });
+                }
+            });
+        }, true);
+        result = proceed(args);
+    } finally {
+        // 元の関数に戻す
+        update(globals, {
+            openDialog : orgOpenDialog
+        });
+    }
+    return result;
 });
 
 
@@ -88,10 +198,11 @@ Tombloo.Service.actions.register({
     },
     execute : function(ctx) {
         let params = {
-            enclose   : !!potTwitterEncUtil.getPref('enclose', true),
-            prefix    : stringify(potTwitterEncUtil.getPref('prefix')),
-            separator : stringify(potTwitterEncUtil.getPref('separator')),
-            suffix    : stringify(potTwitterEncUtil.getPref('suffix')),
+            enclose     : !!potTwitterEncUtil.getPref('enclose', true),
+            prefix      : stringify(potTwitterEncUtil.getPref('prefix')),
+            separator   : stringify(potTwitterEncUtil.getPref('separator')),
+            suffix      : stringify(potTwitterEncUtil.getPref('suffix')),
+            displayForm : !!potTwitterEncUtil.getPref('displayForm', true),
             ps : {
                 item        : ctx.title || ctx.document && ctx.document.title,
                 itemUrl     : ctx.href,
@@ -208,7 +319,7 @@ function beforeFilter(ps, ops) {
         // 余分なスペースなどを除去する
         desc    : ltrim(spacize(stringify(ps.description || stringify(ops.prefix) || ''))),
         sep     : rtrim(spacize(stringify(ops.separator))),
-        suffix  : trim(spacize(stringify(ops.suffix))),
+        suffix  : trim(spacize(stringify(ps.suffix === undefined ? ops.suffix : (ps.suffix || ops.suffix)))),
         item    : trim(spacize(stringify(ps.item))),
         body    : trim(ps.body),
         itemUrl : ps.itemUrl ? SAMPLE_SHORT_URL : ''
@@ -275,6 +386,10 @@ function generateXUL() {
             ja : '末尾テキストは常に優先的に付加されます',
             en : 'Suffix is always appended preferentially.'
         },
+        '{SUFFIX_DISPLAY_FORM_CHECK}': {
+            ja : 'クイックポストフォームに入力フィールドを表示する',
+            en : 'Display input fields at QuickPostForm.'
+        },
         '{SUBMIT_TIP}': {
             ja : '保存',
             en : 'Save'
@@ -329,7 +444,12 @@ function generateXUL() {
                            style="margin: 0.5em; font-size: small;"/>
                     <textbox id="suffix" rows="1" multiline="false" flex="1"
                              maxlength="140" value=""/>
-                    <spacer height="10"/>
+                    <spacer height="5"/>
+                    <checkbox id="displayForm" checked="true"
+                              label="{SUFFIX_DISPLAY_FORM_CHECK}"/>
+                    <spacer height="15"/>
+                    <label value="Preview"/>
+                    <spacer height="2"/>
                     <textbox id="preview" rows="5" multiline="true" flex="1"
                              readonly="true" value=""/>
                     <spacer height="5"/>
@@ -352,7 +472,7 @@ function generateXUL() {
     
     script = <><![CDATA[
         var args = arguments, params = args[0], env;
-        var encloseCheck, prefixBox, separatorBox, suffixBox, previewBox, previewLength;
+        var encloseCheck, prefixBox, separatorBox, suffixBox, displayFormCheck, previewBox, previewLength;
         
         env = Components.classes['@brasil.to/tombloo-service;1'].getService().wrappedJSObject;
         
@@ -360,32 +480,37 @@ function generateXUL() {
         window.addEventListener('dialogaccept', save, true);
         
         function init() {
-            encloseCheck  = byId('enclose');
-            prefixBox     = byId('prefix');
-            separatorBox  = byId('separator');
-            suffixBox     = byId('suffix');
-            previewBox    = byId('preview');
-            previewLength = byId('length');
-            encloseCheck.checked = !!params.potTwitterEncUtil.getPref('enclose', true);
-            prefixBox.value      = params.stringify(params.potTwitterEncUtil.getPref('prefix'));
-            separatorBox.value   = params.stringify(params.potTwitterEncUtil.getPref('separator'));
-            suffixBox.value      = params.stringify(params.potTwitterEncUtil.getPref('suffix'));
+            encloseCheck     = byId('enclose');
+            prefixBox        = byId('prefix');
+            separatorBox     = byId('separator');
+            suffixBox        = byId('suffix');
+            displayFormCheck = byId('displayForm');
+            previewBox       = byId('preview');
+            previewLength    = byId('length');
+            encloseCheck.checked     = !!params.potTwitterEncUtil.getPref('enclose', true);
+            prefixBox.value          = params.stringify(params.potTwitterEncUtil.getPref('prefix'));
+            separatorBox.value       = params.stringify(params.potTwitterEncUtil.getPref('separator'));
+            suffixBox.value          = params.stringify(params.potTwitterEncUtil.getPref('suffix'));
+            displayFormCheck.checked = !!params.potTwitterEncUtil.getPref('displayForm', true);
             encloseCheck.addEventListener('command', build, true);
             prefixBox.addEventListener('input', build, true);
             separatorBox.addEventListener('input', build, true);
             suffixBox.addEventListener('input', build, true);
+            displayFormCheck.addEventListener('command', build, true);
             build();
         }
         
         function save() {
-            params.enclose   = !!byId('enclose').checked;
-            params.prefix    = params.stringify(byId('prefix').value);
-            params.separator = params.stringify(byId('separator').value);
-            params.suffix    = params.stringify(byId('suffix').value);
+            params.enclose     = !!byId('enclose').checked;
+            params.prefix      = params.stringify(byId('prefix').value);
+            params.separator   = params.stringify(byId('separator').value);
+            params.suffix      = params.stringify(byId('suffix').value);
+            params.displayForm = !!byId('displayForm').checked;
             params.potTwitterEncUtil.setPref('enclose', params.enclose);
             params.potTwitterEncUtil.setPref('prefix', params.prefix);
             params.potTwitterEncUtil.setPref('separator', params.separator);
             params.potTwitterEncUtil.setPref('suffix', params.suffix);
+            params.potTwitterEncUtil.setPref('displayForm', params.displayForm);
         }
         
         function build() {
