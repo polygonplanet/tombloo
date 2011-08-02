@@ -17,7 +17,7 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.16
+ * @version    1.17
  * @date       2011-08-03
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -142,29 +142,39 @@ addAround(QuickPostForm, 'show', function(proceed, args) {
                 }
                 formPanel.fields.twitterSuffix = suffixBox;
                 {
-                    let toggleFields = function() {
-                        let posters;
+                    let toggleFields = function(resize) {
+                        let posters, prev, curr;
                         if (isDisplayFields()) {
                             posters = formPanel.postersPanel.checked.filter(function(poster) {
                                 return poster && poster.name === Twitter.name;
                             });
+                            prev = wrapper.style.display == 'none'  ? 'none' : '';
+                            curr = (posters && posters.length) ? '' : 'none';
+                            if (prev !== curr) {
+                                wrapper.style.display = curr;
+                                if (resize) {
+                                    formPanel.dialogPanel.sizeToContent();
+                                }
+                            }
                         }
-                        wrapper.style.display = (posters && posters.length) ? '' : 'none';
                     };
                     try {
                         toggleFields();
                     } catch (er) {}
                     
                     // アイコンがONの時のみ表示する
-                    callLater(0.25, function() {
+                    callLater(0.275, function() {
                         addAround(formPanel.postersPanel, 'setDisabled', function(func, params, that) {
                             let res, poster;
                             res = func(params);
-                            toggleFields();
+                            // サイズが変わることで他のPosterもONになってしまうためディレイを設定
+                            callLater(0.3, function() {
+                                toggleFields(true);
+                            });
                             return res;
                         });
                         try {
-                            toggleFields();
+                            toggleFields(true);
                         } catch (er) {}
                     });
                     // フォームのサイズを調整
