@@ -1,7 +1,7 @@
 /**
  * Extension.Twitter.Enclose - Tombloo patches
  *
- * Twitterにポストするとき括弧(「」)等でタイトルを囲うTomblooパッチ
+ * Twitterポスト時に括弧で囲んだり接尾語を付けたり最大文字数超えないようにするパッチ
  * http://twitter.com/
  *
  * 機能:
@@ -17,8 +17,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.14
- * @date       2011-07-30
+ * @version    1.15
+ * @date       2011-08-03
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -68,13 +68,13 @@ addAround(Twitter, 'post', function(proceed, args, that) {
     ops.enclose = !!ops.enclose;
     // postの前に代替テキスト、接尾語の付加や文字数調整を行う
     beforeFilter(ps, ops);
-    return that.update(joinText([
+    return that.update(trim(joinText([
         stringify(ps.description),
-        trim(ps.body) ? trim(ps.body).wrap('"') : '',
+        trim(ps.body) ? wrap(trim(ps.body)) : '',
         stringify(ps.item),
         stringify(ps.itemUrl),
         stringify(ps.suffix)
-    ], ' '));
+    ], ' ')));
 });
 
 
@@ -133,7 +133,7 @@ Tombloo.Service.actions.register({
  */
 function beforeFilter(ps, ops) {
     const MAX_LENGTH = ops.enclose ? 138 : 140;
-    let brackets, contents, word, make, psd;
+    let brackets, contents, re, make, psd;
     brackets = [
         // 括弧の中でタイトル文字列に使用されていないものを使う
         '「」', '“”', '『』', '‘’', '≪≫', '＜＞',
@@ -144,16 +144,25 @@ function beforeFilter(ps, ops) {
     ].map(function(b) {
         return b.split('');
     });
-    word = /[一-龠々〆ぁ-んァ-ヶｦ-ｯｱ-ﾝﾞ゛ﾟ゜ａ-ｚＡ-Ｚ０-９\w\u301Cー～－ｰ-]/i;
+    re = {
+        word    : /[一-龠々〆ぁ-んァ-ヶｦ-ｯｱ-ﾝﾞ゛ﾟ゜ａ-ｚＡ-Ｚ０-９\w\u301Cー～－ｰ-]/i,
+        hashtag : /#[\w一-龠々ぁ-んァ-ヶａ-ｚＡ-Ｚ０-９]{1,139}/i
+    };
     make = function(o) {
-        return trim(joinText([o.desc, o.body, o.item, o.itemUrl, o.suffix], ' '));
+        return trim(joinText([
+            stringify(o.desc),
+            trim(o.body) ? wrap(trim(o.body)) : '',
+            stringify(o.item),
+            stringify(o.itemUrl),
+            stringify(o.suffix)
+        ], ' '));
     };
     update(make, {
         desc : function(o) {
             let desc = trim(o.desc), sep = rtrim(spacize(o.sep));
             // 記号以外の文字で終わってたらセパレータを付加
             if (desc && sep &&
-                word.test(desc.slice(-1)) && desc.slice(-1) !== sep.charAt(0)
+                re.word.test(desc.slice(-1)) && desc.slice(-1) !== sep.charAt(0)
             ) {
                 desc += sep;
             }
@@ -161,7 +170,7 @@ function beforeFilter(ps, ops) {
         },
         truncateAll : function(o) {
             // 同じ記号になってしまった場合、続かないようにする
-            if (o.desc && o.sep && word.test(o.desc.slice(-1))) {
+            if (o.desc && o.sep && re.word.test(o.desc.slice(-1))) {
                 while (o.sep && o.desc.slice(-1) === o.sep.charAt(0)) {
                     o.sep = o.sep.substring(1);
                 }
@@ -173,9 +182,7 @@ function beforeFilter(ps, ops) {
                 make.truncate(o, 'item');
                 make.truncate(o, 'sep');
             }
-            o.body = unwrap(o.body);
             make.truncate(o, 'body');
-            o.body = wrap(o.body);
             
             // セパレータを結合
             make.desc(o);
@@ -187,7 +194,7 @@ function beforeFilter(ps, ops) {
         // 140文字以上ならそれ以上付加しない。可能なかぎり切り詰める
         truncate : function(o, key) {
             let maked = make(o);
-            while (o[key] && o[key].length > 1 && maked.length >= MAX_LENGTH) {
+            while (o[key] && o[key].length > 1 && maked.length > MAX_LENGTH) {
                 o[key] = spacize(o[key]).slice(0, -2) + '…';
                 if (o[key].length === 1) {
                     o[key] = '';
@@ -203,7 +210,7 @@ function beforeFilter(ps, ops) {
         sep     : rtrim(spacize(stringify(ops.separator))),
         suffix  : trim(spacize(stringify(ops.suffix))),
         item    : trim(spacize(stringify(ps.item))),
-        body    : wrap(trim(ps.body)),
+        body    : trim(ps.body),
         itemUrl : ps.itemUrl ? SAMPLE_SHORT_URL : ''
     };
     
@@ -229,7 +236,7 @@ function beforeFilter(ps, ops) {
     }
     update(ps, {
         item        : psd.item,
-        body        : unwrap(psd.body),
+        body        : psd.body,
         description : psd.desc,
         suffix      : psd.suffix
     });
