@@ -20,7 +20,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.06
+ * @version    1.07
  * @date       2011-08-03
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -148,198 +148,256 @@ try {
 } catch (e) {}
 
 
-// QuickPostFormにチェックボックスを追加
-addAround(QuickPostForm, 'show', function(proceed, args) {
-    const QUICKPOSTFORM_XUL_PATH = 'chrome://tombloo/content/quickPostForm.xul';
-    let [ps, position, message] = args, win, result, orgOpenDialog, globals;
-    
-    globals = typeof grobal !== 'undefined' && grobal || {};
-    orgOpenDialog = globals.openDialog;
-    win = orgOpenDialog(
-        QUICKPOSTFORM_XUL_PATH,
-        'chrome,alwaysRaised=yes,resizable=yes,dependent=yes,titlebar=no',
-        ps, position, message
-    );
-    try {
-        // 他のパッチが利用してる可能性があるため一旦ダミーを作る
-        update(globals, {
-            openDialog : function() {
-                return win;
-            }
-        });
-        if (ps.type !== 'photo') {
-            throw 'nop';
-        }
-        win.addEventListener('load', function() {
-            let doc, formPanel, elmForm, uploadCheck, quoteTextBox, wrapper, make;
-            if (!models[GOOGLE_PLUS_NAME].check(ps)) {
-                return;
-            }
-            doc = win.document;
-            formPanel = win.dialogPanel.formPanel;
-            make = {};
-            'vbox checkbox textbox'.split(' ').forEach(function(tag) {
-                make[tag.toUpperCase()] = bind(E, null, tag);
+// QuickPostFormに入力フィールドを追加
+(function(globals) {
+
+if (QuickPostForm.extended) {
+    let (qe = QuickPostForm.extended) {
+        qe.addProcedure(procedure);
+    }
+} else {
+    addAround(QuickPostForm, 'show', function(proceed, args) {
+        const QUICKPOSTFORM_XUL_PATH = 'chrome://tombloo/content/quickPostForm.xul';
+        let [ps, position, message] = args, win, result, orgOpenDialog;
+        orgOpenDialog = globals.openDialog;
+        win = orgOpenDialog(
+            QUICKPOSTFORM_XUL_PATH,
+            'chrome,alwaysRaised=yes,resizable=yes,dependent=yes,titlebar=no',
+            ps, position, message
+        );
+        try {
+            // 他のパッチが利用してる可能性があるため一旦ダミーを作る
+            update(globals, {
+                openDialog : function() {
+                    return win;
+                }
             });
-            withDocument(doc, function() {
-                elmForm = doc.getElementById('form');
-                
-                // チェックボックスを配置
-                wrapper = elmForm.appendChild(make.VBOX({
-                    flex  : 1,
-                    style : 'max-height: 3em;'
-                }));
-                uploadCheck = wrapper.appendChild(make.CHECKBOX({
-                    name      : 'googlePlusUseUpload',
-                    value     : 'checked',
-                    label     : LABELS.translate('uploadCheck'),
-                    checked   : true,
-                    style     : [
-                        'margin-top: 0.7em',
-                        'margin-bottom: 0.5em',
-                        'cursor: default'
-                    ].join(';')
-                }));
-                quoteTextBox = wrapper.appendChild(make.TEXTBOX({
-                    name      : 'googlePlusQuoteText',
-                    emptytext : 'Quote Text (' + GOOGLE_PLUS_NAME + ')',
-                    value     : trim(ps.body),
-                    multiline : true,
-                    rows      : 4,
-                    flex      : 1,
-                    style     : [
-                        'min-height: 4em',
-                        'margin-top: 0.5em'
-                    ].join(';')
-                }));
-                {
-                    let toggleQuoteBox = function() {
-                        if (uploadCheck.checked) {
-                            quoteTextBox.style.display = 'none';
-                            wrapper.style.maxHeight    = '3em';
-                        } else {
-                            quoteTextBox.style.display = '';
-                            wrapper.style.maxHeight    = '';
-                        }
-                        callLater(0, function() {
-                            try {
-                                formPanel.dialogPanel.sizeToContent();
-                            } catch (er) {}
-                        });
-                    };
-                    callLater(0, function() {
-                        toggleQuoteBox();
-                    });
-                    uploadCheck.addEventListener('command', function() {
-                        callLater(75 / 1000, toggleQuoteBox);
-                    }, true);
-                }
-                if (formPanel.descriptionBox) {
-                    addAround(formPanel.descriptionBox, 'replaceSelection', function(func, params) {
-                        let [text] = params, result, value, start, end, qb;
-                        try {
-                            result = func(params);
-                        } finally {
-                            qb = quoteTextBox;
-                            callLater(0, function() {
-                                value = qb.value;
-                                start = qb.selectionStart || 0;
-                                end   = qb.selectionEnd;
-                                qb.value = [
-                                    stringify(value.substr(0, start)),
-                                    stringify(text),
-                                    stringify(end !== undefined && value.substr(end) || '')
-                                ].join('');
-                                qb.selectionStart = qb.selectionEnd = start + stringify(text).length;
+            procedure(win, ps);
+            if (QuickPostForm.extended) {
+                QuickPostForm.extended.callProcedure();
+            }
+            result = proceed(args);
+        } catch (e) {
+            if (e instanceof Error) {
+                throw e;
+            }
+        } finally {
+            // 元の関数に戻す
+            update(globals, {
+                openDialog : orgOpenDialog
+            });
+            // 拡張用のメソッド
+            if (!QuickPostForm.extended) {
+                update(QuickPostForm, {
+                    extended : {
+                        args         : [win, ps],
+                        procedures   : [],
+                        addProcedure : function(procedure) {
+                            let pcs = this.procedures;
+                            pcs = pcs || [];
+                            pcs.push(procedure);
+                            return this;
+                        },
+                        callProcedure : function() {
+                            let args = this.args;
+                            (this.procedures || []).forEach(function(p) {
+                                p && p.apply(null, args);
                             });
-                        }
-                        return result;
-                    });
-                }
-                update(formPanel.fields, {
-                    googlePlusUseUpload : {
-                        get value() {
-                            return uploadCheck.checked ? 'checked' : '';
-                        },
-                        set value(v) {
-                            return (uploadCheck.checked = !!v) ? 'checked' : '';
-                        },
-                        get name() {
-                            return uploadCheck.getAttribute('name');
-                        },
-                        set name(v) {
-                            return uploadCheck.setAttribute('name', v);
-                        }
-                    },
-                    googlePlusQuoteText : {
-                        get value() {
-                            return quoteTextBox.value;
-                        },
-                        set value(v) {
-                            return quoteTextBox.value = v;
-                        },
-                        get name() {
-                            return quoteTextBox.getAttribute('name');
-                        },
-                        set name(v) {
-                            return quoteTextBox.setAttribute('name', v);
                         }
                     }
                 });
-                {
-                    let toggleFields = function(resize) {
-                        let posters, prev, curr;
-                        posters = formPanel.postersPanel.checked.filter(function(poster) {
-                            return poster && stringify(poster.name).indexOf(GOOGLE_PLUS_NAME) === 0;
-                        });
-                        prev = wrapper.style.display == 'none'  ? 'none' : '';
-                        curr = (posters && posters.length) ? '' : 'none';
-                        if (prev !== curr) {
-                            wrapper.style.display = curr;
-                            if (resize) {
-                                try {
-                                    formPanel.dialogPanel.sizeToContent();
-                                } catch (er) {}
-                            }
-                        }
-                    };
-                    toggleFields();
-                    
-                    // アイコンがONの時のみ表示する
-                    callLater(0.275, function() {
-                        addAround(formPanel.postersPanel, 'setDisabled', function(func, params) {
-                            let res, poster;
-                            res = func(params);
-                            // サイズが変わることで他のPosterもONになってしまうためディレイを設定
-                            callLater(0.3, function() {
-                                toggleFields(true);
-                            });
-                            return res;
-                        });
-                        toggleFields(true);
+            }
+        }
+        return result;
+    });
+}
+
+
+function procedure(win, ps) {
+    win.addEventListener('load', function() {
+        let doc, formPanel, elmForm, uploadCheck, quoteTextBox, wrapper, make;
+        if (!models[GOOGLE_PLUS_NAME].check(ps) || ps.type !== 'photo') {
+            return;
+        }
+        doc = win.document;
+        formPanel = win.dialogPanel.formPanel;
+        make = {};
+        'vbox checkbox textbox'.split(' ').forEach(function(tag) {
+            make[tag.toUpperCase()] = bind(E, null, tag);
+        });
+        withDocument(doc, function() {
+            elmForm = doc.getElementById('form');
+            
+            // チェックボックスを配置
+            wrapper = elmForm.appendChild(make.VBOX({
+                flex  : 1,
+                style : 'max-height: 3em;'
+            }));
+            uploadCheck = wrapper.appendChild(make.CHECKBOX({
+                name      : 'googlePlusUseUpload',
+                value     : 'checked',
+                label     : LABELS.translate('uploadCheck'),
+                checked   : true,
+                style     : [
+                    'margin-top: 0.7em',
+                    'margin-bottom: 0.5em',
+                    'cursor: default'
+                ].join(';')
+            }));
+            quoteTextBox = wrapper.appendChild(make.TEXTBOX({
+                name      : 'googlePlusQuoteText',
+                emptytext : 'Quote Text (' + GOOGLE_PLUS_NAME + ')',
+                value     : trim(ps.body),
+                multiline : true,
+                rows      : 4,
+                flex      : 1,
+                style     : [
+                    'min-height: 4em',
+                    'margin-top: 0.5em'
+                ].join(';')
+            }));
+            {
+                let toggleQuoteBox = function() {
+                    if (uploadCheck.checked) {
+                        quoteTextBox.style.display = 'none';
+                        wrapper.style.maxHeight    = '3em';
+                    } else {
+                        quoteTextBox.style.display = '';
+                        wrapper.style.maxHeight    = '';
+                    }
+                    callLater(0, function() {
+                        try {
+                            formPanel.dialogPanel.sizeToContent();
+                        } catch (er) {}
                     });
-                    // フォームのサイズを調整
-                    callLater(0.5, function() {
-                        toggleFields(true);
-                    });
+                };
+                callLater(0, function() {
+                    toggleQuoteBox();
+                });
+                uploadCheck.addEventListener('command', function() {
+                    callLater(75 / 1000, toggleQuoteBox);
+                }, true);
+            }
+            if (formPanel.descriptionBox) {
+                addAround(formPanel.descriptionBox, 'replaceSelection', function(func, params) {
+                    let [text] = params, result, value, start, end, qb;
+                    try {
+                        result = func(params);
+                    } finally {
+                        qb = quoteTextBox;
+                        callLater(0, function() {
+                            value = qb.value;
+                            start = qb.selectionStart || 0;
+                            end   = qb.selectionEnd;
+                            qb.value = [
+                                stringify(value.substr(0, start)),
+                                stringify(text),
+                                stringify(end !== undefined && value.substr(end) || '')
+                            ].join('');
+                            qb.selectionStart = qb.selectionEnd = start + stringify(text).length;
+                        });
+                    }
+                    return result;
+                });
+            }
+            update(formPanel.fields, {
+                googlePlusUseUpload : {
+                    get value() {
+                        return uploadCheck.checked ? 'checked' : '';
+                    },
+                    set value(v) {
+                        return (uploadCheck.checked = !!v) ? 'checked' : '';
+                    },
+                    get name() {
+                        return uploadCheck.getAttribute('name');
+                    },
+                    set name(v) {
+                        return uploadCheck.setAttribute('name', v);
+                    }
+                },
+                googlePlusQuoteText : {
+                    get value() {
+                        return quoteTextBox.value;
+                    },
+                    set value(v) {
+                        return quoteTextBox.value = v;
+                    },
+                    get name() {
+                        return quoteTextBox.getAttribute('name');
+                    },
+                    set name(v) {
+                        return quoteTextBox.setAttribute('name', v);
+                    }
                 }
             });
-        }, true);
-        result = proceed(args);
-        
-    } catch (e) {
-        if (e instanceof Error) {
-            throw e;
-        }
-    } finally {
-        
-        // 元の関数に戻す
-        update(globals, {
-            openDialog : orgOpenDialog
+            {
+                let toggleFields = function(resize) {
+                    let posters, prev, curr;
+                    posters = formPanel.postersPanel.checked.filter(function(poster) {
+                        return poster && stringify(poster.name).indexOf(GOOGLE_PLUS_NAME) === 0;
+                    });
+                    prev = wrapper.style.display == 'none'  ? 'none' : '';
+                    curr = (posters && posters.length) ? '' : 'none';
+                    if (prev !== curr) {
+                        wrapper.style.display = curr;
+                        if (resize) {
+                            try {
+                                formPanel.dialogPanel.sizeToContent();
+                            } catch (er) {}
+                        }
+                    }
+                };
+                update(toggleFields, {
+                    delay : function(resize, time) {
+                        callLater(time === 0 ? 0 : (time || 0.3), function() {
+                            toggleFields(!!resize);
+                        });
+                    }
+                });
+                toggleFields();
+                
+                // アイコンがONの時のみ表示する
+                callLater(0.275, function() {
+                    if (formPanel.postersPanel.setDisabled.extended) {
+                        let (fpse = formPanel.postersPanel.setDisabled.extended) {
+                            fpse.addProcedure(function() {
+                                toggleFields.delay(true);
+                            });
+                        }
+                    } else {
+                        addAround(formPanel.postersPanel, 'setDisabled', function(func, params) {
+                            let res = func(params);
+                            // サイズが変わることで他のPosterもONになってしまうためディレイを設定
+                            toggleFields.delay(true);
+                            if (!formPanel.postersPanel.setDisabled.extended) {
+                                update(formPanel.postersPanel.setDisabled, {
+                                    extended : {
+                                        procedures   : [],
+                                        addProcedure : function(p) {
+                                            this.procedures.push(p);
+                                        },
+                                        callProcedure : function() {
+                                            this.procedures.forEach(function(p) {
+                                                p && p();
+                                            });
+                                        }
+                                    }
+                                });
+                            }
+                            formPanel.postersPanel.setDisabled.extended.callProcedure();
+                            return res;
+                        });
+                    }
+                    toggleFields(true);
+                });
+                // フォームのサイズを調整
+                toggleFields.delay(true, 0.5);
+            }
         });
-    }
-    return result;
-});
+    }, true);
+}
+
+})(typeof grobal !== 'undefined' && grobal || {});
 
 
 // YouTube - 動画ポスト時のキャプションFix暫定
