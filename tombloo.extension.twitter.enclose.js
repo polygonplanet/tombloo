@@ -17,8 +17,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.18
- * @date       2011-08-03
+ * @version    1.19
+ * @date       2011-08-04
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -56,7 +56,7 @@ var potTwitterEncUtil = definePotTwitterEncUtil();
 
 // Twitter.post アップデート
 addAround(Twitter, 'post', function(proceed, args, that) {
-    let ps = args[0], ops = {}, name, prefs = {
+    let ps = args[0], org = update({}, ps), ops = {}, name, prefs = {
         enclose   : true,
         prefix    : '',
         separator : '',
@@ -72,14 +72,18 @@ addAround(Twitter, 'post', function(proceed, args, that) {
         delete ps.twitterSuffix;
         ops.suffix = ps.suffix;
     }
-    beforeFilter(ps, ops);
-    return that.update(trim(joinText([
-        stringify(ps.description),
-        trim(ps.body) ? wrap(trim(ps.body)) : '',
-        stringify(ps.item),
-        stringify(ps.itemUrl),
-        stringify(ps.suffix)
-    ], ' ')));
+    try {
+        beforeFilter(ps, ops);
+        return that.update(trim(joinText([
+            stringify(ps.description),
+            trim(ps.body) ? wrap(trim(ps.body)) : '',
+            stringify(ps.item),
+            stringify(ps.itemUrl),
+            stringify(ps.suffix)
+        ], ' ')));
+    } finally {
+        update(ps, org);
+    }
 });
 
 
