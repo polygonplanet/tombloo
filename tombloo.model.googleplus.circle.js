@@ -20,8 +20,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.07
- * @date       2011-08-03
+ * @version    1.08
+ * @date       2011-08-04
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -678,12 +678,12 @@ function generateModel(ops) {
             }
         },
         post : function(ps) {
-            let self = this;
+            let self = this, psc = update({}, ps);
             if (!this.getAuthCookie()) {
                 throw new Error(getMessage('error.notLoggedin'));
             }
             return this.getOZData().addCallback(function(oz) {
-                return self._post(ps, oz);
+                return self._post(psc, oz);
             });
         },
         _post : function(ps, oz) {
