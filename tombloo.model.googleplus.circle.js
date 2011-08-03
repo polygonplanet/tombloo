@@ -20,8 +20,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.05
- * @date       2011-07-29
+ * @version    1.06
+ * @date       2011-08-03
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -51,6 +51,25 @@ let (limit = 8 * 1000, time = +new Date) {
         return end;
     });
 }
+
+// Define language
+const LANG = (function(n) {
+    return ((n && (n.language  || n.userLanguage || n.browserLanguage ||
+            n.systemLanguage)) || 'en').split('-').shift().toLowerCase();
+})(navigator);
+
+
+// UI labels
+const LABELS = {
+    translate : function(name) {
+        return LABELS[name][LANG === 'en' && LANG || 'ja'];
+    },
+    uploadCheck : {
+        ja : '画像をGooglePhotos(Picasa)にアップロード',
+        en : 'Upload the image to GooglePhotos(Picasa).'
+    }
+};
+
 
 // Bookmark対応 + file
 addAround(models[GOOGLE_PLUS_NAME], 'check', function(proceed, args) {
@@ -103,6 +122,7 @@ try {
                 if (!done) {
                     update(models[GOOGLE_PLUS_NAME], {
                         createLinkSpar : model.createLinkSpar,
+                        paramize       : model.paramize,
                         post           : model.post,
                         _post          : model._post,
                         download       : model.download,
@@ -128,7 +148,202 @@ try {
 } catch (e) {}
 
 
+// QuickPostFormにチェックボックスを追加
+addAround(QuickPostForm, 'show', function(proceed, args) {
+    const QUICKPOSTFORM_XUL_PATH = 'chrome://tombloo/content/quickPostForm.xul';
+    let [ps, position, message] = args, win, result, orgOpenDialog, globals;
+    
+    globals = typeof grobal !== 'undefined' && grobal || {};
+    orgOpenDialog = globals.openDialog;
+    win = orgOpenDialog(
+        QUICKPOSTFORM_XUL_PATH,
+        'chrome,alwaysRaised=yes,resizable=yes,dependent=yes,titlebar=no',
+        ps, position, message
+    );
+    try {
+        // 他のパッチが利用してる可能性があるため一旦ダミーを作る
+        update(globals, {
+            openDialog : function() {
+                return win;
+            }
+        });
+        if (ps.type !== 'photo') {
+            throw 'nop';
+        }
+        win.addEventListener('load', function() {
+            let doc, formPanel, elmForm, uploadCheck, quoteTextBox, wrapper, make;
+            if (!models[GOOGLE_PLUS_NAME].check(ps)) {
+                return;
+            }
+            doc = win.document;
+            formPanel = win.dialogPanel.formPanel;
+            make = {};
+            'vbox checkbox textbox'.split(' ').forEach(function(tag) {
+                make[tag.toUpperCase()] = bind(E, null, tag);
+            });
+            withDocument(doc, function() {
+                elmForm = doc.getElementById('form');
+                
+                // チェックボックスを配置
+                wrapper = elmForm.appendChild(make.VBOX({
+                    flex  : 1,
+                    style : 'max-height: 3em;'
+                }));
+                uploadCheck = wrapper.appendChild(make.CHECKBOX({
+                    name      : 'googlePlusUseUpload',
+                    value     : 'checked',
+                    label     : LABELS.translate('uploadCheck'),
+                    checked   : true,
+                    style     : [
+                        'margin-top: 0.7em',
+                        'margin-bottom: 0.5em',
+                        'cursor: default'
+                    ].join(';')
+                }));
+                quoteTextBox = wrapper.appendChild(make.TEXTBOX({
+                    name      : 'googlePlusQuoteText',
+                    emptytext : 'Quote Text (' + GOOGLE_PLUS_NAME + ')',
+                    value     : trim(ps.body),
+                    multiline : true,
+                    rows      : 4,
+                    flex      : 1,
+                    style     : [
+                        'min-height: 4em',
+                        'margin-top: 0.5em'
+                    ].join(';')
+                }));
+                {
+                    let toggleQuoteBox = function() {
+                        if (uploadCheck.checked) {
+                            quoteTextBox.style.display = 'none';
+                            wrapper.style.maxHeight    = '3em';
+                        } else {
+                            quoteTextBox.style.display = '';
+                            wrapper.style.maxHeight    = '';
+                        }
+                        callLater(0, function() {
+                            try {
+                                formPanel.dialogPanel.sizeToContent();
+                            } catch (er) {}
+                        });
+                    };
+                    callLater(0, function() {
+                        toggleQuoteBox();
+                    });
+                    uploadCheck.addEventListener('command', function() {
+                        callLater(75 / 1000, toggleQuoteBox);
+                    }, true);
+                }
+                if (formPanel.descriptionBox) {
+                    addAround(formPanel.descriptionBox, 'replaceSelection', function(func, params) {
+                        let [text] = params, result, value, start, end, qb;
+                        try {
+                            result = func(params);
+                        } finally {
+                            qb = quoteTextBox;
+                            callLater(0, function() {
+                                value = qb.value;
+                                start = qb.selectionStart || 0;
+                                end   = qb.selectionEnd;
+                                qb.value = [
+                                    stringify(value.substr(0, start)),
+                                    stringify(text),
+                                    stringify(end !== undefined && value.substr(end) || '')
+                                ].join('');
+                                qb.selectionStart = qb.selectionEnd = start + stringify(text).length;
+                            });
+                        }
+                        return result;
+                    });
+                }
+                update(formPanel.fields, {
+                    googlePlusUseUpload : {
+                        get value() {
+                            return uploadCheck.checked ? 'checked' : '';
+                        },
+                        set value(v) {
+                            return (uploadCheck.checked = !!v) ? 'checked' : '';
+                        },
+                        get name() {
+                            return uploadCheck.getAttribute('name');
+                        },
+                        set name(v) {
+                            return uploadCheck.setAttribute('name', v);
+                        }
+                    },
+                    googlePlusQuoteText : {
+                        get value() {
+                            return quoteTextBox.value;
+                        },
+                        set value(v) {
+                            return quoteTextBox.value = v;
+                        },
+                        get name() {
+                            return quoteTextBox.getAttribute('name');
+                        },
+                        set name(v) {
+                            return quoteTextBox.setAttribute('name', v);
+                        }
+                    }
+                });
+                {
+                    let toggleFields = function(resize) {
+                        let posters, prev, curr;
+                        posters = formPanel.postersPanel.checked.filter(function(poster) {
+                            return poster && stringify(poster.name).indexOf(GOOGLE_PLUS_NAME) === 0;
+                        });
+                        prev = wrapper.style.display == 'none'  ? 'none' : '';
+                        curr = (posters && posters.length) ? '' : 'none';
+                        if (prev !== curr) {
+                            wrapper.style.display = curr;
+                            if (resize) {
+                                try {
+                                    formPanel.dialogPanel.sizeToContent();
+                                } catch (er) {}
+                            }
+                        }
+                    };
+                    toggleFields();
+                    
+                    // アイコンがONの時のみ表示する
+                    callLater(0.275, function() {
+                        addAround(formPanel.postersPanel, 'setDisabled', function(func, params) {
+                            let res, poster;
+                            res = func(params);
+                            // サイズが変わることで他のPosterもONになってしまうためディレイを設定
+                            callLater(0.3, function() {
+                                toggleFields(true);
+                            });
+                            return res;
+                        });
+                        toggleFields(true);
+                    });
+                    // フォームのサイズを調整
+                    callLater(0.5, function() {
+                        toggleFields(true);
+                    });
+                }
+            });
+        }, true);
+        result = proceed(args);
+        
+    } catch (e) {
+        if (e instanceof Error) {
+            throw e;
+        }
+    } finally {
+        
+        // 元の関数に戻す
+        update(globals, {
+            openDialog : orgOpenDialog
+        });
+    }
+    return result;
+});
+
+
 // YouTube - 動画ポスト時のキャプションFix暫定
+//FIXME: 中途半端にしか直してない (G+ 専用としてのみ)
 addAround(Tombloo.Service.extractors['Video - YouTube'], 'extract', function(proceed, args) {
     let ctx, result;
     ctx = args[0];
@@ -302,7 +517,7 @@ function generateModel(ops) {
             isYoutube = !!(ps.type === 'video' && ps.itemUrl.match(this.YOUTUBE_REGEX));
             title = stringify(stringify(ps.item).length > stringify(ps.page).length ? ps.item : ps.page);
             body = '';
-            if (ps.type === 'quote' && ps.body) {
+            if (ps.body) {
                 // Quoteテキストを引用符で囲い除去される改行やタグの差をできるだけ抑える
                 body = toPlainText(ps.body).wrap('&quot;');
             } else {
@@ -388,6 +603,21 @@ function generateModel(ops) {
                 ]);
             }
             return JSON.stringify(link);
+        },
+        // パラメータを調整
+        paramize : function(ps) {
+            if (ps && ps.googlePlusQuoteText) {
+                if (!ps.googlePlusUseUpload) {
+                    if (trim(ps.googlePlusQuoteText) === trim(ps.description)) {
+                        ps.description = '';
+                    }
+                    ps.body = joinText([
+                        trim(ps.body),
+                        trim(ps.googlePlusQuoteText)
+                    ], '\n');
+                }
+                delete ps.googlePlusQuoteText;
+            }
         },
         post : function(ps) {
             let self = this;
@@ -497,7 +727,7 @@ function generateModel(ops) {
         // Picasa(GooglePhoto)にアップロードしてから表示しないと小さくなる
         upload : function(ps, oz) {
             let d;
-            if (ps && ps.type === 'photo') {
+            if (ps && ps.type === 'photo' && ps.googlePlusUseUpload) {
                 d = this.doUpload(ps, oz);
             } else {
                 d = succeed();
