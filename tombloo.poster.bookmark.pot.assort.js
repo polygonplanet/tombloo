@@ -38,7 +38,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.47
+ * @version    1.48
  * @date       2011-08-04
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -198,7 +198,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.47',
+    VERSION: '1.48',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -3454,10 +3454,14 @@ Pot.extend(Pot.StringUtil, {
     getByteSize: function(string, loose) {
         let size, i, s = Pot.StringUtil.stringify(string);
         try {
-            if (loose) {
-                throw loose;
+            if (!s) {
+                size = 0;
+            } else {
+                if (loose) {
+                    throw loose;
+                }
+                size = Pot.StringUtil.utf8.encode(s).length;
             }
-            size = Pot.StringUtil.utf8.encode(s).length;
         } catch (e) {
             // URIエラー回避
             try {
@@ -7225,17 +7229,18 @@ update(models.LivedoorClip, {
 const POT_YAHOO_API_ID = '9flBbkmxg65fr3wMSVZkeLl7ohRqT_sLtPTn_uNWC2Whdv4GMIXAVeGc3aVXj0_YffhvaPE-';
 
 update(models.Yahoo, {
+    
     // 元は変えずに別のObjectで拡張 (API制限)
     Pot: {
-        name: 'Yahoo',
-        APP_ID: POT_YAHOO_API_ID,
+        name   : 'Yahoo',
+        APP_ID : POT_YAHOO_API_ID,
         
-        parse: function(ps) {
-            const url = 'http://jlp.yahooapis.jp/MAService/V1/parse';
+        parse : function(ps) {
+            const PARSE_URL = 'http://jlp.yahooapis.jp/MAService/V1/parse';
             ps.appid = this.APP_ID;
-            return request(url, {
-                charset: 'utf-8',
-                sendContent: ps
+            return request(PARSE_URL, {
+                charset     : 'utf-8',
+                sendContent : ps
             }).addCallback(function(res) {
                 return convertToXML(res.responseText);
             });
