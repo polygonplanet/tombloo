@@ -18,8 +18,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.16
- * @date     2011-07-29
+ * @version  1.17
+ * @date     2011-08-04
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog    : http://polygon-planet.blogspot.com/
  *            - Twitter : http://twitter.com/polygon_planet
@@ -592,6 +592,12 @@ update(FormPanel.prototype.types, {
                             curHeight += 10;
                             window.resizeTo(orgWidth, curHeight);
                             setTimeout(resize, 0);
+                        } else {
+                            Pot.callLazy(function() {
+                                try {
+                                    dialogPanel.sizeToContent();
+                                } catch (err) {}
+                            });
                         }
                     };
                     // 稀にダイアログ自体が中途半端な描画で残るのを直す(たぶん環境依存)
@@ -613,6 +619,12 @@ update(FormPanel.prototype.types, {
                         }).addCallback(function() {
                             if (imageBox.height < 150) {
                                 callLater(delay, resize);
+                            } else {
+                                Pot.callLazy(function() {
+                                    try {
+                                        dialogPanel.sizeToContent();
+                                    } catch (err) {}
+                                });
                             }
                         }).callback();
                     });
@@ -663,7 +675,13 @@ update(FormPanel.prototype.types, {
                         } finally {
                             window.resizeTo(window.innerWidth, orgHeight);
                         }
-                    } catch (e) {}
+                    } catch (e) {} finally {
+                        Pot.callLazy(function() {
+                            try {
+                                dialogPanel.sizeToContent();
+                            } catch (err) {}
+                        });
+                    }
                 };
                 if (ps && ps.type === 'bookmark') {
                     // Bookmark はテキストボックスを固定サイズにする
@@ -798,6 +816,9 @@ update(FormPanel.prototype.types, {
                     try {
                         this.type = type;
                         this.elmTextBox = dialogPanel.formPanel.fields[type];
+                        if (this.elmTextBox.getElementObject) {
+                            this.elmTextBox = this.elmTextBox.getElementObject();
+                        }
                     } catch (e) {}
                     if (this.elmTextBox) {
                         setTimeout(function() {
@@ -813,12 +834,14 @@ update(FormPanel.prototype.types, {
                 onLoad: function() {
                     if (!this.loaded) {
                         this.loaded = true;
-                        this.elmInput = document.getAnonymousElementByAttribute(this.elmTextBox, 'anonid', 'input');
-                        if (this.elmInput) {
-                            this.elmContext = document.getAnonymousElementByAttribute(
-                                                this.elmInput.parentNode, 'anonid', 'input-box-contextmenu');
-                            this.elmContext.addEventListener('popupshowing', bind('onPopupShowing', this), true);
-                        }
+                        try {
+                            this.elmInput = document.getAnonymousElementByAttribute(this.elmTextBox, 'anonid', 'input');
+                            if (this.elmInput) {
+                                this.elmContext = document.getAnonymousElementByAttribute(
+                                                    this.elmInput.parentNode, 'anonid', 'input-box-contextmenu');
+                                this.elmContext.addEventListener('popupshowing', bind('onPopupShowing', this), true);
+                            }
+                        } catch (e) {}
                     }
                 },
                 // コンテキストメニューを拡張
@@ -867,15 +890,61 @@ update(FormPanel.prototype.types, {
                     }
                 }
             };
-            // 各要素に適応
-            setTimeout(function() {
-                try {
-                    'item itemUrl body tags description'.split(' ').forEach(function(type) {
-                        var trapper = new TextBoxTrapper();
-                        trapper.extendContextMenu(type);
-                    });
-                } catch (e) {}
-            }, 75);
+            {
+                // 各要素に適応
+                let types, getUserFields, trapUserFields;
+                types = {
+                    item        : 1,
+                    itemUrl     : 2,
+                    body        : 3,
+                    tags        : 4,
+                    description : 5
+                };
+                getUserFields = function() {
+                    let fields = [];
+                    try {
+                        Pot.forEach(dialogPanel.formPanel.fields, function(name, field) {
+                            if (!(name in types) && field && tagName(field) === 'textbox') {
+                                fields.push(name);
+                            }
+                        });
+                    } catch (e) {}
+                    return fields;
+                };
+                trapUserFields = function() {
+                    let timeout, interval, start, trap;
+                    timeout  = 10 * 60 * 1000;
+                    interval = 500;
+                    start    = Pot.mtime();
+                    trap = function() {
+                        let fields = getUserFields();
+                        if (fields && fields.length) {
+                            fields.forEach(function(name) {
+                                let trapper;
+                                try {
+                                    types[name] = 6;
+                                    trapper = new TextBoxTrapper();
+                                    trapper.extendContextMenu(name);
+                                } catch (e) {}
+                            });
+                        }
+                        if (Pot.mtime() - start <= timeout) {
+                            setTimeout(trap, interval);
+                        }
+                    };
+                    setTimeout(trap, interval);
+                };
+                setTimeout(function() {
+                    try {
+                        Pot.forEach(types, function(type) {
+                            let trapper = new TextBoxTrapper();
+                            trapper.extendContextMenu(type);
+                        });
+                    } catch (e) {} finally {
+                        Pot.callLazy(trapUserFields);
+                    }
+                }, 75);
+            }
         })();
         // closeボタン押下時にブラウザごと閉じないよう修正(デキテマセン)
         (function() {
