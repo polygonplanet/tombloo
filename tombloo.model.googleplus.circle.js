@@ -20,7 +20,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.08
+ * @version    1.09
  * @date       2011-08-04
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -327,6 +327,12 @@ function procedure(win, ps) {
                     },
                     set name(v) {
                         return quoteTextBox.setAttribute('name', v);
+                    },
+                    get tagName() {
+                        return 'textbox';
+                    },
+                    getElementObject : function() {
+                        return quoteTextBox;
                     }
                 }
             });
