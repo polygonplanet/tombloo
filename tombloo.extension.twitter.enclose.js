@@ -17,7 +17,7 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.17
+ * @version    1.18
  * @date       2011-08-03
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -84,118 +84,179 @@ addAround(Twitter, 'post', function(proceed, args, that) {
 
 
 // QuickPostFormに接尾語入力フィールドを追加
-addAround(QuickPostForm, 'show', function(proceed, args) {
-    const QUICKPOSTFORM_XUL_PATH = 'chrome://tombloo/content/quickPostForm.xul';
-    let [ps, position, message] = args;
-    let win, result, orgOpenDialog, globals, isDisplayFields;
-    globals = typeof grobal !== 'undefined' && grobal || {};
-    orgOpenDialog = globals.openDialog;
-    isDisplayFields = function() {
-        return !!potTwitterEncUtil.getPref('displayForm', true);
-    };
-    update(ps || {}, {
-        twitterSuffix : stringify(potTwitterEncUtil.getPref('suffix'))
-    });
-    win = orgOpenDialog(
-        QUICKPOSTFORM_XUL_PATH,
-        'chrome,alwaysRaised=yes,resizable=yes,dependent=yes,titlebar=no',
-        ps, position, message
-    );
-    try {
-        // 他のパッチが利用してる可能性があるため一旦ダミーを作る
-        update(globals, {
-            openDialog : function() {
-                return win;
-            }
+(function(globals) {
+
+if (QuickPostForm.extended) {
+    let (qe = QuickPostForm.extended) {
+        qe.addProcedure(procedure);
+    }
+} else {
+    addAround(QuickPostForm, 'show', function(proceed, args) {
+        const QUICKPOSTFORM_XUL_PATH = 'chrome://tombloo/content/quickPostForm.xul';
+        let [ps, position, message] = args;
+        let win, result, orgOpenDialog, 
+        orgOpenDialog = globals.openDialog;
+        update(ps || {}, {
+            twitterSuffix : stringify(potTwitterEncUtil.getPref('suffix'))
         });
-        win.addEventListener('load', function() {
-            let doc, formPanel, suffixBox, wrapper, make = {};
-            doc = win.document;
-            formPanel = win.dialogPanel.formPanel;
-            'vbox textbox'.split(' ').forEach(function(tag) {
-                make[tag.toUpperCase()] = bind(E, null, tag);
-            });
-            if (!models.Twitter.check(ps)) {
-                return;
-            }
-            withDocument(doc, function() {
-                // テキストボックスを配置
-                wrapper = make.VBOX({
-                    flex  : 1,
-                    style : 'max-height: 3em;'
-                });
-                suffixBox = make.TEXTBOX({
-                    name      : 'twitterSuffix',
-                    emptytext : 'Twitter Suffix',
-                    value     : stringify(ps.twitterSuffix),
-                    multiline : false,
-                    rows      : 1,
-                    style     : [
-                        'margin-top: 0.7em',
-                        'margin-bottom: 0.5em'
-                    ].join(';')
-                });
-                appendChildNodes(wrapper, suffixBox);
-                appendChildNodes(doc.getElementById('form'), wrapper);
-                if (!isDisplayFields()) {
-                    wrapper.style.display = 'none';
+        win = orgOpenDialog(
+            QUICKPOSTFORM_XUL_PATH,
+            'chrome,alwaysRaised=yes,resizable=yes,dependent=yes,titlebar=no',
+            ps, position, message
+        );
+        try {
+            // 他のパッチが利用してる可能性があるため一旦ダミーを作る
+            update(globals, {
+                openDialog : function() {
+                    return win;
                 }
-                formPanel.fields.twitterSuffix = suffixBox;
-                {
-                    let toggleFields = function(resize) {
-                        let posters, prev, curr;
-                        if (isDisplayFields()) {
-                            posters = formPanel.postersPanel.checked.filter(function(poster) {
-                                return poster && poster.name === Twitter.name;
+            });
+            procedure(win, ps);
+            if (QuickPostForm.extended) {
+                QuickPostForm.extended.callProcedure();
+            }
+            result = proceed(args);
+        } finally {
+            // 元の関数に戻す
+            update(globals, {
+                openDialog : orgOpenDialog
+            });
+            // 拡張用メソッド
+            if (!QuickPostForm.extended) {
+                update(QuickPostForm, {
+                    extended : {
+                        args         : [win, ps],
+                        procedures   : [],
+                        addProcedure : function(procedure) {
+                            let pcs = this.procedures;
+                            pcs = pcs || [];
+                            pcs.push(procedure);
+                            return this;
+                        },
+                        callProcedure : function() {
+                            let args = this.args;
+                            (this.procedures || []).forEach(function(p) {
+                                p && p.apply(null, args);
                             });
-                            prev = wrapper.style.display == 'none'  ? 'none' : '';
-                            curr = (posters && posters.length) ? '' : 'none';
-                            if (prev !== curr) {
-                                wrapper.style.display = curr;
-                                if (resize) {
+                        }
+                    }
+                });
+            }
+        }
+        return result;
+    });
+}
+
+
+function isDisplayFields() {
+    return !!potTwitterEncUtil.getPref('displayForm', true);
+}
+
+function procedure(win, ps) {
+    win.addEventListener('load', function() {
+        let doc, elmForm, formPanel, suffixBox, wrapper, make;
+        if (!models.Twitter.check(ps)) {
+            return;
+        }
+        doc = win.document;
+        formPanel = win.dialogPanel.formPanel;
+        make = {};
+        'vbox textbox'.split(' ').forEach(function(tag) {
+            make[tag.toUpperCase()] = bind(E, null, tag);
+        });
+        withDocument(doc, function() {
+            elmForm = doc.getElementById('form');
+            
+            // テキストボックスを配置
+            wrapper = elmForm.appendChild(make.VBOX({
+                flex  : 1,
+                style : 'max-height: 3em;'
+            }));
+            suffixBox = wrapper.appendChild(make.TEXTBOX({
+                name      : 'twitterSuffix',
+                emptytext : 'Suffix (Twitter)',
+                value     : stringify(ps.twitterSuffix),
+                multiline : false,
+                rows      : 1,
+                style     : [
+                    'margin-top: 0.7em',
+                    'margin-bottom: 0.5em'
+                ].join(';')
+            }));
+            if (!isDisplayFields()) {
+                wrapper.style.display = 'none';
+            }
+            formPanel.fields.twitterSuffix = suffixBox;
+            {
+                let toggleFields = function(resize) {
+                    let posters, prev, curr;
+                    if (isDisplayFields()) {
+                        posters = formPanel.postersPanel.checked.filter(function(poster) {
+                            return poster && poster.name === Twitter.name;
+                        });
+                        prev = wrapper.style.display == 'none'  ? 'none' : '';
+                        curr = (posters && posters.length) ? '' : 'none';
+                        if (prev !== curr) {
+                            wrapper.style.display = curr;
+                            if (resize) {
+                                try {
                                     formPanel.dialogPanel.sizeToContent();
-                                }
+                                } catch (er) {}
                             }
                         }
-                    };
-                    try {
-                        toggleFields();
-                    } catch (er) {}
-                    
-                    // アイコンがONの時のみ表示する
-                    callLater(0.275, function() {
-                        addAround(formPanel.postersPanel, 'setDisabled', function(func, params, that) {
-                            let res, poster;
-                            res = func(params);
-                            // サイズが変わることで他のPosterもONになってしまうためディレイを設定
-                            callLater(0.3, function() {
-                                toggleFields(true);
+                    }
+                };
+                update(toggleFields, {
+                    delay : function(resize, time) {
+                        callLater(time === 0 ? 0 : (time || 0.3), function() {
+                            toggleFields(!!resize);
+                        });
+                    }
+                });
+                toggleFields();
+                
+                // アイコンがONの時のみ表示する
+                callLater(0.275, function() {
+                    if (formPanel.postersPanel.setDisabled.extended) {
+                        let (fpse = formPanel.postersPanel.setDisabled.extended) {
+                            fpse.addProcedure(function() {
+                                toggleFields.delay(true);
                             });
+                        }
+                    } else {
+                        addAround(formPanel.postersPanel, 'setDisabled', function(func, params) {
+                            let res = func(params);
+                            // サイズが変わることで他のPosterもONになってしまうためディレイを設定
+                            toggleFields.delay(true);
+                            if (!formPanel.postersPanel.setDisabled.extended) {
+                                update(formPanel.postersPanel.setDisabled, {
+                                    extended : {
+                                        procedures   : [],
+                                        addProcedure : function(p) {
+                                            this.procedures.push(p);
+                                        },
+                                        callProcedure : function() {
+                                            this.procedures.forEach(function(p) {
+                                                p && p();
+                                            });
+                                        }
+                                    }
+                                });
+                            }
+                            formPanel.postersPanel.setDisabled.extended.callProcedure();
                             return res;
                         });
-                        try {
-                            toggleFields(true);
-                        } catch (er) {}
-                    });
-                    // フォームのサイズを調整
-                    callLater(0.5, function() {
-                        try {
-                            toggleFields();
-                        } catch (er) {}
-                        formPanel.dialogPanel.sizeToContent();
-                    });
-                }
-            });
-        }, true);
-        result = proceed(args);
-    } finally {
-        // 元の関数に戻す
-        update(globals, {
-            openDialog : orgOpenDialog
+                    }
+                    toggleFields(true);
+                });
+                // フォームのサイズを調整
+                toggleFields.delay(true, 0.5);
+            }
         });
-    }
-    return result;
-});
+    }, true);
+}
+
+})(typeof grobal !== 'undefined' && grobal || {});
 
 
 // コンテキストメニューに設定ダイアログを登録
