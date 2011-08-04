@@ -17,10 +17,11 @@
  * [Model Google+ Circle patch]
  *
  * - Google+で指定のサークルにポストできるようにする
+ * - GooglePhotos(Picasa)にアップロード可
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.09
+ * @version    1.10
  * @date       2011-08-04
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -688,6 +689,7 @@ function generateModel(ops) {
             if (!this.getAuthCookie()) {
                 throw new Error(getMessage('error.notLoggedin'));
             }
+            this.paramize(psc);
             return this.getOZData().addCallback(function(oz) {
                 return self._post(psc, oz);
             });
