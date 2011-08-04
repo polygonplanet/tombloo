@@ -11,7 +11,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.00
+ * @version    1.01
  * @date       2011-08-04
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -168,6 +168,7 @@ Tombloo.Service.actions.register({
         createMenuItem({
             label   : '----',
             type    : 'context',
+            link    : true
         }),
         createMenuItem({
             label   : 'page',
@@ -189,12 +190,11 @@ Tombloo.Service.actions.register({
             type    : 'context',
             service : 'goo.gl'
         }),
-        {
-            name  : '----',
-            check : function() {
-                return true;
-            }
-        },
+        createMenuItem({
+            label   : '----',
+            type    : 'context',
+            page    : true
+        }),
         {
             name  : LABELS.translate('expandMenu'),
             type  : 'context',
@@ -243,8 +243,14 @@ function createMenuItem(params) {
             name  : '----',
             type  : params.type,
             check : (function(re) {
-                return function(ctx) {
-                    return ctx && ctx.onLink && re.test(ctx.linkURL);
+                if (params.link) {
+                    return function(ctx) {
+                        return ctx && ctx.onLink && re.test(ctx.linkURL);
+                    };
+                } else {
+                    return function(ctx) {
+                        return ctx && re.test(ctx.href);
+                    };
                 }
             })(RE)
         };
