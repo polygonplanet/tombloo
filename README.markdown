@@ -61,6 +61,16 @@ Firefox アドオン [Tombloo](https://github.com/to/tombloo/wiki) で利用で�
    リンクやページの短縮URLをクリップボードにコピーできるパッチ。  
    [ページやリンクの短縮URLをクリップボードにコピーできるTomblooパッチ | 圧縮電子精神音楽浮遊構造体][tombloo.service.actions.urlshortener.js]
 
+*  **tombloo.extractor.googleplus.js**  
+   Google+ストリーム上の画像を原寸大でポストできるパッチ。  
+   [Google+ストリーム上の画像を原寸大でポストできるTomblooパッチ | 圧縮電子精神音楽浮遊構造体][tombloo.extractor.googleplus.js]
+
+*  **tombloo.service.actions.changeacount.resize.js**  
+   「アカウントの切り替え」ダイアログを内容サイズに合わせてリサイズするパッチ。  
+   [「アカウントの切り替え」ダイアログを内容サイズに合わせてリサイズするTomblooパッチ | 圧縮電子精神音楽浮遊構造体][tombloo.service.actions.changeacount.resize.js]
+
+
+
 
 
 [tombloo.extension.twitter.enclose.js]: http://polygon-planet.blogspot.com/2011/06/twitterposttombloo.html "TwitterにPOSTするとき先頭に“見てる”を付けてタイトルを括弧で囲うTomblooパッチ | 圧縮電子精神音楽浮遊構造体"
@@ -96,6 +106,12 @@ Firefox アドオン [Tombloo](https://github.com/to/tombloo/wiki) で利用で�
 
 
 [tombloo.service.actions.urlshortener.js]: http://polygon-planet.blogspot.com/2011/08/urltombloo.html "ページやリンクの短縮URLをクリップボードにコピーできるTomblooパッチ | 圧縮電子精神音楽浮遊構造体"
+
+
+[tombloo.extractor.googleplus.js]: http://polygon-planet.blogspot.com/2011/08/googletombloo.html "Google+ストリーム上の画像を原寸大でポストできるTomblooパッチ | 圧縮電子精神音楽浮遊構造体"
+
+
+[tombloo.service.actions.changeacount.resize.js]: http://polygon-planet.blogspot.com/2011/08/tombloo.html "「アカウントの切り替え」ダイアログを内容サイズに合わせてリサイズするTomblooパッチ | 圧縮電子精神音楽浮遊構造体"
 
 
 
