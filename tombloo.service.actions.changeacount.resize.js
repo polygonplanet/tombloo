@@ -12,7 +12,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.02
+ * @version    1.03
  * @date       2011-08-05
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -81,18 +81,18 @@ update(Tombloo.Service.actions[getMessage('label.action.changeAcount')], {
             if (stop) {
                 // ユーザー名でソート
                 callLater(1, function() {
-                    let listbox, orgMethod, sortItems = function() {
+                    let listbox, sortItems = function() {
                         let newItems = [], labels = [];
                         elems.forEach(function(item) {
-                            labels.push(item.label);
+                            labels.push(item.getAttribute('label'));
                         });
-                        alphanumSort(labels, true);
+                        alphanumSort(labels);
                         labels.forEach(function(label) {
-                            let pushed;
+                            let done = false;
                             elems.forEach(function(item) {
-                                if (!pushed && item.label === label) {
+                                if (!done && item.getAttribute('label') === label) {
                                     newItems.push(item);
-                                    pushed = true;
+                                    done = true;
                                 }
                             });
                         });
@@ -108,17 +108,9 @@ update(Tombloo.Service.actions[getMessage('label.action.changeAcount')], {
                             });
                         }
                     };
-                    listbox = elems[0].parentNode;
-                    if (listbox && listbox.appendItem) {
-                        orgMethod = listbox.appendItem;
-                        listbox.appendItem = function() {
-                            try {
-                                return orgMethod.apply(this, arguments);
-                            } finally {
-                                sortItems();
-                            }
-                        }
-                    }
+                    callLater(0, function() {
+                        sortItems();
+                    });
                 });
             }
         };
@@ -149,46 +141,38 @@ update(Tombloo.Service.actions[getMessage('label.action.changeAcount')], {
  * @param  {Boolean}  caseInsensitive  大文字小文字を区別しない
  * @return {Array}                     ソートされた配列 (引数そのもの)
  */
-function alphanumSort(array, caseInsensitive) {
-    let z, t, x, y, n, i, j, m, h;
-    if (array && typeof array.splice === 'function') {
-        for (z = 0; t = array[z]; z++) {
-            array[z] = [];
-            x = n = 0;
-            y = -1;
-            while (i = (j = t.charAt(x++)).charCodeAt(0)) {
-                m = (i == 46 || (i >= 48 && i <= 57));
-                if (m != n) {
-                    array[z][++y] = '';
-                    n = m;
+function alphanumSort(array) {
+    let chunkify, alphanumCase;
+    chunkify = function(t) {
+        let tz = [], x = 0, y = -1, n = 0, i, j, m;
+        while (i = (j = t.charAt(x++)).charCodeAt(0)) {
+            m = (i == 46 || (i >=48 && i <= 57));
+            if (m !== n) {
+                tz[++y] = '';
+                n = m;
+            }
+            tz[y] += j;
+        }
+        return tz;
+    };
+    alphanumCase = function(a, b) {
+        let aa, bb, c, d, x, 
+        aa = chunkify(a.toLowerCase());
+        bb = chunkify(b.toLowerCase());
+        for (x = 0; aa[x] && bb[x]; x++) {
+            if (aa[x] !== bb[x]) {
+                c = Number(aa[x]);
+                d = Number(bb[x]);
+                if (c == aa[x] && d == bb[x]) {
+                    return c - d;
+                } else {
+                    return (aa[x] > bb[x]) ? 1 : -1;
                 }
-                array[z][y] += j;
             }
         }
-        array.sort(function(a, b) {
-            let x, aa, bb, c, d;
-            for (x = 0; (aa = a[x]) && (bb = b[x]); x++) {
-                if (caseInsensitive) {
-                    aa = aa.toLowerCase();
-                    bb = bb.toLowerCase();
-                }
-                if (aa != bb) {
-                    c = Number(aa);
-                    d = Number(bb);
-                    if (c == aa && d == bb) {
-                        return c - d;
-                    } else {
-                        return (aa > bb) ? 1 : -1;
-                    }
-                }
-            }
-            return a.length - b.length;
-        });
-        for (z = 0, h = array.length; z < h; z++) {
-            array[z] = array[z].join('');
-        }
-    }
-    return array;
+        return aa.length - bb.length;
+    };
+    return array.sort(alphanumCase);
 }
 
 
