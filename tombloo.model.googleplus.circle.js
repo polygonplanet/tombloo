@@ -21,8 +21,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.10
- * @date       2011-08-04
+ * @version    1.11
+ * @date       2011-08-05
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -47,10 +47,13 @@ let (limit = 8 * 1000, time = +new Date) {
         if (models[GOOGLE_PLUS_NAME]) {
             end = true;
         } else if (+new Date - time > limit) {
-            throw new Error(GOOGLE_PLUS_NAME + ' model is undefined');
+            end = true;
         }
         return end;
     });
+    if (!models[GOOGLE_PLUS_NAME]) {
+        throw new Error(GOOGLE_PLUS_NAME + ' model is undefined');
+    }
 }
 
 // Define language
@@ -65,7 +68,7 @@ const LABELS = {
     translate : function(name) {
         return LABELS[name][LANG === 'en' && LANG || 'ja'];
     },
-    uploadCheck : {
+    UPLOAD_CHECK : {
         ja : '画像をGooglePhotos(Picasa)にアップロード',
         en : 'Upload the image to GooglePhotos(Picasa).'
     }
@@ -237,7 +240,7 @@ function procedure(win, ps) {
             uploadCheck = wrapper.appendChild(make.CHECKBOX({
                 name      : 'googlePlusUseUpload',
                 value     : 'checked',
-                label     : LABELS.translate('uploadCheck'),
+                label     : LABELS.translate('UPLOAD_CHECK'),
                 checked   : true,
                 style     : [
                     'margin-top: 0.7em',
@@ -407,19 +410,31 @@ function procedure(win, ps) {
 })(typeof grobal !== 'undefined' && grobal || {});
 
 
-// YouTube - 動画ポスト時のキャプションFix暫定
-//FIXME: 中途半端にしか直してない (G+ 専用としてのみ)
-addAround(Tombloo.Service.extractors['Video - YouTube'], 'extract', function(proceed, args) {
-    let ctx, result;
-    ctx = args[0];
-    result = proceed(args);
-    if (ctx && result) {
-        update(result, {
-            item              : trim(ctx.title).replace(/[\s\u3000]+/g, ' ').trim(),
-            authorDescription : $x('//*[@id="eow-description"]/text()', ctx.document)
-        });
-    }
-    return result;
+// YouTubeの各要素を取得できるよう修正(応急処置)
+callLater(1, function() {
+    addAround(Tombloo.Service.extractors['Video - YouTube'], 'extract', function(proceed, args) {
+        let ctx, result, og, doc, unesc, authorAnchor;
+        ctx = args && args[0];
+        result = proceed(args) || {};
+        if (ctx && result) {
+            doc = ctx.document;
+            unesc = typeof Pot !== 'undefined' && Pot.unescapeHTML || unescapeHTML;
+            og = function(name) {
+                return unesc(stringify(
+                    $x(['//meta[@property="og:', '"]/@content'].join(name), doc)
+                ));
+            };
+            authorAnchor = $x('id("watch-username")', doc) || {};
+            update(result, {
+                item              : trim(og('title') || ctx.title).replace(/[\s\u3000]+/g, ' ').trim(),
+                itemUrl           : trim(og('url')   || ctx.href),
+                author            : authorAnchor.textContent || result.author,
+                authorUrl         : authorAnchor.href        || result.authorUrl,
+                authorDescription : $x('//*[@id="eow-description"]/text()', doc)
+            });
+        }
+        return result;
+    });
 });
 
 
