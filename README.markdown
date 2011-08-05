@@ -57,6 +57,9 @@ Firefox アドオン [Tombloo](https://github.com/to/tombloo/wiki) で利用で�
    TINAMIの画像をオリジナルサイズでサムネイルからでもポストできるパッチ。  
    [TINAMIの画像をオリジナルサイズでサムネイルからでもポストできるTomblooパッチ | 圧縮電子精神音楽浮遊構造体][tombloo.service.tinami.js]
 
+*  **tombloo.service.actions.urlshortener.js**  
+   リンクやページの短縮URLをクリップボードにコピーできるパッチ。  
+   [ページやリンクの短縮URLをクリップボードにコピーできるTomblooパッチ | 圧縮電子精神音楽浮遊構造体][tombloo.service.actions.urlshortener.js]
 
 
 
@@ -91,6 +94,8 @@ Firefox アドオン [Tombloo](https://github.com/to/tombloo/wiki) で利用で�
 
 [tombloo.service.tinami.js]: http://polygon-planet.blogspot.com/2011/07/tinamitombloo.html "TINAMIの画像をオリジナルサイズでサムネイルからでもポストできるTomblooパッチ | 圧縮電子精神音楽浮遊構造体"
 
+
+[tombloo.service.actions.urlshortener.js]: http://polygon-planet.blogspot.com/2011/08/urltombloo.html "ページやリンクの短縮URLをクリップボードにコピーできるTomblooパッチ | 圧縮電子精神音楽浮遊構造体"
 
 
 
