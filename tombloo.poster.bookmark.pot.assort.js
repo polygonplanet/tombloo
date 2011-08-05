@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.48
- * @date       2011-08-04
+ * @version    1.49
+ * @date       2011-08-05
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -198,7 +198,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.48',
+    VERSION: '1.49',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -8447,6 +8447,34 @@ addAround(globals, 'createFlavoredString', function(proceed, args) {
         result = proceed(args);
     }
     return result;
+});
+
+/**
+ * Validate convertToHTMLDocument
+ *
+ * 余分なHTMLノードを完全に取り除く
+ * 不要なタグを除去しきれないときがあるのを修正
+ */
+addAround(grobal, 'convertToHTMLDocument', function(proceed, args) {
+    let value, patterns = [
+        /<\s*!\s*DOCTYPE[^>]*>/gi,
+        /<\s*html\b[^>]*>/gi,
+        /<\s*\/\s*html\s*>[\s\S]*/gi
+    ];
+    if (args && args[0]) {
+        value = Pot.StringUtil.stringify(args[0]);
+        patterns.forEach(function(re) {
+            value = value.replace(re, '');
+        });
+        args[0] = value;
+        // ---------------------------------------------------------
+        //FIXME: [既存]
+        //       まれに <a>hoge</a><b>fuga</b> のようなノードが
+        //              <a>hoge<b>fuga</b>     と変換されてしまう
+        //       (RSSでのみ確認)
+        // ---------------------------------------------------------
+    }
+    return proceed(args);
 });
 
 // sanitizeHTML from 00_component.js (Modified)
