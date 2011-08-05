@@ -8,14 +8,15 @@
  * [Extension Update Patches patch]
  *
  * - インストールされている各パッチを一括でアップデートする
+ * - 各パッチの削除/アンインストールやソース編集が可能
  *
  * --------------------------------------------------------------------------
  * ↓のように updateURL を記述すると自動認識される
  * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.extension.update.patches.js
  *
  *
- * @version    1.01
- * @date       2011-07-29
+ * @version    1.02
+ * @date       2011-08-05
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -76,6 +77,9 @@ var SPECIAL_PATCHES = {
         },
         completed : function() {
             return !!(Pot.SetupUtil.setupCompleted);
+        },
+        canRemove : function() {
+            return false;
         }
     }
 };
@@ -83,16 +87,35 @@ var SPECIAL_PATCHES = {
 
 // Define language
 const LANG = (function(n) {
-    return ((n && (n.language || n.userLanguage || n.browserLanguage ||
-           n.systemLanguage)) || 'en').split('-').shift().toLowerCase();
+    return ((n && (n.language  || n.userLanguage || n.browserLanguage ||
+            n.systemLanguage)) || 'en').split('-').shift().toLowerCase();
 })(navigator);
 
 
-// メニューのラベル
-const MENU_LABEL = ({
-    ja: 'パッチの一括アップデート',
-    en: 'Update all of the patches'
-})[LANG === 'ja' && LANG || 'en'];
+// 主なラベル
+const LABELS = {
+    translate: function(name) {
+        let r, o, p, args = Array.prototype.slice.call(arguments);
+        p = args.shift();
+        o = LABELS[p];
+        while (o && args.length) {
+            p = args.shift();
+            o = o[p];
+        }
+        return o && o[LANG === 'en' && LANG || 'ja'];
+    },
+    MENU_LABEL: {
+        ja : 'パッチの一括アップデート',
+        en : 'Update all of the patches'
+    },
+    OPEN_SCRIPT_FOLDER: {
+        ja : 'パッチフォルダを開く',
+        en : 'Open Script Folder'
+    }
+};
+
+// メニューラベル
+const MENU_LABEL = LABELS.translate('MENU_LABEL');
 
 
 // コンテキストメニューに登録
@@ -145,6 +168,36 @@ Tombloo.Service.actions.register({
     type: 'context,menu'
 }, MENU_LABEL);
 
+// script (パッチ) フォルダを開く
+Tombloo.Service.actions.register({
+    name: LABELS.translate('OPEN_SCRIPT_FOLDER'),
+    type: 'context,menu',
+    // icon: folder.png : http://www.famfamfam.com/
+    icon: strip(<>
+        data:image/png;base64,
+        iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0
+        U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAGrSURBVDjLxZO7ihRBFIa/6u0ZW7GHBUV0
+        UQQTZzd3QdhMQxOfwMRXEANBMNQX0MzAzFAwEzHwARbNFDdwEd31Mj3X7a6uOr9BtzNjYjKBJ6ni
+        cP7v3KqcJFaxhBVtZUAK8OHlld2st7Xl3DJPVONP+zEUV4HqL5UDYHr5xvuQAjgl/Qs7TzvOOVAj
+        xjlC+ePSwe6DfbVegLVuT4r14eTr6zvA8xSAoBLzx6pvj4l+DZIezuVkG9fY2H7YRQIMZIBwycmz
+        H1/s3F8AapfIPNF3kQk7+kw9PWBy+IZOdg5Ug3mkAATy/t0usovzGeCUWTjCz0B+Sj0ekfdvkZ3a
+        bBv+U4GaCtJ1iEm6ANQJ6fEzrG/engcKw/wXQvEKxSEKQxRGKE7Izt+DSiwBJMUSm71rguMYhQKr
+        BygOIRStf4TiFFRBvbRGKiQLWP29yRSHKBTtfdBmHs0BUpgvtgF4yRFR+NUKi0XZcYjCeCG2smkz
+        LAHkbRBmP0/Uk26O5YnUActBp1GsAI+S5nRJJJal5K1aAMrq0d6Tm9uI6zjyf75dAe6tx/SsWeD/
+        /o2/Ab6IH3/h25pOAAAAAElFTkSuQmCC
+    </>),
+    check: function(ctx) {
+        return true;
+    },
+    execute: function(ctx) {
+        try {
+            getPatchDir().launch();
+        } catch (e) {
+            alert('Error! ' + (e && e.message || e));
+        }
+    }
+}, '----');
+
 
 // XULを動的生成 (キャッシュはしない)
 function generateXUL() {
@@ -193,9 +246,21 @@ function generateXUL() {
                 ja : '最新のパッチを見る(リモート)',
                 en : 'View latest source of the patch (Remote)'
             },
+            '{TIP_REMOVE_SCRIPT}' : {
+                ja : 'スクリプトファイル(パッチ)を削除/アンインストール',
+                en : 'Remove script file (uninstall)'
+            },
             '{TIP_SEARCH_GOOGLE}' : {
                 ja : 'パッチのアップデート(raw)URLをGoogleで検索',
                 en : 'Search the update(raw) URL by Google'
+            },
+            '{REMOVE_SCRIPT_CONFIRM}' : {
+                ja : 'を削除/アンインストールします。本当によろしいですか？',
+                en : 'will remove. Are you sure?'
+            },
+            '{REMOVE_SCRIPT_FAILURE}' : {
+                ja : 'スクリプトファイルの削除に失敗しました',
+                en : 'Failed to remove the script file.'
             },
             '{UPDATE_PROCESS_SKIP}' : {
                 ja : '-- スキップ: ソースコードが取得できないかURIが不正です',
@@ -288,15 +353,17 @@ function generateXUL() {
             max-width: 16px;
             max-height: 16px;
         }
-        .open-in-editor, .view-in-editor, .search-by-google {
+        .open-in-editor, .view-in-editor,
+        .remove-script-patch, .search-by-google {
             cursor: pointer;
             max-width: 16px;
             max-height: 16px;
             margin-top: 0.2em;
             margin-bottom: 0.2em;
-            opacity: 0.75;
+            opacity: 0.65;
         }
-        .open-in-editor:hover, .view-in-editor:hover, .search-by-google:hover {
+        .open-in-editor:hover, .view-in-editor:hover,
+        .remove-script-patch:hover, .search-by-google:hover {
             opacity: 1;
         }
         .open-in-editor-box {
@@ -431,6 +498,7 @@ function generateXUL() {
             loading : '{ICON_LOADING}',
             edit    : '{ICON_EDIT}',
             view    : '{ICON_VIEW}',
+            remove  : '{ICON_REMOVE}',
             search  : '{ICON_SEARCH}',
             empty   : 'chrome://tombloo/skin/empty.png',
             pass    : 'chrome://tombloo/skin/enabled.png',
@@ -446,7 +514,7 @@ function generateXUL() {
             withDocument(document, function() {
                 patches.forEach(function(patch) {
                     let item, check, icon, name, vbox1, vbox2, vbox3, vbox4, vbox5;
-                    let edit, view, search, url, hbox1, hbox2, hbox3, hbox4, input;
+                    let edit, view, remove, search, url, hbox1, hbox2, hbox3, hbox4, input;
                     let trappers = {
                         dblclick: function(event) {
                             let triggers;
@@ -515,6 +583,13 @@ function generateXUL() {
                         pack        : 'center',
                         align       : 'center'
                     });
+                    remove = IMAGE({
+                        src         : icons.remove,
+                        tooltiptext : '{TIP_REMOVE_SCRIPT}',
+                        class       : 'remove-script-patch',
+                        pack        : 'center',
+                        align       : 'center'
+                    });
                     search = IMAGE({
                         src         : icons.search,
                         tooltiptext : '{TIP_SEARCH_GOOGLE}',
@@ -528,6 +603,19 @@ function generateXUL() {
                     view.addEventListener('click', function(event) {
                         if (url && url.value) {
                             openRemoteFileInEditor(url.value, listScripts);
+                        }
+                    }, true);
+                    remove.addEventListener('click', function(event) {
+                        let scriptName = patch.leafName;
+                        if (confirm([scriptName, '{REMOVE_SCRIPT_CONFIRM}'].join(' '))) {
+                            if (!manipulateScript(scriptName, 'remove')) {
+                                alert('{REMOVE_SCRIPT_FAILURE}');
+                            } else {
+                                reload();
+                                callLater(0.15, function() {
+                                    removeElement(item);
+                                });
+                            }
                         }
                     }, true);
                     search.addEventListener('click', function(event) {
@@ -579,16 +667,23 @@ function generateXUL() {
                     });
                     [[vbox1, check  ], [ hbox1, vbox1  ], [ vbox2, icon   ],
                     [ hbox1, vbox2  ], [ vbox3, edit   ], [ vbox3, view   ],
-                    [ hbox1, vbox3  ], [ vbox4, search ], [ hbox1, vbox4  ],
-                    [ hbox2, name   ], [ hbox3, url    ], [ hbox4, status ],
-                    [ vbox5, hbox2  ], [ vbox5, hbox3  ], [ vbox5, hbox4  ],
-                    [ hbox1, vbox5  ], [ item,  hbox1  ]].forEach(function(a) {
+                    [ hbox1, vbox3  ], [ vbox4, remove ], [ vbox4, search ],
+                    [ hbox1, vbox4  ], [ hbox2, name   ], [ hbox3, url    ],
+                    [ hbox4, status ], [ vbox5, hbox2  ], [ vbox5, hbox3  ],
+                    [ vbox5, hbox4  ], [ hbox1, vbox5  ], [ item,  hbox1  ]].forEach(function(a) {
                         a[0].appendChild(a[1]);
                     });
                     item.addEventListener('dblclick', trappers.dblclick, true);
                     listScripts.appendChild(item);
                     callLater(0.5, function() {
+                        let scps, scriptName = patch.leafName;
                         view.style.display = url.value ? '' : 'none';
+                        if (scriptName in args.SPECIAL_PATCHES) {
+                            scps = args.SPECIAL_PATCHES[scriptName];
+                            if (!scps.canRemove || !scps.canRemove()) {
+                                remove.style.display = 'none';
+                            }
+                        }
                     });
                 });
             });
@@ -1118,6 +1213,47 @@ function generateXUL() {
             return result;
         }
         
+        function manipulateScript(name, action) {
+            let result = false, file;
+            (getScriptFiles(getPatchDir()) || []).forEach(function(script) {
+                if (!file && script && script.leafName === name) {
+                    file = script;
+                }
+            });
+            if (file) {
+                try {
+                    switch (action) {
+                        case 'remove':
+                        case 'delete':
+                            if (!file.exists()) {
+                                result = true;
+                            } else {
+                                file.permissions = 0666;
+                                file.remove(false);
+                                if (!file.exists()) {
+                                    result = true;
+                                }
+                            }
+                            break;
+                        case 'exist':
+                        case 'exists':
+                            result = file.exists();
+                            break;
+                        case 'size':
+                            result = file.fileSize;
+                            break;
+                        default:
+                            break;
+                    }
+                } catch (e) {
+                    alert('Error! ' + (e && e.message || e));
+                    error(e);
+                    result = false;
+                }
+            }
+            return result;
+        }
+        
         function countChars(src) {
             let chars = {}, len = 0, pre = '.';
             String(src || '').split('').forEach(function(c) {
@@ -1253,6 +1389,24 @@ function generateXUL() {
             wPM8bJIwtXv7STjJxsaGr00UtTZ7Lldu3iXU0/TdAT98d4v6zAz1ep1ut8vq6iqZTIZarUa5XMYP
             o6PLy8t7juNsitnGpSJwEahhk6KK9qpToz9O3Fsp6kw6LYSA1qhEdnyCaVpYm9go8H3Hcbqe5539
             H/YvZvvl5HpaAAAAAElFTkSuQmCC
+        </>),
+        '{ICON_REMOVE}' : strip(<>
+            data:image/png;base64,
+            iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0
+            U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAK9SURBVBgZBcFLiFVlAADg7//PuXdmGp3x
+            MeIokk1USG8jKmlRYJJU1K6NRILQopXVImoVFBGBpLteu2gVLYyiUALFRSVk0aKC0nyE5uA43pm5
+            98495/zn7/tCzhns//LSQzh867rxXYO6NahbddsaNm0Py7iGhEUs4DMcKwHapnn4vtk1u157bBMA
+            6Fft9KBqpxdX07aqZnmUnL+24tuz/T04WAK0TbN5qhvApRtJJwRloCgZ60Q3j0VFjDoFO7dN2Do9
+            ueGT05cPRYBU11OTJU3LchX0am6M6K3SW2VhyPxKAm98ftGuuUl3z3Q2lQCprjes7Ub9Ef3VJMag
+            RFEQCwpBEWgR0pIfzy06c7F3uQRIVbV5eqLQGzYGoyzGrIjEFBSRQlYUyIWrSyNHjv+9hP0lQFNV
+            2zdPdfRWswYyRQpiRqKQlTlqM6mTNFUzd/SVR69HgFSNts9Oj+lXWYgUIYiICICQyZlmNJKqUYIS
+            9r793URZxO5YJ6pSEmVkGUkAATFSp2SlP2iwBCU0o2rT5OS4GGghEwJRkDMh4ORHhic/9MO/f3lp
+            fF1YU11/nea9ElI1uqmc7CojRQxSG8hZixBw4mNTf37hjucPGJu7y/C3Y8Xvp46/c/yJTr/4/sbt
+            M21Kh3Y/uOPOua0zfjnfSG2WBUXMioLRpy+6/9kXTJw9IZz6QGd4XnfDlnjl3IUdZaqq3Xj65z/+
+            sTgsrYyyOmWjOqiaVpNaB65eMD47x1OvAijf2qJowy1lqusHnnv83ok39z0CAFKmTlnVcOanrQa/
+            fmPyq5eNhv8ZYHmpkAqXi9l79t62fnrymYXl2sX5vvmlVUuDWt1kRYy6naAbWv+cOip2grro6y1k
+            567ElBrvh537Ds/gILZjIzZiPdZjerzb6YyPd+xJp+248rW1/QVVGeeL3Bx58ljz7v/pCEpK8wRG
+            cAAAAABJRU5ErkJggg==
         </>),
         '{ICON_SEARCH}' : strip(<>
             data:image/png;base64,
