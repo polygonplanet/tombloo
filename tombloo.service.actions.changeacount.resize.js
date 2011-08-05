@@ -12,7 +12,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.01
+ * @version    1.02
  * @date       2011-08-05
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -80,33 +80,46 @@ update(Tombloo.Service.actions[getMessage('label.action.changeAcount')], {
             }
             if (stop) {
                 // ユーザー名でソート
-                {
-                    let listbox, newItems = [], labels = [];
-                    elems.forEach(function(item) {
-                        labels.push(item.label);
-                    });
-                    alphanumSort(labels, true);
-                    labels.forEach(function(label) {
-                        let pushed;
+                callLater(1, function() {
+                    let listbox, orgMethod, sortItems = function() {
+                        let newItems = [], labels = [];
                         elems.forEach(function(item) {
-                            if (!pushed && item.label === label) {
-                                newItems.push(item);
-                                pushed = true;
+                            labels.push(item.label);
+                        });
+                        alphanumSort(labels, true);
+                        labels.forEach(function(label) {
+                            let pushed;
+                            elems.forEach(function(item) {
+                                if (!pushed && item.label === label) {
+                                    newItems.push(item);
+                                    pushed = true;
+                                }
+                            });
+                        });
+                        if (newItems && newItems.length === elems.length) {
+                            elems.forEach(function(item) {
+                                if (!listbox) {
+                                    listbox = item.parentNode;
+                                }
+                                removeElement(item);
+                            });
+                            newItems.forEach(function(item) {
+                                listbox.appendChild(item);
+                            });
+                        }
+                    };
+                    listbox = elems[0].parentNode;
+                    if (listbox && listbox.appendItem) {
+                        orgMethod = listbox.appendItem;
+                        listbox.appendItem = function() {
+                            try {
+                                return orgMethod.apply(this, arguments);
+                            } finally {
+                                sortItems();
                             }
-                        });
-                    });
-                    if (newItems && newItems.length === elems.length) {
-                        elems.forEach(function(item) {
-                            if (!listbox) {
-                                listbox = item.parentNode;
-                            }
-                            removeElement(item);
-                        });
-                        newItems.forEach(function(item) {
-                            listbox.appendChild(item);
-                        });
+                        }
                     }
-                }
+                });
             }
         };
         win = openDialog(
