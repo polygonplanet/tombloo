@@ -69,6 +69,10 @@ Firefox アドオン [Tombloo](https://github.com/to/tombloo/wiki) で利用で�
    「アカウントの切り替え」ダイアログを内容サイズに合わせてリサイズするパッチ。  
    [「アカウントの切り替え」ダイアログを内容サイズに合わせてリサイズするTomblooパッチ | 圧縮電子精神音楽浮遊構造体][tombloo.service.actions.changeacount.resize.js]
 
+*  **tombloo.extractor.tumblr.reblog.tags.js**  
+   Tumblrでリブログ時にタグも一緒にポストできるパッチ。  
+   [Tumblrでリブログ時にタグの継承を可能にするTomblooパッチ | 圧縮電子精神音楽浮遊構造体][tombloo.extractor.tumblr.reblog.tags.js]
+
 
 
 
@@ -113,6 +117,8 @@ Firefox アドオン [Tombloo](https://github.com/to/tombloo/wiki) で利用で�
 
 [tombloo.service.actions.changeacount.resize.js]: http://polygon-planet.blogspot.com/2011/08/tombloo.html "「アカウントの切り替え」ダイアログを内容サイズに合わせてリサイズするTomblooパッチ | 圧縮電子精神音楽浮遊構造体"
 
+
+[tombloo.extractor.tumblr.reblog.tags.js]: http://polygon-planet.blogspot.com/2011/08/tumblrtombloo.html "Tumblrでリブログ時にタグの継承を可能にするTomblooパッチ | 圧縮電子精神音楽浮遊構造体"
 
 
 
