@@ -17,7 +17,7 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.20
+ * @version    1.21
  * @date       2011-08-17
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -37,7 +37,7 @@
 // Define language
 const LANG = (function(n) {
     return ((n && (n.language || n.userLanguage || n.browserLanguage ||
-           n.systemLanguage)) || 'en').split('-').shift().toLowerCase();
+           n.systemLanguage)) || 'en').split(/[^a-zA-Z0-9]+/).shift().toLowerCase();
 })(navigator);
 
 // メニューのラベル
