@@ -15,8 +15,8 @@
  * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.extension.update.patches.js
  *
  *
- * @version    1.02
- * @date       2011-08-05
+ * @version    1.03
+ * @date       2011-08-17
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -88,7 +88,7 @@ var SPECIAL_PATCHES = {
 // Define language
 const LANG = (function(n) {
     return ((n && (n.language  || n.userLanguage || n.browserLanguage ||
-            n.systemLanguage)) || 'en').split('-').shift().toLowerCase();
+            n.systemLanguage)) || 'en').split(/[^a-zA-Z0-9]+/).shift().toLowerCase();
 })(navigator);
 
 
@@ -201,7 +201,8 @@ Tombloo.Service.actions.register({
 
 // XULを動的生成 (キャッシュはしない)
 function generateXUL() {
-    let head, template, script, code, labels;
+    let head, template, script, style, code, labels;
+    
     labels = {
         template : {
             '{TITLE}' : {
@@ -321,10 +322,7 @@ function generateXUL() {
         }
     };
     head = 'data:application/vnd.mozilla.xul+xml;charset=utf-8,';
-    template = trim(<><![CDATA[
-        <?xml version="1.0" encoding="utf-8"?>
-        <?xml-stylesheet type="text/css" href="chrome://global/skin/"?>
-        <?xml-stylesheet type="text/css" href="data:text/css,
+    style = ['data:text/css,', encodeURIComponent(trim(<><![CDATA[
         window, dialog {
             margin: 0.7em 0.5em;
             max-height: 580px;
@@ -396,7 +394,12 @@ function generateXUL() {
         #update-finish-notes, #update-finish-button {
             font-weight: bold;
         }
-        "?>
+    ]]></>))].join('');
+    
+    template = trim(<><![CDATA[
+        <?xml version="1.0" encoding="utf-8"?>
+        <?xml-stylesheet type="text/css" href="chrome://global/skin/"?>
+        <?xml-stylesheet type="text/css" href="{STYLE}"?>
         <dialog id="update-patches-dialog" title="{TITLE}" buttons=","
                 xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
                 xmlns:html="http://www.w3.org/1999/xhtml">
@@ -1425,6 +1428,7 @@ function generateXUL() {
     }, function([key, val]) {
         script = script.split(key).join(val);
     });
+    template = template.split('{STYLE}').join(style);
     code = template.split('{SCRIPT}').join(['<![CDATA[', script, ']]>'].join(' '));
     template = script = null;
     return [head, encodeURIComponent(trim(code))].join('').trim();
