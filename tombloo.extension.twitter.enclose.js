@@ -17,8 +17,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.19
- * @date       2011-08-04
+ * @version    1.20
+ * @date       2011-08-17
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -47,6 +47,7 @@ const MENU_LABEL = ({
 })[LANG === 'ja' && LANG || 'en'];
 
 
+//TODO: t.co 短縮URL対応の処理
 const SAMPLE_SHORT_URL = 'http://bit.ly/-*-*-*-*-*';
 
 
@@ -98,7 +99,7 @@ if (QuickPostForm.extended) {
     addAround(QuickPostForm, 'show', function(proceed, args) {
         const QUICKPOSTFORM_XUL_PATH = 'chrome://tombloo/content/quickPostForm.xul';
         let [ps, position, message] = args;
-        let win, result, orgOpenDialog, 
+        let win, result, orgOpenDialog;
         orgOpenDialog = globals.openDialog;
         update(ps || {}, {
             twitterSuffix : stringify(potTwitterEncUtil.getPref('suffix'))
@@ -431,7 +432,7 @@ function beforeFilter(ps, ops) {
 
 // XULを動的生成 (設定メニューのためキャッシュはしない)
 function generateXUL() {
-    let head, template, script, code, labels;
+    let head, template, script, style, code, labels;
     labels = {
         '{TITLE}': {
             ja : MENU_LABEL,
@@ -471,10 +472,7 @@ function generateXUL() {
         }
     };
     head = 'data:application/vnd.mozilla.xul+xml;charset=utf-8,';
-    template = trim(<><![CDATA[
-        <?xml version="1.0" encoding="utf-8"?>
-        <?xml-stylesheet type="text/css" href="chrome://global/skin/"?>
-        <?xml-stylesheet type="text/css" href="data:text/css,
+    style = ['data:text/css,', encodeURIComponent(trim(<><![CDATA[
         window {
             margin: 0.7em 0.5em;
         }
@@ -496,7 +494,12 @@ function generateXUL() {
             font-weight: bold;
             padding: 0.5em 0.7em 0.5em 0.4em;
         }
-        "?>
+    ]]></>))].join('');
+    
+    template = trim(<><![CDATA[
+        <?xml version="1.0" encoding="utf-8"?>
+        <?xml-stylesheet type="text/css" href="chrome://global/skin/"?>
+        <?xml-stylesheet type="text/css" href="{STYLE}"?>
         <dialog title="{TITLE}" buttons="accept"
                 xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
                 xmlns:html="http://www.w3.org/1999/xhtml">
@@ -620,6 +623,7 @@ function generateXUL() {
         }
     ]]></>.toString();
     
+    template = template.split('{STYLE}').join(style);
     code = template.split('{SCRIPT}').join(['<![CDATA[', script, ']]>'].join(' '));
     return [head, encodeURIComponent(trim(code))].join('').trim();
 }
