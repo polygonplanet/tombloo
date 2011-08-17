@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.49
- * @date       2011-08-05
+ * @version    1.50
+ * @date       2011-08-17
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -198,12 +198,12 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.49',
+    VERSION: '1.50',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
         return ((n && (n.language  || n.userLanguage || n.browserLanguage ||
-                n.systemLanguage)) || 'en').split('-').shift().toLowerCase();
+                n.systemLanguage)) || 'en').split(/[^a-zA-Z0-9]+/).shift().toLowerCase();
     })(navigator),
     os: (function(n) {
         let r = {}, pf = 'platform', ua = 'userAgent';
@@ -307,7 +307,7 @@ Pot.extend({
     // typeof | is* functions
     var toString = Object.prototype.toString, types = {};
     <>
-    Boolean Number String Function Array Date RegExp Object
+    Boolean Number String Function Array Date RegExp Object Error
     </>.toString().trim().split(/\s+/).forEach(function(type) {
         types[type] = '[object ' + type + ']';
     });
@@ -3948,6 +3948,11 @@ Pot.extend(Pot.StringUtil, {
                 'サクヤ'                         : '咲夜',
                 'ヨウジョ'                       : /^ょぅι[ﾞ゛]ょ$/,
                 'ユネ'                           : '湯音',
+                'トシノウキョウコ'               : '歳納京子',
+                'アカザアカリ'                   : '赤座あかり',
+                'フナミユイ'                     : '船見結衣',
+                'ヨシカワチナツ'                 : '吉川ちなつ',
+                'アッカリーン'                   : /＼[アｱ][ッｯ]*[カｶ][リﾘ][イｲィｨ～ーｰ]*[ンﾝ][！!]*／/,
                 'シンザン'                       : '新参',
                 'コサン'                         : '古参',
                 'ハゲドウ'                       : '禿同',
@@ -4481,49 +4486,41 @@ Pot.extend(Pot.ArrayUtil, {
      * @example   alphanumSort(['a10', 'a2', 'a100', 'a1', 'a12']);
      * @results   ['a1', 'a2', 'a10', 'a12', 'a100']
      *
-     * @param  {Array}    array            対象の配列
-     * @param  {Boolean}  caseInsensitive  大文字小文字を区別しない
-     * @return {Array}                     ソートされた配列 (引数そのもの)
+     * @param  {Array}    array   対象の配列
+     * @return {Array}            ソートされた配列 (引数そのもの)
      */
-    alphanumSort: function(array, caseInsensitive) {
-        let z, t, x, y, n, i, j, m, h;
-        if (array && Pot.isArray(array)) {
-            for (z = 0; t = array[z]; z++) {
-                array[z] = [];
-                x = n = 0;
-                y = -1;
-                while (i = (j = t.charAt(x++)).charCodeAt(0)) {
-                    m = (i === 46 || (i >= 48 && i <= 57));
-                    if (m !== n) {
-                        array[z][++y] = '';
-                        n = m;
+    alphanumSort: function(array) {
+        let chunkify, alphanumCase;
+        chunkify = function(t) {
+            let tz = [], x = 0, y = -1, n = 0, i, j, m;
+            while (i = (j = t.charAt(x++)).charCodeAt(0)) {
+                m = (i == 46 || (i >= 48 && i <= 57));
+                if (m !== n) {
+                    tz[++y] = '';
+                    n = m;
+                }
+                tz[y] += j;
+            }
+            return tz;
+        };
+        alphanumCase = function(a, b) {
+            let aa, bb, c, d, x, 
+            aa = chunkify(a.toLowerCase());
+            bb = chunkify(b.toLowerCase());
+            for (x = 0; aa[x] && bb[x]; x++) {
+                if (aa[x] !== bb[x]) {
+                    c = Number(aa[x]);
+                    d = Number(bb[x]);
+                    if (c == aa[x] && d == bb[x]) {
+                        return c - d;
+                    } else {
+                        return (aa[x] > bb[x]) ? 1 : -1;
                     }
-                    array[z][y] += j;
                 }
             }
-            array.sort(function(a, b) {
-                let x, aa, bb, c, d;
-                for (x = 0; (aa = a[x]) && (bb = b[x]); x++) {
-                    if (caseInsensitive) {
-                        aa = aa.toLowerCase();
-                        bb = bb.toLowerCase();
-                    }
-                    if (aa !== bb) {
-                        c = Number(aa);
-                        d = Number(bb);
-                        if (c == aa && d == bb) {
-                            return c - d;
-                        } else {
-                            return (aa > bb) ? 1 : -1;
-                        }
-                    }
-                }
-                return a.length - b.length;
-            });
-            for (z = 0, h = array.length; z < h; z++) {
-                array[z] = array[z].join('');
-            }
-        }
+            return aa.length - bb.length;
+        };
+        Pot.isArray(array) && array.sort(alphanumCase);
         return array;
     }
 });
@@ -6580,6 +6577,8 @@ update(models.HatenaBookmark, {
             });
         }).addCallback(function(ress) {
             let entry, tags, duplicated, endpoint, form, privateMode;
+            let result;
+            
             privateMode = Pot.getPref(POT_BOOKMARK_PRIVATE);
             entry = ress.entry[1];
             tags = ress.tags[1] || [];
@@ -6599,14 +6598,65 @@ update(models.HatenaBookmark, {
                     private     : privateMode ? 1 : entry.bookmarked_data['private']
                 });
             }
-            return {
+            result = {
                 form        : form,
                 editPage    : endpoint,
                 tags        : tags,
                 duplicated  : duplicated,
                 recommended : entry.recommend_tags
             };
+            return self.cleanRecommendedTags(url, result);
         });
+    },
+    /**
+     * おすすめタグのノイズを消去し足りない分は補完する
+     */
+    cleanRecommendedTags : function(url, ps) {
+        let result, recommends, retry, tag, patterns, removes, dups, len;
+        patterns = {
+            ignore : /^(?:id|is|are|a)$/i
+        };
+        recommends = Array.prototype.concat.call([], Pot.ArrayUtil.toArray(ps.recommended));
+        if (!recommends || !recommends.length) {
+            retry = true;
+        } else {
+            dups = [];
+            removes = [];
+            len = recommends.length;
+            recommends = Pot.ArrayUtil.unique(recommends, false, true);
+            if (len > recommends.length || recommends.length < 10) {
+                retry = true;
+            }
+            Pot.forEach(recommends, function(i, tag) {
+                if (patterns.ignore.test(tag)) {
+                    removes.push({
+                        index : i,
+                        tag   : tag
+                    });
+                    retry = true;
+                }
+            });
+            removes.forEach(function(item) {
+                Pot.forEach(recommends.slice(), function(i, tag) {
+                    if (tag === item.tag) {
+                        recommends.splice(i, 1);
+                        throw Pot.StopIteration;
+                    }
+                });
+            });
+        }
+        if (retry) {
+            result = Pot.BookmarkUtil.getRecommends(url).addCallback(function(keywords) {
+                let tags = Pot.ArrayUtil.unique(Pot.ArrayUtil.merge(recommends, keywords), false, true);
+                if (tags) {
+                    ps.recommended = tags;
+                }
+                return ps;
+            });
+        } else {
+            result = succeed(ps);
+        }
+        return result;
     },
     /**
      * 指定したURLのエントリー数を取得
@@ -10092,12 +10142,8 @@ Pot.extend(Pot.RomaReadingUtil, {
     },
     // 滅多に再設定しないと思うのでメモリを抑えるためXULコードなどをキャッシュしない
     generateXUL: function(title, message) {
-        let xul, script, params;
-        xul = Pot.StringUtil.mtrim(<><![CDATA[
-            <?xml version="1.0" encoding="utf-8"?>
-            <?xml-stylesheet type="text/css" href="chrome://global/skin/"?>
-            <?xml-stylesheet type="text/css" href="chrome://global/skin/global.css"?>
-            <?xml-stylesheet type="text/css" href="data:text/css,
+        let xul, script, style, params;
+        style = Pot.toDataURI.encodeURI(Pot.StringUtil.trim(<><![CDATA[
             button {
                 cursor: pointer;
                 margin-top: 0.7em;
@@ -10114,7 +10160,12 @@ Pot.extend(Pot.RomaReadingUtil, {
             #input {
                 font-family: monospace;
             }
-            "?>
+        ]]></>), 'text/css');
+        xul = Pot.StringUtil.mtrim(<><![CDATA[
+            <?xml version="1.0" encoding="utf-8"?>
+            <?xml-stylesheet type="text/css" href="chrome://global/skin/"?>
+            <?xml-stylesheet type="text/css" href="chrome://global/skin/global.css"?>
+            <?xml-stylesheet type="text/css" href="{STYLE}"?>
             <dialog title="{TITLE}" buttons="accept,cancel"
                     xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
                     xmlns:html="http://www.w3.org/1999/xhtml">
@@ -10194,10 +10245,11 @@ Pot.extend(Pot.RomaReadingUtil, {
                     split(/(?:\r\n|\r|\n)/).map(function(s) {
                         return Pot.sprintf('<label value="%s"/>', s);
                     }).join('\n'),
-            script: script
+            script: script,
+            style: style
         };
         
-        'title message script'.split(' ').forEach(function(k) {
+        'title message script style'.split(' ').forEach(function(k) {
             xul = xul.replace(Pot.sprintf('{%s}', k.toUpperCase()), params[k]);
         });
         params = null;
@@ -10213,14 +10265,24 @@ Pot.extend(Pot.RomaReadingUtil, {
 callLater(5, function() {
 
 
-addAround(Tombloo.Service.extractors['Video - YouTube'], 'extract', function(proceed, args, self) {
-    let ctx, result;
-    ctx = args[0];
-    result = proceed(args);
+addAround(Tombloo.Service.extractors['Video - YouTube'], 'extract', function(proceed, args) {
+    let ctx, result, og, doc, authorAnchor;
+    ctx = args && args[0];
+    result = proceed(args) || {};
     if (ctx && result) {
+        doc = ctx.document;
+        og = function(name) {
+            return Pot.unescapeHTML(Pot.StringUtil.stringify(
+                $x(['//meta[@property="og:', '"]/@content'].join(name), doc)
+            ));
+        };
+        authorAnchor = $x('id("watch-username")', doc) || {};
         update(result, {
-            item: Pot.StringUtil.spacerize(ctx.title).trim(),
-            authorDescription: $x('//*[@id="eow-description"]/text()', ctx.document)
+            item              : Pot.StringUtil.spacerize(Pot.StringUtil.trim(og('title') || ctx.title)).trim(),
+            itemUrl           : Pot.StringUtil.trim(og('url') || ctx.href),
+            author            : authorAnchor.textContent || result.author,
+            authorUrl         : authorAnchor.href || result.authorUrl,
+            authorDescription : $x('//*[@id="eow-description"]/text()', doc)
         });
     }
     return result;
@@ -10326,25 +10388,35 @@ if (!Tumblr.Audio) {
         }
     });
     // リブログを可能にする
-    addAround(Tombloo.Service.extractors['ReBlog'], 'convertToParams', function(proceed, args) {
-        let form, result;
-        result = proceed(args);
-        if (!result && args && args[0]) {
-            form = args[0];
-            switch (form['post[type]']) {
-                case 'audio':
-                    result = {
-                        // please-dont-download-this-or-our-lawyers-wont-let-us-host-audio
-                        // とのことなので Audioは DL しない
-                        body    : form['post[two]'],
-                        itemUrl : ''
-                    };
-                    break;
-                default:
-                    break;
+    callLater(5.5, function() {
+        addAround(Tombloo.Service.extractors['ReBlog'], 'convertToParams', function(proceed, args) {
+            let form, result;
+            result = proceed(args);
+            if (args && args[0]) {
+                form = args[0];
+                if (!result) {
+                    switch (form['post[type]']) {
+                        case 'audio':
+                            result = {
+                                // please-dont-download-this-or-our-lawyers-wont-let-us-host-audio
+                                // とのことなので Audioは DL しない
+                                body    : form['post[two]'],
+                                itemUrl : ''
+                            };
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                // リブログ時のタグ対応
+                if (Pot.StringUtil.trim(form['post[tags]'])) {
+                    update(result, {
+                        tags : Pot.StringUtil.trim(result.tags || form['post[tags]'])
+                    });
+                }
             }
-        }
-        return result;
+            return result;
+        });
     });
     // チェックにAudioを追加 (Tumblrはmp3のみ)
     update(Tumblr, {
@@ -11714,16 +11786,7 @@ Pot.extend(Pot.SetupUtil, {
             <?xml version="1.0" encoding="utf-8"?>
             <?xml-stylesheet type="text/css" href="chrome://global/skin/"?>
             <?xml-stylesheet type="text/css" href="chrome://global/skin/global.css"?>
-            <?xml-stylesheet type="text/css" href="data:text/css,
-            button {
-                cursor: pointer;
-                margin-top: 0.7em;
-                padding: 0.5em 0.7em 0.5em 0.4em;
-            }
-            .button-icon {
-                margin-right: 0.5em;
-            }
-            "?>
+            <?xml-stylesheet type="text/css" href="{STYLE}"?>
             <dialog title="{TITLE}" buttons="accept"
                     xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
                     xmlns:html="http://www.w3.org/1999/xhtml">
@@ -11749,6 +11812,16 @@ Pot.extend(Pot.SetupUtil, {
                             }).join('\n'),
                 '{BUTTON}'  : Pot.escapeHTML(Pot.StringUtil.stringify(button) || 'OK'),
                 '{EXTRA}'   : Pot.StringUtil.stringify(/<\w[^>]*>/.test(extra) ? extra : ''),
+                '{STYLE}'   : Pot.toDataURI.encodeURI(Pot.StringUtil.trim(<><![CDATA[
+                                    button {
+                                        cursor: pointer;
+                                        margin-top: 0.7em;
+                                        padding: 0.5em 0.7em 0.5em 0.4em;
+                                    }
+                                    .button-icon {
+                                        margin-right: 0.5em;
+                                    }
+                                ]]></>), 'text/css'),
                 '{SCRIPT}'  : ['<![CDATA[', ']]>'].join(Pot.StringUtil.mtrim(<><![CDATA[
                                 var args = arguments[0];
                                 var env = Components.classes['@brasil.to/tombloo-service;1'].getService().wrappedJSObject;
