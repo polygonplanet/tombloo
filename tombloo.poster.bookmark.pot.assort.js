@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.50
- * @date       2011-08-17
+ * @version    1.51
+ * @date       2011-08-18
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -198,7 +198,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.50',
+    VERSION: '1.51',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -7888,57 +7888,42 @@ update(models.FirefoxBookmark, {
             itemUrl: (uri && uri.uri) ? uri.uri : uri
         };
         return Pot.BookmarkUtil.fixURI(ps).addCallback(function(newps) {
-            title = newps.item;
-            uri = createURI(newps.itemUrl);
+            let d, folders;
             
-            // 既存のタグとの差分をとりユニークにして重複を防ぐ
-            //
-            //XXX: もしかしたら今後不要になるかも
-            //
-            tags = Pot.ArrayUtil.diff(
-                Pot.ArrayUtil.unique(Pot.BookmarkUtil.normalizeTags(tags)),
-                Pot.ArrayUtil.unique(self.getBookmarkTagsByURI(ps.itemUrl))
-            );
-            
-            // フォルダが未指定の場合は未整理のブックマークになる
-            folder = (!folder) ? bs.unfiledBookmarksFolder : self.createFolder(folder);
-            
-            // 同じフォルダにブックマークされていないか?
-            // ---------------------------------------------------------------
-            // #55 コメントアウト
-            // ---------------------------------------------------------------
-            //if (!bs.getBookmarkIdsForURI(uri, {}).some(function(item) {
-            //    return bs.getFolderIdForItem(item) == folder;
-            //})) {
-                
-                let folders, created = false;
-                
+            d = new Deferred();
+            d.addCallback(function() {
+                title = newps.item;
+                uri = createURI(newps.itemUrl);
+                // 既存のタグとの差分をとりユニークにして重複を防ぐ
+                tags = Pot.ArrayUtil.diff(
+                    Pot.ArrayUtil.unique(Pot.BookmarkUtil.normalizeTags(tags)),
+                    Pot.ArrayUtil.unique(self.getBookmarkTagsByURI(ps.itemUrl))
+                );
+                // フォルダが未指定の場合は未整理のブックマークになる
+                folder = (!folder) ? bs.unfiledBookmarksFolder : self.createFolder(folder);
+            }).addCallback(function() {
+                //XXX: 同じフォルダにブックマークされていないか
+                folders = [folder];
                 // ここでPOST時にダイアログが固まるので非ブロックで処理する
-                Pot.callLazy(function() {
-                    folders = [folder].concat(tags.map(bind('createTag', self)));
-                    created = true;
+                Pot.forEach.rapid(tags, function(i, val) {
+                    folders.push(self.createTag(val));
                 });
-                till(function() {
-                    return created !== false;
+                return wait(0.75);
+            }).addCallback(function() {
+                Pot.repeat.rapid(folders.length, function(i) {
+                    bs.insertBookmark(folders[i], uri, index, title);
                 });
-                
-                let d = Pot.DeferredUtil.repeat(folders.length, function(idx) {
-                    bs.insertBookmark(folders[idx], uri, index, title);
-                }).addCallback(function() {
-                    self.setDescription(uri, description);
-                    return succeed(uri);
-                });
-                d.callback();
-                return d;
-            //}
-            //self.setDescription(uri, description);
-            //return succeed(uri);
+                self.setDescription(uri, description);
+                return succeed(uri);
+            });
+            callLater(1, function() { d.callback(); });
+            return d;
         });
     },
     post: function(ps) {
         let self = this, title, tags, comment;
         // POSTボタン押したあと硬直するのでwaitをいれる
-        return wait(0).addCallback(function() {
+        return wait(1).addCallback(function() {
             title = Pot.BookmarkUtil.truncateFields(self.name, 'title', ps.item);
             tags = Pot.BookmarkUtil.truncateFields(self.name, 'tagLength', Pot.BookmarkUtil.appendConstantTags(ps.tags));
             comment = Pot.BookmarkUtil.truncateFields(self.name, 'comment', ps.description);
