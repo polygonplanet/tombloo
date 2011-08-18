@@ -18,8 +18,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.17
- * @date     2011-08-04
+ * @version  1.18
+ * @date     2011-08-18
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog    : http://polygon-planet.blogspot.com/
  *            - Twitter : http://twitter.com/polygon_planet
@@ -186,6 +186,23 @@ update(FormPanel.prototype.types, {
         override('FormPanel', function(code) {
             return code;
         }, {
+            // ボタン押下時に固まらないよう遅延させる
+            post: function() {
+                let self = this, checked = this.postersPanel.checked;
+                if (!checked.length) {
+                    return;
+                }
+                Pot.callLazy(function() {
+                    items(self.fields).forEach(function([name, field]) {
+                        // 値が変更されていない場合はフレーバーを保つため元の値を上書きしない
+                        if (field.value != null && ('' + ps[name]) != field.value) {
+                            ps[name] = field.value;
+                        }
+                    });
+                    Tombloo.Service.post(ps, checked);
+                    signal(self, 'post');
+                });
+            },
             // タイトルバーのWidgetの表示位置を整える
             /**
              * @param  {Element}  elem  挿入するエレメント
