@@ -21,8 +21,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.11
- * @date       2011-08-05
+ * @version    1.12
+ * @date       2011-08-27
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -59,7 +59,7 @@ let (limit = 8 * 1000, time = +new Date) {
 // Define language
 const LANG = (function(n) {
     return ((n && (n.language  || n.userLanguage || n.browserLanguage ||
-            n.systemLanguage)) || 'en').split('-').shift().toLowerCase();
+            n.systemLanguage)) || 'en').split(/[^a-zA-Z0-9]+/).shift().toLowerCase();
 })(navigator);
 
 
@@ -599,7 +599,7 @@ function generateModel(ops) {
             body = '';
             if (ps.body) {
                 // Quoteテキストを引用符で囲い除去される改行やタグの差をできるだけ抑える
-                body = toPlainText(ps.body).wrap('&quot;');
+                body = toPlainText(getFlavor(ps.body, 'html')).wrap('&quot;');
             } else {
                 if (isYoutube) {
                     body = stringify(ps.authorDescription || ps.author || '');
@@ -688,11 +688,11 @@ function generateModel(ops) {
         paramize : function(ps) {
             if (ps && ps.googlePlusQuoteText) {
                 if (!ps.googlePlusUseUpload) {
-                    if (trim(ps.googlePlusQuoteText) === trim(ps.description)) {
+                    if (strip(ps.googlePlusQuoteText) === strip(ps.description)) {
                         ps.description = '';
                     }
                     ps.body = joinText([
-                        trim(ps.body),
+                        trim(getFlavor(ps.body, 'html')),
                         trim(ps.googlePlusQuoteText)
                     ], '\n');
                 }
@@ -906,7 +906,9 @@ function stringify(x) {
             case 'object':
                 if (x) {
                     c = x.constructor;
-                    if (c === String || c === Number) {
+                    if (c === String || c === Number ||
+                        (typeof XML !== 'undefined' && c === XML)
+                    ) {
                         result = x;
                     } else if (c === Boolean) {
                         result = x ? 1 : '';
@@ -922,13 +924,34 @@ function stringify(x) {
 
 
 /**
- * 全角スペースも含めたtrim
+ * 全角スペース(U+3000)も含めたtrim
  *
  * @param  {String}   s   対象の文字列
  * @return {String}       結果の文字列
  */
 function trim(s) {
     return stringify(s).replace(/^[\s\u00A0\u3000]+|[\s\u00A0\u3000]+$/g, '');
+}
+
+/**
+ * HTMLタグを除去
+ *
+ * @param  {String}  s  対象の文字列
+ * @return {String}     結果の文字列
+ */
+function stripTags(s) {
+    return stringify(s).replace(/<\s*\/?\s*\w[^>]*>/g, '');
+}
+
+
+/**
+ * HTMLタグとホワイトスペースを除去
+ *
+ * @param  {String}  s  対象の文字列
+ * @return {String}     結果の文字列
+ */
+function strip(s) {
+    return stripTags(s).replace(/[\s\u00A0\u3000]+/g, '');
 }
 
 
