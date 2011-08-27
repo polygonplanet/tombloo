@@ -11,8 +11,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.00
- * @date       2011-08-04
+ * @version    1.01
+ * @date       2011-08-27
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -40,7 +40,7 @@ Tombloo.Service.extractors.register([{
             image  : /[?].*url=([^&]+)(?:[&]|$)/i,
             photo  : /^(?:https?:|)\/+(?:\w+[.])*?googleusercontent[.]com\//,
             resize : /\/[a-z][0-9]{1,6}\//i,
-            icon   : /[?]\w+=\d+.*$/
+            icon   : /[?]\w+=\d+.*$|\/[a-z]\d+(?:-[a-z])*(?=\/photo[.](?:jpe?g|png|gif)$)/i
         };
         if (url) {
             url = String(url);
