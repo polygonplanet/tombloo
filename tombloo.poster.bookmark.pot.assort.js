@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.51
- * @date       2011-08-18
+ * @version    1.52
+ * @date       2011-08-30
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -198,7 +198,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.51',
+    VERSION: '1.52',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -4504,7 +4504,7 @@ Pot.extend(Pot.ArrayUtil, {
             return tz;
         };
         alphanumCase = function(a, b) {
-            let aa, bb, c, d, x, 
+            let aa, bb, c, d, x;
             aa = chunkify(a.toLowerCase());
             bb = chunkify(b.toLowerCase());
             for (x = 0; aa[x] && bb[x]; x++) {
@@ -6181,65 +6181,115 @@ update(models.GoogleBookmarks, {
             }
         }
     },
-    //TODO: APIから取得
     isBookmarked: function(url) {
-        const FIND_URL = 'https://www.google.com/bookmarks/find';
+        const FIND_URL     = 'https://www.google.com/bookmarks/find';
+        const API_FIND_URL = 'https://www.google.com/bookmarks/api/threadsearch';
         let self = this;
-        return self.privateCache.bookmarked.has(url) ? succeed(true) : request(FIND_URL, {
-            queryString: {
-                start  : 0,
-                num    : 1,
-                output : 'xml',
+        return self.privateCache.bookmarked.has(url) ? succeed(true) : request(API_FIND_URL, {
+            queryString : {
                 q      : url,
-                hl     : 'en'
+                start  : '',
+                fo     : '',
+                g      : ''
             }
         }).addCallback(function(res) {
-            let result = false, uri, doc;
+            let result = false, json, doc;
             doc = convertToHTMLDocument(res.responseText);
             if (doc.getElementById('gaia_loginform')) {
                 throw new Error(getMessage('error.notLoggedin'));
             }
             try {
-                doc = convertToXML(res.responseText);
-                for each (uri in doc..bookmarks..url.text()) {
-                    if (uri == url) {
-                        self.privateCache.bookmarked.add(url);
-                        result = true;
-                        break;
-                    }
+                json = evalInSandbox('(' + res.responseText.replace(/^\s*['{[(]*[)\]}']+/, '') + ')', API_FIND_URL);
+                if (json.threadTitles[0].sectionContent[0].url == url) {
+                    result = true;
                 }
-            } catch (e) {}
-            return result;
+                return result;
+            } catch (e) {
+                // 非公式APIのため、通常の処理も兼ねておく
+                return request(FIND_URL, {
+                    queryString : {
+                        start  : 0,
+                        num    : 1,
+                        output : 'xml',
+                        q      : url,
+                        hl     : 'en'
+                    }
+                }).addCallback(function(res) {
+                    let result = false, uri, doc;
+                    doc = convertToHTMLDocument(res.responseText);
+                    if (doc.getElementById('gaia_loginform')) {
+                        throw new Error(getMessage('error.notLoggedin'));
+                    }
+                    try {
+                        doc = convertToXML(res.responseText);
+                        for each (uri in doc..bookmarks..url.text()) {
+                            if (uri == url) {
+                                self.privateCache.bookmarked.add(url);
+                                result = true;
+                                break;
+                            }
+                        }
+                    } catch (e) {}
+                    return result;
+                });
+            }
         });
     },
     getBookmarkTagsByURI: function(url) {
-        const FIND_URL ='https://www.google.com/bookmarks/find';
-        return request(FIND_URL, {
-            queryString: {
-                start  : 0,
-                num    : 1,
-                output : 'xml',
-                q      : url,
-                hl     : 'en'
+        const FIND_URL     = 'https://www.google.com/bookmarks/find';
+        const API_FIND_URL = 'https://www.google.com/bookmarks/api/threadsearch';
+        return request(API_FIND_URL, {
+            queryString : {
+                q     : url,
+                start : '',
+                fo    : '',
+                g     : ''
             }
         }).addCallback(function(res) {
-            let labels, label, tag, result, doc;
-            labels = [];
+            let doc, json, labels;
+            doc = convertToHTMLDocument(res.responseText);
+            if (doc.getElementById('gaia_loginform')) {
+                throw new Error(getMessage('error.notLoggedin'));
+            }
             try {
-                doc = convertToXML(res.responseText);
-                for each (label in doc..bookmarks.(url.text() == url).parent()..label.text()) {
-                    tag = Pot.StringUtil.trim(label);
-                    if (tag && tag.length) {
-                        labels[labels.length] = tag;
-                    }
+                json = evalInSandbox('(' + res.responseText.replace(/^\s*['{[(]*[)\]}']+/, '') + ')', API_FIND_URL);
+                labels = json.threadTitles[0].sectionContent[0].labels;
+                if (Pot.isArray(labels)) {
+                    labels = Pot.BookmarkUtil.normalizeTags(labels);
+                } else {
+                    throw labels;
                 }
-            } catch (e) {}
-            result = Pot.BookmarkUtil.normalizeTags(labels);
-            return result;
+                return labels;
+            } catch (e) {
+                return request(FIND_URL, {
+                    queryString : {
+                        start  : 0,
+                        num    : 1,
+                        output : 'xml',
+                        q      : url,
+                        hl     : 'en'
+                    }
+                }).addCallback(function(res) {
+                    let labels, label, tag, result, doc;
+                    labels = [];
+                    try {
+                        doc = convertToXML(res.responseText);
+                        for each (label in doc..bookmarks.(url.text() == url).parent()..label.text()) {
+                            tag = Pot.StringUtil.trim(label);
+                            if (tag && tag.length) {
+                                labels[labels.length] = tag;
+                            }
+                        }
+                    } catch (e) {}
+                    result = Pot.BookmarkUtil.normalizeTags(labels);
+                    return result;
+                });
+            }
         });
     },
     getBookmarkDescriptionByURI: function(uri) {
-        const FIND_URL = 'https://www.google.com/bookmarks/find';
+        const FIND_URL     = 'https://www.google.com/bookmarks/find';
+        const API_FIND_URL = 'https://www.google.com/bookmarks/api/threadsearch';
         let fixRSS = {
             //
             // --------------------------------------------------------------
@@ -6257,45 +6307,71 @@ update(models.GoogleBookmarks, {
                 return String(rss).replace(/<(\/|)link\b([^>]*)>/ig, '<$1' + fixRSS.name + '$2>');
             }
         };
-        return request(FIND_URL, {
-            queryString: {
-                start  : 0,
-                num    : 1,
-                output : 'rss',
-                q      : uri,
-                hl     : 'en'
+        return request(API_FIND_URL, {
+            queryString : {
+                q     : uri,
+                start : '',
+                fo    : '',
+                g     : ''
             }
         }).addCallback(function(res) {
-            let desc = null, items, doc, text;
-            text = fixRSS.execute(res.responseText);
-            doc = convertToHTMLDocument(text);
-            items = Pot.ArrayUtil.toArray(doc.getElementsByTagName('item') || []);
-            (Pot.isArray(items) ? items : []).forEach(function(item) {
-                let link;
-                try {
-                    if (desc === null && item) {
-                        link = item.getElementsByTagName(fixRSS.name);
-                        if (link && link[0] && link[0].innerHTML == uri) {
-                            desc = item.getElementsByTagName('smh:bkmk_annotation');
-                            if (!desc || desc.length === 0) {
-                                desc = item.getElementsByTagNameNS('smh', 'signature');
-                                if (!desc || desc.length === 0) {
-                                    desc = item.getElementsByTagName('bkmk_annotation');
+            let doc, json, description;
+            doc = convertToHTMLDocument(res.responseText);
+            if (doc.getElementById('gaia_loginform')) {
+                throw new Error(getMessage('error.notLoggedin'));
+            }
+            try {
+                json = evalInSandbox('(' + res.responseText.replace(/^\s*['{[(]*[)\]}']+/, '') + ')', API_FIND_URL);
+                description = json.threadTitles[0].sectionContent[0].description;
+                if (!Pot.isString(description)) {
+                    throw description;
+                }
+                return Pot.StringUtil.trim(description);
+            } catch (e) {
+                return request(FIND_URL, {
+                    queryString : {
+                        start  : 0,
+                        num    : 1,
+                        output : 'rss',
+                        q      : uri,
+                        hl     : 'en'
+                    }
+                }).addCallback(function(res) {
+                    let desc = null, items, doc, text;
+                    text = fixRSS.execute(res.responseText);
+                    doc = convertToHTMLDocument(text);
+                    if (doc.getElementById('gaia_loginform')) {
+                        throw new Error(getMessage('error.notLoggedin'));
+                    }
+                    items = Pot.ArrayUtil.toArray(doc.getElementsByTagName('item') || []);
+                    (Pot.isArray(items) ? items : []).forEach(function(item) {
+                        let link;
+                        try {
+                            if (desc === null && item) {
+                                link = item.getElementsByTagName(fixRSS.name);
+                                if (link && link[0] && link[0].innerHTML == uri) {
+                                    desc = item.getElementsByTagName('smh:bkmk_annotation');
+                                    if (!desc || desc.length === 0) {
+                                        desc = item.getElementsByTagNameNS('smh', 'signature');
+                                        if (!desc || desc.length === 0) {
+                                            desc = item.getElementsByTagName('bkmk_annotation');
+                                        }
+                                    }
+                                    if (desc && desc.length && desc[0]) {
+                                        desc = Pot.StringUtil.stringify(desc[0].innerHTML);
+                                    }
                                 }
                             }
-                            if (desc && desc.length && desc[0]) {
-                                desc = Pot.StringUtil.stringify(desc[0].innerHTML);
+                            if (!desc || !Pot.isString(desc)) {
+                                throw desc;
                             }
+                        } catch (e) {
+                            desc = null;
                         }
-                    }
-                    if (!desc || !Pot.isString(desc)) {
-                        throw desc;
-                    }
-                } catch (e) {
-                    desc = null;
-                }
-            });
-            return desc ? Pot.StringUtil.trim(desc) : '';
+                    });
+                    return desc ? Pot.StringUtil.trim(desc) : '';
+                });
+            }
         });
     },
     getAnnotation: function(ps) {
