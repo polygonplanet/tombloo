@@ -31,8 +31,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.30
- * @date       2011-07-29
+ * @version    1.31
+ * @date       2011-09-15
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -46,8 +46,9 @@
 (function(undefined) {
 //-----------------------------------------------------------------------------
 const LANG = (function(n) {
-    return ((n && (n.language || n.userLanguage || n.browserLanguage ||
-           n.systemLanguage)) || 'en').split('-').shift().toLowerCase();
+    return ((n && (n.language || n.userLanguage     ||
+            n.browserLanguage || n.systemLanguage)) ||
+            'en').split(/[^a-zA-Z0-9]+/).shift().toLowerCase();
 })(navigator);
 
 /**
@@ -1977,7 +1978,7 @@ update(pixivThumbsExpander, {
         if (!this.expanding) {
             return;
         }
-        limit = 2;
+        limit = 3;
         doc = this.getDocument();
         callback = callback || (function() {});
         try {
@@ -2004,8 +2005,8 @@ update(pixivThumbsExpander, {
                     return;
                 }
                 try {
-                    mimg.removeEventListener('error', onError, true);
                     mimg.removeEventListener('load', onLoad, true);
+                    mimg.removeEventListener('error', onError, true);
                     d.cancel();
                 } catch (er) {}
                 
@@ -2018,11 +2019,13 @@ update(pixivThumbsExpander, {
                     failed = false;
                     d = callLater(this.loadTimeLimit, onTimeLimit);
                     
-                    mimg.addEventListener('error', onError, true);
                     mimg.addEventListener('load', onLoad, true);
+                    mimg.addEventListener('error', onError, true);
                     
-                    attr(mimg, {src: src});
                     nop.insertBefore(mimg, simg);
+                    callLater(0.1, function() {
+                        attr(mimg, {src: src});
+                    });
                 } else {
                     raise();
                 }
@@ -2044,10 +2047,12 @@ update(pixivThumbsExpander, {
                     callback.call(self);
                 });
             };
-            mimg.addEventListener('error', onError, true);
             mimg.addEventListener('load', onLoad, true);
-            attr(mimg, {src: src});
+            mimg.addEventListener('error', onError, true);
             nop.insertBefore(mimg, simg);
+            callLater(0.1, function() {
+                attr(mimg, {src: src});
+            });
         } catch (e) {
             this.debug(e);
         }
