@@ -31,8 +31,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.31
- * @date       2011-09-15
+ * @version    1.32
+ * @date       2011-09-16
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -2006,7 +2006,8 @@ update(pixivThumbsExpander, {
                 }
                 try {
                     mimg.removeEventListener('load', onLoad, true);
-                    mimg.removeEventListener('error', onError, true);
+                    //FIXME: about:config のキャッシュ設定値によって onerror が暴走する
+                    //mimg.removeEventListener('error', onError, false);
                     d.cancel();
                 } catch (er) {}
                 
@@ -2020,7 +2021,8 @@ update(pixivThumbsExpander, {
                     d = callLater(this.loadTimeLimit, onTimeLimit);
                     
                     mimg.addEventListener('load', onLoad, true);
-                    mimg.addEventListener('error', onError, true);
+                    //FIXME: about:config のキャッシュ設定値によって onerror が暴走する
+                    //mimg.addEventListener('error', onError, false);
                     
                     nop.insertBefore(mimg, simg);
                     callLater(0.1, function() {
@@ -2048,7 +2050,8 @@ update(pixivThumbsExpander, {
                 });
             };
             mimg.addEventListener('load', onLoad, true);
-            mimg.addEventListener('error', onError, true);
+            //FIXME: about:config のキャッシュ設定値によって onerror が暴走する
+            //mimg.addEventListener('error', onError, false);
             nop.insertBefore(mimg, simg);
             callLater(0.1, function() {
                 attr(mimg, {src: src});
