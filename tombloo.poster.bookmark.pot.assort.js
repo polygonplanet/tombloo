@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.52
- * @date       2011-08-30
+ * @version    1.53
+ * @date       2011-09-27
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -198,7 +198,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.52',
+    VERSION: '1.53',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -1151,7 +1151,6 @@ Pot.extend({
                     '&lambda;' : '\u03bb',
                     '&omega;'  : '\u03c9',
                     '&middot;' : '\u30fb',
-                    '&Dagger;' : '\u2021',
                     '&quot;'   : '\u0022',
                     '&apos;'   : '\u0027',
                     '&lt;'     : '\u003c',
@@ -3931,6 +3930,7 @@ Pot.extend(Pot.StringUtil, {
                 'シンレイガリ'                   : '神霊狩',
                 'ドットハック'                   : /^[.．]hack$/i,
                 'コウキョウシヘンエウレカセブン' : '交響詩篇エウレカセブン',
+                'マワルピングドラム'             : '輪るピングドラム',
                 'コウカクキドウタイ'             : '攻殻機動隊',
                 'ツクヨミ'                       : '月詠',
                 'ハイバネレンメイ'               : '灰羽連盟',
@@ -8359,6 +8359,7 @@ function potConvertToHTMLString(src, safe) {
         doc = src.ownerDocument || src.focusNode && src.focusNode.ownerDocument;
         encoder = new HTMLCopyEncoder(doc, 'text/unicode',
             HTMLCopyEncoder.OutputPreformatted | HTMLCopyEncoder.OutputLFLineBreak);
+            //FIXME: HTMLCopyEncoder.OutputRaw
         encoder[src.nodeType ? 'setNode' : 'setSelection'](src);
         html = encoder.encodeToString();
         if (!safe) {
@@ -8793,9 +8794,26 @@ Pot.extend({
             item = Pot.QuickPostForm.getDescriptionContextMenu(name);
             if (item && item.execute && Pot.isFunction(item.execute)) {
                 desc = {value: value};
-                // Deferred は考慮していない
                 d = item.execute({}, desc);
-                value = desc.value;
+                
+                if (d instanceof Deferred) {
+                    let (waiting = true) {
+                        d.addBoth(function() {
+                            return wait(0.5).addCallback(function() {
+                                waiting = false;
+                                return desc.value;
+                            });
+                        });
+                        if (waiting) {
+                            till(function() {
+                                return waiting !== true;
+                            });
+                        }
+                        return d;
+                    }
+                } else {
+                    value = desc.value;
+                }
             }
             return value;
         },
@@ -9105,6 +9123,29 @@ QuickPostForm.descriptionContextMenus.push(
                 return df;
             };
         })()
+    },
+    {
+        name: 'スペース切り詰め+',
+        execute: function(elmText, desc) {
+            let d = new Deferred(), value = Pot.StringUtil.stringify(desc.value);
+            d.addCallback(function() {
+                return Pot.QuickPostForm.callDescriptionContextMenu('改行とホワイトスペースを詰める', value).addCallback(function(res) {
+                    return wait(0.575).addCallback(function() {
+                        return res;
+                    });
+                });
+            }).addCallback(function(res) {
+                return Pot.QuickPostForm.callDescriptionContextMenu('はてな記法から回避', res).addCallback(function(res) {
+                    return wait(0.575).addCallback(function() {
+                        return res;
+                    });
+                });
+            }).addCallback(function(res) {
+                desc.value = res;
+            });
+            callLater(0.125, function() { d.callback(); });
+            return d;
+        }
     },
     {
         name: '----'
@@ -9910,7 +9951,7 @@ QuickPostForm.descriptionContextMenus.push(
                     nl   : /\r\n|\r|\n/g,
                     top  : /^[\s\u00A0\u3000]*<\s*(\/|)\s*(\w+(?::\w+|))\b[^>]*(\/|)>/g,
                     end  : /<\s*(\/|)\s*(\w+(?::\w+|))\b[^>]*(\/|)>[\s\u00A0\u3000]*$/g,
-                    code : /(<(pre|style|script)\b[^>]*>[\s\S]*?<\/\2\s*>|<!--[\s\S]*?-->|<!\[CDATA[[\s\S]*?]]>)/gi,
+                    code : /(<(pre|style|script)\b[^>]*>[\s\S]*?<\/\2\s*>|<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>)/gi,
                 };
                 value = Pot.StringUtil.stringify(desc.value);
                 if (value) {
@@ -12124,9 +12165,11 @@ delete Pot.tmp.MENULABEL;
 (function() {
 
 
+
 update(typeof grobal !== 'undefined' && grobal || {}, {
     Pot: Pot
 });
+
 
 
 })();
