@@ -38,7 +38,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.53
+ * @version    1.54
  * @date       2011-09-27
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -198,7 +198,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.53',
+    VERSION: '1.54',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -6874,6 +6874,14 @@ update(models.Delicious, {
      * @return {Array}
      */
     getUserTags: function(user) {
+        
+        //
+        // APIs, feeds が使えるようになるまで凍結
+        // http://www.avos.com/new-delicious/
+        //
+        return succeed([]);
+        
+        
         const TAGS_URL    = 'http://feeds.delicious.com/feeds/json/tags/';
         const SANDBOX_URL = 'http://feeds.delicious.com/';
         // 同期でエラーが起きないようにする
@@ -6897,6 +6905,15 @@ update(models.Delicious, {
         });
     },
     isBookmarked: function(url) {
+        
+        //
+        // APIs, feeds が使えるようになるまで凍結
+        // http://www.avos.com/new-delicious/
+        //
+        return succeed(false);
+        
+        
+        
         const CHECK_URL = 'http://www.delicious.com/save';
         let self = this;
         if (this.privateCache.bookmarked.has(url)) {
@@ -6905,13 +6922,16 @@ update(models.Delicious, {
             // ログインチェック
             this.getCurrentUser();
             return request(CHECK_URL, {
-                queryString: {
+                queryString : {
                     noui : 1,
-                    url  : url
+                    url  : url,
+                    v    : 5,
+                    jump : 'close'
                 }
             }).addCallback(function(res) {
-                let bookmarked, doc = convertToHTMLDocument(res.responseText);
-                bookmarked = !!(doc && doc.getElementById('savedon'));
+                let bookmarked, doc = convertToHTMLDocument(res.responseText), text;
+                text = $x('//*[contains(@class,"savedHeader")]/text()', doc);
+                bookmarked = doc && /has\s+been\s+saved!/i.test(text);
                 if (bookmarked) {
                     self.privateCache.bookmarked.add(url);
                 }
@@ -6934,34 +6954,37 @@ update(models.Delicious, {
                 self.getCurrentUser();
                 
                 // ブックマークレット用画面の削除リンクを使い既ブックマークを判定する
-                return request('http://www.delicious.com/save', {
-                    queryString: {
-                        noui : 1,
-                        url  : url
+                return request('http://www.delicious.com/save/confirm');
+                
+            }).addCallback(function(res) {
+                return Pot.BookmarkUtil.getRecommends(url).addCallback(function(recommends) {
+                    let item, note, tags, privateMode, doc;
+                    doc = convertToHTMLDocument(res.responseText);
+                    if (!doc.getElementById('saveUrl')) {
+                        throw new Error(getMessage('error.notLoggedin'));
+                    }
+                    item = doc.getElementById('saveTitle').value;
+                    note = doc.getElementById('saveNotes').value;
+                    tags = doc.getElementById('saveTags').value;
+                    tags = self.privateCache.tags.normalize(Pot.BookmarkUtil.normalizeTags(tags));
+                    privateMode = doc.getElementById('savePrivate').checked;
+                    if (Pot.getPref(POT_BOOKMARK_PRIVATE)) {
+                        privateMode = true;
+                    }
+                    return {
+                        editPage : 'http://www.delicious.com/save?url=' + encodeURIComponent(url),
+                        form : {
+                            item        : item,
+                            description : note,
+                            tags        : tags,
+                            private     : privateMode ? 'true' : 'false'
+                        },
+                        duplicated  : /has\s+been\s+saved!/i.test($x('//*[contains(@class,"savedHeader")]/text()', doc)),
+                        recommended : Array.prototype.concat.call([], recommends,
+                                        $x('//*[@id="recommendedField"]//*[contains(@class,"m")]/text()', doc, true) || []
+                        )
                     }
                 });
-            }).addCallback(function(res) {
-                let item, note, tags, privateMode, doc;
-                doc = convertToHTMLDocument(res.responseText);
-                item = doc.getElementById('saveTitle').value;
-                note = doc.getElementById('saveNotes').value;
-                tags = doc.getElementById('saveTags').value;
-                tags = self.privateCache.tags.normalize(Pot.BookmarkUtil.normalizeTags(tags));
-                privateMode = doc.getElementById('savePrivate').checked;
-                if (Pot.getPref(POT_BOOKMARK_PRIVATE)) {
-                    privateMode = true;
-                }
-                return {
-                    editPage : 'http://www.delicious.com/save?url=' + encodeURIComponent(url),
-                    form : {
-                        item        : item,
-                        description : note,
-                        tags        : tags,
-                        private     : privateMode
-                    },
-                    duplicated  : !!doc.getElementById('savedon'),
-                    recommended : $x('id("recommendedField")//span[contains(@class,"m")]/text()', doc, true)
-                }
             })
         };
         return new DeferredHash(ds).addCallback(function(ress) {
@@ -6990,8 +7013,12 @@ update(models.Delicious, {
         return user;
     },
     post: function(ps) {
-        const POST_URL = 'http://www.delicious.com/post/';
-        let tags, notes, title;
+        const BASE_URL    = 'http://www.delicious.com/';
+        const POST_URL    = BASE_URL + 'post';
+        const SAVE_URL    = BASE_URL + 'save';
+        const CONFIRM_URL = SAVE_URL + '/confirm';
+        
+        let tags, notes, title, isPrivate;
         {
             let tr = Pot.BookmarkUtil.truncateFields,
                 append = Pot.BookmarkUtil.appendConstantTags,
@@ -7000,30 +7027,36 @@ update(models.Delicious, {
             tags = tr(name, 'tagLength', append(ps.tags));
             notes = tr(name, 'comment', joinText([ps.body, ps.description], ' ', true));
         }
-        return request(POST_URL, {
-            queryString: {
-                title : title,
-                url   : ps.itemUrl
-            }
-        }).addCallback(function(res) {
-            let elmForm, actionUrl, action, doc;
-            doc = convertToHTMLDocument(res.responseText);
-            elmForm = doc.getElementById('saveForm');
-            if (!elmForm) {
+        isPrivate = (ps.private || Pot.getPref(POT_BOOKMARK_PRIVATE)) ? 'true' : 'false';
+        
+        return request(POST_URL).addCallback(function(res) {
+            let elmUrl, doc = convertToHTMLDocument(res.responseText);
+            elmUrl = doc.getElementById('saveUrl');
+            if (!elmUrl) {
                 throw new Error(getMessage('error.notLoggedin'));
             }
             Pot.QuickPostForm.resetCandidates();
-            action = $x('id("saveForm")/@action', doc);
-            actionUrl = 'http://www.delicious.com/' + Pot.StringUtil.ltrim(action, '/');
-            return request(actionUrl, {
+            return request(CONFIRM_URL, {
                 redirectionLimit : 0,
-                sendContent : update(formContents(elmForm), {
-                    description : title,
-                    jump        : 'no',
-                    notes       : notes,
-                    tags        : joinText(tags, ' '),
-                    share       : (ps.private || Pot.getPref(POT_BOOKMARK_PRIVATE)) ? 'no' : ''
-                })
+                sendContent : {
+                    urls    : ps.itemUrl,
+                    private : isPrivate
+                }
+            }).addCallback(function(res) {
+                let doc = convertToHTMLDocument(res.responseText), token;
+                token = $x('//*[@id="csrf_token"]/@value', doc);
+                return request(SAVE_URL, {
+                    redirectionLimit : 0,
+                    sendContent : {
+                        url        : ps.itemUrl,
+                        title      : title,
+                        tags       : joinText(tags, ','),
+                        note       : notes,
+                        private    : isPrivate,
+                        stack_id   : '',
+                        csrf_token : token
+                    }
+                });
             });
         });
     },
@@ -7037,6 +7070,14 @@ update(models.Delicious, {
      * @return {Deferred}              Deferredが返る (element or {count,url,title})
      */
     getEnteredUsersCount: function(url, doc, type, onClick) {
+        
+        //
+        // APIs, feeds が使えるようになるまで凍結
+        // http://www.avos.com/new-delicious/
+        //
+        return succeed(false);
+        
+        
         const ENTRY_BASE_URL  = 'http://feeds.delicious.com/v2/json/urlinfo/';
         const ENTRY_JUMP_URL  = 'http://www.delicious.com/url/';
         const ENTRY_TITLE     = this.name;
