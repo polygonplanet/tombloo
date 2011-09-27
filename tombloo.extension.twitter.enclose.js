@@ -17,8 +17,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.21
- * @date       2011-08-17
+ * @version    1.22
+ * @date       2011-09-27
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -48,11 +48,43 @@ const MENU_LABEL = ({
 
 
 //TODO: t.co 短縮URL対応の処理
-const SAMPLE_SHORT_URL = 'http://bit.ly/-*-*-*-*-*';
+const SAMPLE_SHORT_URL = 'http://bit.ly/-*-*-*-*-*';//FIXME: t.co
 
 
 // Util object
 var potTwitterEncUtil = definePotTwitterEncUtil();
+
+
+// Fixed extractor (暫定)
+addAround(Tombloo.Service.extractors['Quote - Twitter'], 'extract', function(proceed, args) {
+    let ctx = update({}, args[0] || {}), re;
+    re = /(?:status|statuses)\/(\d+)/;
+    if (re.test(ctx.hash) && !re.test(ctx.href)) {
+        // hash = '#!/user/status/xxxxxxxxxx'
+        // href = 'https://twitter.com/'
+        //           ↑
+        // '#!' のせいで…こんな状態になってしまっているので修正
+        ctx.href = ctx.document.documentURI;
+    }
+    try {
+        return proceed(args);
+    } catch (e) {
+        return {
+            type     : 'quote',
+            item     : ctx.title.substring(0, ctx.title.indexOf(': ')) || ctx.title,
+            itemUrl  : ctx.href,
+            body     : createFlavoredString(ctx.selection ?
+                                ctx.window.getSelection() :
+                        ctx.document.querySelector('.tweet-text-large') ||
+                        ctx.document.querySelector('.entry-content')
+            ),
+            favorite : {
+                name : 'Twitter',
+                id   : ctx.href.match(re)[1] || ctx.href.match(/\b(\d+)[^\d]*$/)[1],
+            }
+        };
+    }
+});
 
 
 // Twitter.post アップデート
