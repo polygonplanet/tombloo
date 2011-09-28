@@ -17,8 +17,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.22
- * @date       2011-09-27
+ * @version    1.23
+ * @date       2011-09-28
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -64,7 +64,13 @@ addAround(Tombloo.Service.extractors['Quote - Twitter'], 'extract', function(pro
         // href = 'https://twitter.com/'
         //           ↑
         // '#!' のせいで…こんな状態になってしまっているので修正
-        ctx.href = ctx.document.documentURI;
+        ctx.href = re.test(ctx.document.documentURI) ?
+                           ctx.document.documentURI  : ctx.href + ctx.hash;
+        if (!re.test(ctx.href)) {
+            ctx.href = re.test(ctx.window.location && ctx.window.location.href) ?
+                        ctx.window.location.href :
+                        ctx.document.location && ctx.document.location.href;
+        }
     }
     try {
         return proceed(args);
@@ -80,7 +86,13 @@ addAround(Tombloo.Service.extractors['Quote - Twitter'], 'extract', function(pro
             ),
             favorite : {
                 name : 'Twitter',
-                id   : ctx.href.match(re)[1] || ctx.href.match(/\b(\d+)[^\d]*$/)[1],
+                id   : (function() {
+                    try {
+                        return ctx.href.match(re)[1];
+                    } catch (e) {
+                        return ctx.hash.match(/\b(\d+)[^\d]*$/)[1];
+                    }
+                })()
             }
         };
     }
