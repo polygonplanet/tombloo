@@ -38,7 +38,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.58
+ * @version    1.59
  * @date       2011-09-29
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -206,7 +206,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.58',
+    VERSION: '1.59',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -7101,7 +7101,7 @@ update(models.Delicious, {
                 sendContent.shared = 'no';
             }
             Pot.QuickPostForm.resetCandidates();
-            return request(apiUrl, {
+            return request(API_URL, {
                 headers : {
                     Authorization : auth
                 },
