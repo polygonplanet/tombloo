@@ -17,8 +17,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.23
- * @date       2011-09-28
+ * @version    1.24
+ * @date       2011-09-29
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -47,8 +47,9 @@ const MENU_LABEL = ({
 })[LANG === 'ja' && LANG || 'en'];
 
 
-//TODO: t.co 短縮URL対応の処理
-const SAMPLE_SHORT_URL = 'http://bit.ly/-*-*-*-*-*';//FIXME: t.co
+// 短縮URL対応の処理
+//FIXME: t.co
+const SAMPLE_SHORT_URL = 'http://bit.ly/-*-*-*';
 
 
 // Util object
@@ -63,7 +64,7 @@ addAround(Tombloo.Service.extractors['Quote - Twitter'], 'extract', function(pro
         // hash = '#!/user/status/xxxxxxxxxx'
         // href = 'https://twitter.com/'
         //           ↑
-        // '#!' のせいで…こんな状態になってしまっているので修正
+        // canonicalの影響でhrefが変なので修正
         ctx.href = re.test(ctx.document.documentURI) ?
                            ctx.document.documentURI  : ctx.href + ctx.hash;
         if (!re.test(ctx.href)) {
