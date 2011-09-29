@@ -38,7 +38,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.55
+ * @version    1.56
  * @date       2011-09-29
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -206,7 +206,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.55',
+    VERSION: '1.56',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -7067,7 +7067,7 @@ update(models.Delicious, {
     },
     post : function(ps) {
         const API_URL = 'https://api.del.icio.us/v1/posts/add';
-        let tags, notes, title, isPrivate;
+        let self = this, tags, notes, title, isPrivate;
         {
             let tr     = Pot.BookmarkUtil.truncateFields,
                 append = Pot.BookmarkUtil.appendConstantTags,
@@ -7078,19 +7078,46 @@ update(models.Delicious, {
         }
         isPrivate = (ps.private || Pot.getPref(POT_BOOKMARK_PRIVATE));
         return this.getAPIAuthURL(API_URL).addCallback(function(apiUrl) {
-            let queryString = {
+            let sendContent = {
                 url         : ps.itemUrl,
                 description : title,
                 extended    : notes,
                 tags        : joinText(tags, ',')
             };
             if (isPrivate) {
-                queryString.shared = 'no';
+                sendContent.shared = 'no';
             }
             Pot.QuickPostForm.resetCandidates();
             return request(apiUrl, {
-                queryString : queryString
+                sendContent : sendContent
             });
+        }).addErrback(function(err) {
+            const SAVE_URL = 'http://www.delicious.com/save';
+            if (err && err.message && err.message.status == 502) {
+                return self.getCurrentUser().addCallback(function() {
+                    return request(SAVE_URL, {
+                        queryString : {
+                            title : title,
+                            url   : ps.itemUrl
+                        }
+                    });
+                }).addCallback(function(res) {
+                    let doc, form;
+                    doc = convertToHTMLDocument(res.responseText);
+                    form = doc.getElementsByClassName('saveConfirm')[0];
+                    return request(SAVE_URL, {
+                        sendContent : update(formContents(form), {
+                            title   : title,
+                            url     : ps.itemUrl,
+                            note    : notes,
+                            tags    : joinText(ps.tags, ','),
+                            private : isPrivate ? 'true' : 'false'
+                        })
+                    });
+                });
+            } else {
+                throw err;
+            }
         });
     },
     /**
