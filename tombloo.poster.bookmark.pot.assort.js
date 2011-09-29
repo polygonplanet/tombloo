@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.54
- * @date       2011-09-27
+ * @version    1.55
+ * @date       2011-09-29
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -100,6 +100,14 @@ const MAX_LENGTH = {
         tagCount  : 48, // A maximum of 50 tags are allowed
         comment   : 960,
         unit      : 'uni'
+    },
+    // UTF-8 バイト数
+    Pinboard: {
+        title     : 250,  // max: 255
+        tagLength : 64,   // 不明
+        tagCount  : 48,   // 不明
+        comment   : 9600, // max: 10000
+        unit      : 'byte'
     },
     // http://help.yahoo.co.jp/help/jp/bookmarks/bookmarks-04.html
     // 超えるとエラーでPOSTできない (Byte数)
@@ -198,7 +206,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.54',
+    VERSION: '1.55',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -6052,7 +6060,7 @@ Pot.extend(Pot.BookmarkUtil, {
      * キーワード抽出とAPI取得の組み合わせ
      */
     getRecommends: function(url) {
-        const MAX_TAGS = 10;
+        const MAX_TAGS = 15;
         return Pot.BookmarkUtil.getRecentUserTags(url).addCallback(function(tags) {
             if (tags && tags.length >= MAX_TAGS) {
                 return succeed().addCallback(function() {
@@ -6101,6 +6109,9 @@ forEach({
         return patterns.rqlcvb.test(ps.type) && !ps.file;
     },
     Delicious: function(ps) {
+        return patterns.pqlcvb.test(ps.type) && !ps.file;
+    },
+    Pinboard: function(ps) {
         return patterns.pqlcvb.test(ps.type) && !ps.file;
     },
     FirefoxBookmark: function(ps) {
@@ -6867,75 +6878,122 @@ update(models.Delicious, {
             }
         }
     },
+    getAuthCookie : function() {
+        return getCookieString('www.delicious.com', 'deluser');
+    },
+    getCurrentUser : function() {
+        let self = this, user;
+        user = decodeURIComponent(getCookieString('delicious.com', '_user')).extract(/user=(.*?)\s+/);
+        if (user) {
+            return succeed(user);
+        } else {
+            return this.getSessionValue('user', function() {
+                return self.getInfo().addCallback(function(info) {
+                    if (!info.is_logged_in || /not.*log.*in/i.test(info.error)) {
+                        throw new Error(getMessage('error.notLoggedin'));
+                    }
+                    return info.logged_in_username;
+                });
+            });
+        }
+    },
+    getInfo : function() {
+        return request('http://delicious.com/save/quick', {method : 'POST'}).addCallback(function(res) {
+            return evalInSandbox('(' + res.responseText + ')', 'http://delicious.com/');
+        });
+    },
+    getAPIAuthURL : function(apiUrl, username) {
+        const BASE_HOST_URL = 'http://www.delicious.com';
+        let self = this;
+        // http://www.delicious.com/help/api
+        // wait AT LEAST ONE SECOND between queries
+        // 最低1秒は間隔をあける
+        return wait(1.15).addCallback(function() {
+            return (username ? succeed(username) : self.getCurrentUser()).addCallback(function(user) {
+                let userInfo = getPasswords(BASE_HOST_URL, user);
+                if (Pot.isArray(userInfo)) {
+                    userInfo = userInfo.shift();
+                }
+                if (!userInfo || userInfo.password == null) {
+                    throw new Error('Delicious: Cannot access to API');
+                }
+                return Pot.StringUtil.stringify(apiUrl).split('://').join([
+                    '://',
+                    encodeURIComponent(userInfo.user),
+                    ':',
+                    encodeURIComponent(userInfo.password),
+                    '@'
+                ].join(''));
+            });
+        });
+    },
     /**
      * ユーザーの利用しているタグ一覧を取得する。
      *
      * @param  {String} user 対象ユーザー名。未指定の場合、ログインしているユーザー名が使われる。
      * @return {Array}
      */
-    getUserTags: function(user) {
-        
-        //
-        // APIs, feeds が使えるようになるまで凍結
-        // http://www.avos.com/new-delicious/
-        //
-        return succeed([]);
-        
-        
-        const TAGS_URL    = 'http://feeds.delicious.com/feeds/json/tags/';
-        const SANDBOX_URL = 'http://feeds.delicious.com/';
-        // 同期でエラーが起きないようにする
+    getUserTags : function(user) {
+        //FIXME: 全てのタグが取得できない(recentになっている) API 改善待ち
+        const API_URL = 'https://api.del.icio.us/v1/tags/get';
+        let self = this;
         return succeed().addCallback(function() {
-            return request(TAGS_URL + (user || Delicious.getCurrentUser()));
-        }).addCallback(function(res) {
-            let tags = evalInSandbox(res.responseText, SANDBOX_URL);
-            // タグが無いか(?)(取得失敗時も発生)
-            if (!tags || isEmpty(tags)) {
-                tags = [];
-            } else {
-                tags = reduce(function(memo, tag) {
-                    memo.push({
-                        name      : tag[0],
-                        frequency : tag[1]
-                    });
-                    return memo;
-                }, tags, []);
-            }
-            return tags;
+            return (user ? succeed(user) : self.getCurrentUser()).addCallback(function(username) {
+                return self.getAPIAuthURL(API_URL, username);
+            }).addCallback(function(apiUrl) {
+                return request(apiUrl, {
+                    headers : {
+                        // これいらないかも (APIはUserAgent設定しろってあるけど)
+                        'User-Agent' : 'Mozilla/Firefox/Tombloo/BookmarkPatch/' + Pot.VERSION
+                    }
+                }).addCallback(function(res) {
+                    let tags = [], xml = convertToXML(res.responseText);
+                    if (xml) {
+                        try {
+                            for each (let tag in xml..tag) {
+                                tags[tags.length] = {
+                                    name      : tag.@tag.toString(),
+                                    frequency : Number(tag.@count)
+                                };
+                            }
+                        } catch (e) {}
+                    }
+                    return tags;
+                });
+            });
         });
     },
-    isBookmarked: function(url) {
-        
-        //
-        // APIs, feeds が使えるようになるまで凍結
-        // http://www.avos.com/new-delicious/
-        //
-        return succeed(false);
-        
-        
-        
-        const CHECK_URL = 'http://www.delicious.com/save';
+    isBookmarked : function(url) {
+        const API_URL = 'https://api.del.icio.us/v1/posts/get';
         let self = this;
         if (this.privateCache.bookmarked.has(url)) {
             return succeed(true);
         } else {
-            // ログインチェック
-            this.getCurrentUser();
-            return request(CHECK_URL, {
-                queryString : {
-                    noui : 1,
-                    url  : url,
-                    v    : 5,
-                    jump : 'close'
-                }
-            }).addCallback(function(res) {
-                let bookmarked, doc = convertToHTMLDocument(res.responseText), text;
-                text = $x('//*[contains(@class,"savedHeader")]/text()', doc);
-                bookmarked = doc && /has\s+been\s+saved!/i.test(text);
-                if (bookmarked) {
-                    self.privateCache.bookmarked.add(url);
-                }
-                return bookmarked;
+            return this.getAPIAuthURL(API_URL).addCallback(function(apiUrl) {
+                return request(apiUrl, {
+                    queryString : {
+                        url : url
+                    }
+                }).addCallback(function(res) {
+                    let bookmarked = false, xml = convertToXML(res.responseText);
+                    try {
+                        if (xml.name().localName !== 'posts' || /no\s*bookmark/i.test(xml..@code.toString())) {
+                            bookmarked = false;
+                        } else {
+                            let (href = xml..post.@href.toString()) {
+                                if (String(url).indexOf(href) === 0 || href.indexOf(url) === 0) {
+                                    bookmarked = true;
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        bookmarked = false;
+                    }
+                    if (bookmarked) {
+                        self.privateCache.bookmarked.add(url);
+                    }
+                    return bookmarked;
+                });
             });
         }
     },
@@ -6946,117 +7004,92 @@ update(models.Delicious, {
      * @param  {String} url 関連情報を取得する対象のページURL。
      * @return {Object}
      */
-    getSuggestions: function(url) {
-        let self = this, ds = {
-            tags: this.getUserTags(),
-            suggestions: succeed().addCallback(function() {
-                // ログインをチェックする
-                self.getCurrentUser();
-                
-                // ブックマークレット用画面の削除リンクを使い既ブックマークを判定する
-                return request('http://www.delicious.com/save/confirm');
-                
-            }).addCallback(function(res) {
-                return Pot.BookmarkUtil.getRecommends(url).addCallback(function(recommends) {
-                    let item, note, tags, privateMode, doc;
-                    doc = convertToHTMLDocument(res.responseText);
-                    if (!doc.getElementById('saveUrl')) {
-                        throw new Error(getMessage('error.notLoggedin'));
-                    }
-                    item = doc.getElementById('saveTitle').value;
-                    note = doc.getElementById('saveNotes').value;
-                    tags = doc.getElementById('saveTags').value;
-                    tags = self.privateCache.tags.normalize(Pot.BookmarkUtil.normalizeTags(tags));
-                    privateMode = doc.getElementById('savePrivate').checked;
-                    if (Pot.getPref(POT_BOOKMARK_PRIVATE)) {
-                        privateMode = true;
-                    }
-                    return {
-                        editPage : 'http://www.delicious.com/save?url=' + encodeURIComponent(url),
-                        form : {
-                            item        : item,
-                            description : note,
-                            tags        : tags,
-                            private     : privateMode ? 'true' : 'false'
-                        },
-                        duplicated  : /has\s+been\s+saved!/i.test($x('//*[contains(@class,"savedHeader")]/text()', doc)),
-                        recommended : Array.prototype.concat.call([], recommends,
-                                        $x('//*[@id="recommendedField"]//*[contains(@class,"m")]/text()', doc, true) || []
-                        )
-                    }
+    getSuggestions : function(url) {
+        const API_URL = 'https://api.del.icio.us/v1/posts/get';
+        let self = this, suggests = {};
+        return this.getAPIAuthURL(API_URL).addCallback(function(apiUrl) {
+            return wait(0).addCallback(function() {
+                return self.isBookmarked(url).addCallback(function(bookmarked) {
+                    suggests.bookmarked = bookmarked;
                 });
-            })
-        };
-        return new DeferredHash(ds).addCallback(function(ress) {
-            // エラーチェック
-            for each (var [success, res] in ress) {
-                if (!success) {
-                    throw res;
-                }
-            }
-            var result = ress.suggestions[1];
-            result.tags = ress.tags[1];
-            return result;
+            }).addCallback(function() {
+                return wait(0).addCallback(function() {
+                    return self.getUserTags().addCallback(function(userTags) {
+                        suggests.userTags = userTags;
+                    });
+                });
+            }).addCallback(function() {
+                return wait(0).addCallback(function() {
+                    return Pot.BookmarkUtil.getRecommends(url).addCallback(function(recommends) {
+                        suggests.recommends = recommends;
+                    });
+                });
+            }).addCallback(function() {
+                return wait(0).addCallback(function() {
+                    return request(apiUrl, {
+                        queryString : {
+                            url : url
+                        }
+                    }).addBoth(function(res) {
+                        let result, xml, item, description, tags, allTags, isPrivate;
+                        xml = convertToXML(res.responseText);
+                        if (!xml) {
+                            return {};
+                        }
+                        try {
+                            item        = xml..post.@description.toString();
+                            description = xml..post.@extended.toString();
+                            tags        = Pot.ArrayUtil.emptyFilter(xml..post.@tag.toString().split(/[\s,]+/));
+                            isPrivate   = /^(?:1|yes|true|on)$/i.test(xml..post.@['private'].toString());
+                        } catch (e) {}
+                        if (Pot.getPref(POT_BOOKMARK_PRIVATE)) {
+                            isPrivate = true;
+                        }
+                        allTags = self.privateCache.tags.normalize(suggests.userTags);
+                        result = {
+                            //FIXME: fix editPage. /save or /save/xxx
+                            editPage : 'http://www.delicious.com/',
+                            form : {
+                                item        : item,
+                                description : description,
+                                tags        : tags || [],
+                                private     : isPrivate
+                            },
+                            duplicated  : suggests.bookmarked,
+                            recommended : suggests.recommends,
+                            tags        : allTags
+                        };
+                        return result;
+                    });
+                });
+            });
         });
     },
-    // FIXME: 判定不完全、_userが取得できて、かつ、ログアウトしている状態がありうる
-    getCurrentUser: function() {
-        var user;
-        try {
-            user = decodeURIComponent(getCookieString('www.delicious.com', '_user')).match(/user=(.*?)\s+/)[1];
-        } catch (e) {
-            user = null;
-        }
-        if (!user) {
-            throw new Error(getMessage('error.notLoggedin'));
-        }
-        return user;
-    },
-    post: function(ps) {
-        const BASE_URL    = 'http://www.delicious.com/';
-        const POST_URL    = BASE_URL + 'post';
-        const SAVE_URL    = BASE_URL + 'save';
-        const CONFIRM_URL = SAVE_URL + '/confirm';
-        
+    post : function(ps) {
+        const API_URL = 'https://api.del.icio.us/v1/posts/add';
         let tags, notes, title, isPrivate;
         {
-            let tr = Pot.BookmarkUtil.truncateFields,
+            let tr     = Pot.BookmarkUtil.truncateFields,
                 append = Pot.BookmarkUtil.appendConstantTags,
-                name = this.name;
+                name   = this.name;
             title = tr(name, 'title', ps.item);
-            tags = tr(name, 'tagLength', append(ps.tags));
+            tags  = tr(name, 'tagLength', append(ps.tags));
             notes = tr(name, 'comment', joinText([ps.body, ps.description], ' ', true));
         }
-        isPrivate = (ps.private || Pot.getPref(POT_BOOKMARK_PRIVATE)) ? 'true' : 'false';
-        
-        return request(POST_URL).addCallback(function(res) {
-            let elmUrl, doc = convertToHTMLDocument(res.responseText);
-            elmUrl = doc.getElementById('saveUrl');
-            if (!elmUrl) {
-                throw new Error(getMessage('error.notLoggedin'));
+        isPrivate = (ps.private || Pot.getPref(POT_BOOKMARK_PRIVATE));
+        return this.getAPIAuthURL(API_URL).addCallback(function(apiUrl) {
+            let queryString = {
+                url         : ps.itemUrl,
+                description : title,
+                extended    : notes,
+                tags        : joinText(tags, ',')
+            };
+            if (isPrivate) {
+                queryString.shared = 'no';
             }
             Pot.QuickPostForm.resetCandidates();
-            return request(CONFIRM_URL, {
-                redirectionLimit : 0,
-                sendContent : {
-                    urls    : ps.itemUrl,
-                    private : isPrivate
-                }
-            }).addCallback(function(res) {
-                let doc = convertToHTMLDocument(res.responseText), token;
-                token = $x('//*[@id="csrf_token"]/@value', doc);
-                return request(SAVE_URL, {
-                    redirectionLimit : 0,
-                    sendContent : {
-                        url        : ps.itemUrl,
-                        title      : title,
-                        tags       : joinText(tags, ','),
-                        note       : notes,
-                        private    : isPrivate,
-                        stack_id   : '',
-                        csrf_token : token
-                    }
-                });
+            return request(apiUrl, {
+                queryString : queryString
             });
         });
     },
@@ -7069,16 +7102,7 @@ update(models.Delicious, {
      * @param  {Function}   (onClick)  onclickイベントを設定する場合の関数
      * @return {Deferred}              Deferredが返る (element or {count,url,title})
      */
-    getEnteredUsersCount: function(url, doc, type, onClick) {
-        
-        //
-        // APIs, feeds が使えるようになるまで凍結
-        // http://www.avos.com/new-delicious/
-        //
-        return succeed(false);
-        
-        
-        const ENTRY_BASE_URL  = 'http://feeds.delicious.com/v2/json/urlinfo/';
+    getEnteredUsersCount : function(url, doc, type, onClick) {
         const ENTRY_JUMP_URL  = 'http://www.delicious.com/url/';
         const ENTRY_TITLE     = this.name;
         let entryUrl, hash, make;
@@ -7087,17 +7111,27 @@ update(models.Delicious, {
             make[tag] = bind(E, null, tag);
         });
         hash = Pot.StringUtil.stringify(url).md5();
-        entryUrl = ENTRY_BASE_URL + hash;
+        entryUrl = ENTRY_JUMP_URL + hash;
         return request(entryUrl).addCallback(function(res) {
-            let result, params, json;
-            json = JSON.parse(res.responseText);
-            if (json && Pot.isArray(json)) {
-                json = json.shift();
+            let result, params, entryDoc, re, count, text, title;
+            entryDoc = convertToHTMLDocument(res.responseText);
+            re = /(\d+)\s*(?:<\/?[^>]*>|)\s*saves/i;
+            text = $x('//ul[contains(@class,"sidebarStats")]/li/text()', entryDoc);
+            if (re.test(text)) {
+                count = String(text).match(re)[1];
+            } else if (entryDoc.documentElement) {
+                if (re.test(entryDoc.documentElement.innerHTML)) {
+                    count = String(entryDoc.documentElement.innerHTML).match(re)[1];
+                }
+                if (count == null && re.test(entryDoc.documentElement.textContent)) {
+                    count = String(entryDoc.documentElement.textContent).match(re)[1];
+                }
             }
+            title = $x('//h2/a[contains(@href,' + Pot.escapeXPathText(url) + ')]/text()', entryDoc);
             params = {
-                count : Number(json.total_posts) || 0,
-                url   : ENTRY_JUMP_URL + hash,
-                title : ENTRY_TITLE + (json.title ? ' - ' + json.title : '')
+                count : Number(count) || 0,
+                url   : entryUrl,
+                title : ENTRY_TITLE + (title ? ' - ' + title : '')
             };
             if (type) {
                 withDocument(doc || Pot.getCurrentDocument(), function() {
@@ -7109,13 +7143,13 @@ update(models.Delicious, {
                                     value       : params.count + ' users',
                                     class       : 'text-link',
                                     style       : Pot.StringUtil.mtrim(<>
-                                        padding: 0.1em;
-                                        color: #4c6bc9;
-                                        font-size: 11.2px;
-                                        font-weight: bold;
-                                        cursor: pointer !important;
-                                        outline: 0;
-                                        -moz-user-focus: ignore;
+                                        padding         : 0.1em;
+                                        color           : #4c6bc9;
+                                        font-size       : 11.2px;
+                                        font-weight     : bold;
+                                        cursor          : pointer !important;
+                                        outline         : 0;
+                                        -moz-user-focus : ignore;
                                     </>)
                                 });
                                 if (onClick) {
@@ -7135,6 +7169,50 @@ update(models.Delicious, {
                 result = params;
             }
             return result;
+        });
+    }
+});
+
+
+})();
+//-----------------------------------------------------------------------------
+// Update - Pinboard
+//-----------------------------------------------------------------------------
+(function() {
+
+
+update(models.Pinboard, {
+    ICON : 'http://pinboard.in/favicon.ico',
+    post : function(ps) {
+        const ADD_URL = 'https://pinboard.in/add';
+        let self = this, title, tags, notes, isPrivate;
+        let (tr = Pot.BookmarkUtil.truncateFields, name = Pinboard.name) {
+            title = tr(name, 'title',     ps.item);
+            tags  = tr(name, 'tagLength', Pot.BookmarkUtil.appendConstantTags(ps.tags));
+            notes = tr(name, 'comment',   joinText([ps.body, ps.description], ' ', true));
+        }
+        isPrivate = (ps.private || Pot.getPref(POT_BOOKMARK_PRIVATE));
+        return succeed().addCallback(function() {
+            self.getCurrentUser();
+            return request(ADD_URL, {
+                queryString : {
+                    title : title,
+                    url   : ps.itemUrl,
+                }
+            });
+        }).addCallback(function(res) {
+            let form = formContents(res.responseText);
+            Pot.QuickPostForm.resetCandidates();
+            return request(ADD_URL, {
+                sendContent : update(form, {
+                    title       : title,
+                    url         : ps.itemUrl,
+                    description : notes,
+                    tags        : joinText(tags, ' '),
+                    private     : isPrivate ? 'on' :
+                                  (ps.private == null) ? form['private'] : ''
+                })
+            });
         });
     }
 });
@@ -7299,7 +7377,7 @@ update(models.LivedoorClip, {
     getSuggestions: function(url) {
         const DUMMY_URL = 'http://www.example.com/';
         let that = this, uri;
-        // 何かのURLを渡す必要がある
+        // 何らかのURLを渡す必要がある
         uri = url || DUMMY_URL;
         if (!this.getAuthCookie()) {
             return fail(new Error(getMessage('error.notLoggedin')));
@@ -9973,6 +10051,7 @@ QuickPostForm.descriptionContextMenus.push(
         },
         {
             name: '行末に<br />を適する行のみ挿入',
+            //TODO: バグがあるのにかかわらずそれっぽく挿入されてる不思議
             execute: function(elmText, desc) {
                 const TAG_BR = '<br />';
                 let results = [], value, lines, patterns, codes, mark;
@@ -10407,7 +10486,7 @@ Pot.extend(Pot.RomaReadingUtil, {
 //-----------------------------------------------------------------------------
 callLater(5, function() {
 
-
+//FIXME: もう必要ないかも
 addAround(Tombloo.Service.extractors['Video - YouTube'], 'extract', function(proceed, args) {
     let ctx, result, og, doc, authorAnchor;
     ctx = args && args[0];
@@ -12206,11 +12285,9 @@ delete Pot.tmp.MENULABEL;
 (function() {
 
 
-
 update(typeof grobal !== 'undefined' && grobal || {}, {
     Pot: Pot
 });
-
 
 
 })();
