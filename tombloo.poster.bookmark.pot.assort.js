@@ -38,7 +38,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.57
+ * @version    1.58
  * @date       2011-09-29
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -206,7 +206,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.57',
+    VERSION: '1.58',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -6902,7 +6902,7 @@ update(models.Delicious, {
             return evalInSandbox('(' + res.responseText + ')', 'http://delicious.com/');
         });
     },
-    getAPIAuthURL : function(apiUrl, username) {
+    getAPIAuth : function(basic, username) {
         const BASE_HOST_URLS = [
             'http://www.delicious.com',
             'http://delicious.com'
@@ -6920,20 +6920,17 @@ update(models.Delicious, {
                         userInfo = userInfo.shift();
                     }
                     if (userInfo && userInfo.password != null) {
-                        result = Pot.StringUtil.stringify(apiUrl).split('://').join([
-                            '://',
-                            encodeURIComponent(userInfo.user),
-                            ':',
-                            encodeURIComponent(userInfo.password),
-                            '@'
-                        ].join(''));
+                        result = Pot.StringUtil.base64.encode([
+                            Pot.StringUtil.stringify(userInfo.user),
+                            Pot.StringUtil.stringify(userInfo.password)
+                        ].join(':'));
                         throw Pot.StopIteration;
                     }
                 });
                 if (!result) {
                     throw new Error('Delicious: Cannot access to API');
                 }
-                return result;
+                return basic ? 'Basic ' + result : result;
             });
         });
     },
@@ -6949,12 +6946,12 @@ update(models.Delicious, {
         let self = this;
         return succeed().addCallback(function() {
             return (user ? succeed(user) : self.getCurrentUser()).addCallback(function(username) {
-                return self.getAPIAuthURL(API_URL, username);
-            }).addCallback(function(apiUrl) {
-                return request(apiUrl, {
+                return self.getAPIAuth(true, username);
+            }).addCallback(function(auth) {
+                return request(API_URL, {
                     headers : {
-                        // これいらないかも (APIはUserAgent設定しろってあるけど)
-                        'User-Agent' : 'Mozilla/Firefox/Tombloo/BookmarkPatch/' + Pot.VERSION
+                        Authorization : auth,
+                        'User-Agent'  : 'Mozilla/Firefox/Tombloo/BookmarkPatch/' + Pot.VERSION
                     }
                 }).addCallback(function(res) {
                     let tags = [], xml = convertToXML(res.responseText);
@@ -6979,8 +6976,11 @@ update(models.Delicious, {
         if (this.privateCache.bookmarked.has(url)) {
             return succeed(true);
         } else {
-            return this.getAPIAuthURL(API_URL).addCallback(function(apiUrl) {
-                return request(apiUrl, {
+            return this.getAPIAuth(true).addCallback(function(auth) {
+                return request(API_URL, {
+                    headers : {
+                        Authorization : auth
+                    },
                     queryString : {
                         url : url
                     }
@@ -7017,7 +7017,7 @@ update(models.Delicious, {
     getSuggestions : function(url) {
         const API_URL = 'https://api.del.icio.us/v1/posts/get';
         let self = this, suggests = {};
-        return this.getAPIAuthURL(API_URL).addCallback(function(apiUrl) {
+        return this.getAPIAuth(true).addCallback(function(auth) {
             return wait(0).addCallback(function() {
                 return self.isBookmarked(url).addCallback(function(bookmarked) {
                     suggests.bookmarked = bookmarked;
@@ -7036,7 +7036,10 @@ update(models.Delicious, {
                 });
             }).addCallback(function() {
                 return wait(0).addCallback(function() {
-                    return request(apiUrl, {
+                    return request(API_URL, {
+                        headers : {
+                            Authorization : auth
+                        },
                         queryString : {
                             url : url
                         }
@@ -7087,7 +7090,7 @@ update(models.Delicious, {
             notes = tr(name, 'comment', joinText([ps.body, ps.description], ' ', true));
         }
         isPrivate = (ps.private || Pot.getPref(POT_BOOKMARK_PRIVATE));
-        return this.getAPIAuthURL(API_URL).addCallback(function(apiUrl) {
+        return this.getAPIAuth(true).addCallback(function(auth) {
             let sendContent = {
                 url         : ps.itemUrl,
                 description : title,
@@ -7099,6 +7102,9 @@ update(models.Delicious, {
             }
             Pot.QuickPostForm.resetCandidates();
             return request(apiUrl, {
+                headers : {
+                    Authorization : auth
+                },
                 sendContent : sendContent
             });
         }).addErrback(function(err) {
