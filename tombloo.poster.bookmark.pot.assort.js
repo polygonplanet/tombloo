@@ -38,7 +38,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.56
+ * @version    1.57
  * @date       2011-09-29
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -206,7 +206,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.56',
+    VERSION: '1.57',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -6903,27 +6903,37 @@ update(models.Delicious, {
         });
     },
     getAPIAuthURL : function(apiUrl, username) {
-        const BASE_HOST_URL = 'http://www.delicious.com';
+        const BASE_HOST_URLS = [
+            'http://www.delicious.com',
+            'http://delicious.com'
+        ];
         let self = this;
         // http://www.delicious.com/help/api
         // wait AT LEAST ONE SECOND between queries
         // 最低1秒は間隔をあける
         return wait(1.15).addCallback(function() {
             return (username ? succeed(username) : self.getCurrentUser()).addCallback(function(user) {
-                let userInfo = getPasswords(BASE_HOST_URL, user);
-                if (Pot.isArray(userInfo)) {
-                    userInfo = userInfo.shift();
-                }
-                if (!userInfo || userInfo.password == null) {
+                let result;
+                Pot.forEach(BASE_HOST_URLS, function(i, host) {
+                    let userInfo = getPasswords(host, user);
+                    if (Pot.isArray(userInfo)) {
+                        userInfo = userInfo.shift();
+                    }
+                    if (userInfo && userInfo.password != null) {
+                        result = Pot.StringUtil.stringify(apiUrl).split('://').join([
+                            '://',
+                            encodeURIComponent(userInfo.user),
+                            ':',
+                            encodeURIComponent(userInfo.password),
+                            '@'
+                        ].join(''));
+                        throw Pot.StopIteration;
+                    }
+                });
+                if (!result) {
                     throw new Error('Delicious: Cannot access to API');
                 }
-                return Pot.StringUtil.stringify(apiUrl).split('://').join([
-                    '://',
-                    encodeURIComponent(userInfo.user),
-                    ':',
-                    encodeURIComponent(userInfo.password),
-                    '@'
-                ].join(''));
+                return result;
             });
         });
     },
