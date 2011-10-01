@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.60
- * @date       2011-09-30
+ * @version    1.61
+ * @date       2011-10-01
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -206,7 +206,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.60',
+    VERSION: '1.61',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -6883,20 +6883,16 @@ update(models.Delicious, {
         return getCookieString('www.delicious.com', 'deluser');
     },
     getCurrentUser : function() {
-        let self = this, user;
-        user = decodeURIComponent(getCookieString('delicious.com', '_user')).extract(/user=(.*?)\s+/);
-        if (user) {
-            return succeed(user);
-        } else {
-            return this.getSessionValue('user', function() {
-                return self.getInfo().addCallback(function(info) {
-                    if (!info.is_logged_in || /not.*log.*in/i.test(info.error)) {
-                        throw new Error(getMessage('error.notLoggedin'));
-                    }
-                    return info.logged_in_username;
-                });
+        let self = this;
+        return this.getSessionValue('user', function() {
+            return self.getInfo().addCallback(function(info) {
+                if (!info.is_logged_in || /not.*log.*in/i.test(info.error)) {
+                    throw new Error(getMessage('error.notLoggedin'));
+                }
+                return info.logged_in_username ||
+                    decodeURIComponent(getCookieString('delicious.com', '_user')).extract(/user=(.*?)\s+/);
             });
-        }
+        });
     },
     getInfo : function() {
         return request('http://delicious.com/save/quick', {method : 'POST'}).addCallback(function(res) {
@@ -6906,7 +6902,9 @@ update(models.Delicious, {
     getAPIAuth : function(basic, username) {
         const BASE_HOST_URLS = [
             'http://www.delicious.com',
-            'http://delicious.com'
+            'http://delicious.com',
+            'www.delicious.com',
+            'delicious.com'
         ];
         let self = this;
         // http://www.delicious.com/help/api
@@ -6920,7 +6918,7 @@ update(models.Delicious, {
                     if (Pot.isArray(userInfo)) {
                         userInfo = userInfo.shift();
                     }
-                    if (userInfo && userInfo.password != null) {
+                    if (userInfo && userInfo.user && userInfo.password) {
                         result = Pot.StringUtil.base64.encode([
                             Pot.StringUtil.stringify(userInfo.user),
                             Pot.StringUtil.stringify(userInfo.password)
@@ -7104,8 +7102,7 @@ update(models.Delicious, {
                             }
                             allTags = self.privateCache.tags.normalize(suggests.userTags);
                             result = {
-                                //FIXME: fix editPage. /save or /save/xxx
-                                editPage : 'http://www.delicious.com/',
+                                editPage : 'http://www.delicious.com/save?url=' + encodeURIComponent(url),
                                 form : {
                                     item        : item,
                                     description : description,
@@ -7142,7 +7139,7 @@ update(models.Delicious, {
                                 }).addCallback(function(res) {
                                     let doc = convertToHTMLDocument(res.responseText);
                                     return {
-                                        editPage : 'http://www.delicious.com/save?url=' + url,
+                                        editPage : 'http://www.delicious.com/save?url=' + encodeURIComponent(url),
                                         form : {
                                             item        : doc.getElementById('saveTitle').value,
                                             description : doc.getElementById('saveNotes').value,
@@ -7172,12 +7169,9 @@ update(models.Delicious, {
     post : function(ps) {
         const API_URL = 'https://api.del.icio.us/v1/posts/add';
         let self = this, tags, notes, title, isPrivate;
-        {
-            let tr     = Pot.BookmarkUtil.truncateFields,
-                append = Pot.BookmarkUtil.appendConstantTags,
-                name   = this.name;
+        let (tr = Pot.BookmarkUtil.truncateFields, name = this.name) {
             title = tr(name, 'title', ps.item);
-            tags  = tr(name, 'tagLength', append(ps.tags));
+            tags  = tr(name, 'tagLength', Pot.BookmarkUtil.appendConstantTags(ps.tags));
             notes = tr(name, 'comment', joinText([ps.body, ps.description], ' ', true));
         }
         isPrivate = (ps.private || Pot.getPref(POT_BOOKMARK_PRIVATE));
@@ -7215,13 +7209,10 @@ update(models.Delicious, {
      */
     postByForm : function(ps) {
         const SAVE_URL = 'http://www.delicious.com/save';
-        let self = this, tags, notes, title, isPrivate;
-        {
-            let tr     = Pot.BookmarkUtil.truncateFields,
-                append = Pot.BookmarkUtil.appendConstantTags,
-                name   = this.name;
+        let tags, notes, title, isPrivate;
+        let (tr = Pot.BookmarkUtil.truncateFields, name = this.name) {
             title = tr(name, 'title', ps.item);
-            tags  = tr(name, 'tagLength', append(ps.tags));
+            tags  = tr(name, 'tagLength', Pot.BookmarkUtil.appendConstantTags(ps.tags));
             notes = tr(name, 'comment', joinText([ps.body, ps.description], ' ', true));
         }
         isPrivate = (ps.private || Pot.getPref(POT_BOOKMARK_PRIVATE));
@@ -7235,15 +7226,15 @@ update(models.Delicious, {
         }).addCallback(function(res) {
             let doc, form;
             doc = convertToHTMLDocument(res.responseText);
-            form = doc.getElementsByClassName('saveConfirm')[0];
+            form = doc.getElementById('main') || doc.querySelector('.content');
             Pot.QuickPostForm.resetCandidates();
             return request(SAVE_URL, {
-                sendContent : update(formContents(form), {
+                sendContent : update(formContents(form) || {}, {
                     title   : title,
                     url     : ps.itemUrl,
                     note    : notes,
-                    tags    : joinText(ps.tags, ','),
-                    private : isPrivate ? 'true' : (ps.private || 'false')
+                    tags    : joinText(tags, ','),
+                    private : isPrivate ? 'true' : 'false'
                 })
             });
         });
