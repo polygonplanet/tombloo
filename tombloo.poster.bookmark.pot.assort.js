@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.61
- * @date       2011-10-01
+ * @version    1.62
+ * @date       2011-10-06
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -206,7 +206,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.61',
+    VERSION: '1.62',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -7048,6 +7048,24 @@ update(models.Delicious, {
             });
         }
     },
+    // from: Taberareloo
+    getRecommendedTags : function(url) {
+        const FEEDS_URL = 'http://feeds.delicious.com/v2/json/urlinfo/' + Pot.StringUtil.stringify(url).md5();
+        return request(FEEDS_URL).addCallback(function(res) {
+            let tags, top_tags, result;
+            try {
+                result = JSON.parse(res.responseText);
+                top_tags = Pot.isObject(result[0].top_tags) ? result[0].top_tags : {};
+                tags = keys(top_tags);
+            } catch (e) {
+                tags = [];
+            }
+            return {
+                recommended : Pot.ArrayUtil.unique(tags) || [],
+                duplicated  : false
+            };
+        });
+    },
     /**
      * タグ、おすすめタグ、ネットワークなどを取得する。
      * ブックマーク済みでも取得することができる。
@@ -7056,7 +7074,8 @@ update(models.Delicious, {
      * @return {Object}
      */
     getSuggestions : function(url) {
-        const API_URL = 'https://api.del.icio.us/v1/posts/get';
+        const MAX_TAGS = 20;
+        const API_URL  = 'https://api.del.icio.us/v1/posts/get';
         let self = this, suggests = {};
         return this.getAPIAuth(true).addCallback(function(auth) {
             return wait(0).addCallback(function() {
@@ -7071,8 +7090,22 @@ update(models.Delicious, {
                 });
             }).addCallback(function() {
                 return wait(0).addCallback(function() {
-                    return Pot.BookmarkUtil.getRecommends(url).addCallback(function(recommends) {
-                        suggests.recommends = recommends;
+                    return self.getRecommendedTags(url).addCallback(function(deliciousTags) {
+                        suggests.deliciousTags = deliciousTags.recommended;
+                        return wait(0);
+                    }).addCallback(function() {
+                        return Pot.BookmarkUtil.getRecommends(url).addCallback(function(recommends) {
+                            suggests.recommends = recommends;
+                            suggests.keywords = Pot.ArrayUtil.shuffle(
+                                Pot.ArrayUtil.unique(
+                                    Pot.ArrayUtil.merge(
+                                        suggests.deliciousTags,
+                                        suggests.recommends
+                                    ),
+                                    false, true
+                                )
+                            ).slice(0, MAX_TAGS);
+                        });
                     });
                 });
             }).addCallback(function() {
@@ -7110,7 +7143,7 @@ update(models.Delicious, {
                                     private     : isPrivate
                                 },
                                 duplicated  : suggests.bookmarked,
-                                recommended : suggests.recommends,
+                                recommended : suggests.keywords,
                                 tags        : allTags
                             };
                             return result;
@@ -7149,8 +7182,8 @@ update(models.Delicious, {
                                         },
                                         duplicated  : !!doc.querySelector('.saveFlag'),
                                         recommended : Array.prototype.concat.call([],
-                                            $x('id("recommendedField")//a[contains(@class, "m")]/text()', doc, true),
-                                            suggests.recommends
+                                            $x('id("recommendedField")//a[contains(@class, "m")]/text()', doc, true) || [],
+                                            suggests.keywords
                                         )
                                     };
                                 })
