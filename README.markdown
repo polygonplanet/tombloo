@@ -73,7 +73,9 @@ Firefox アドオン [Tombloo](https://github.com/to/tombloo/wiki) で利用で�
    Tumblrでリブログ時にタグも一緒にポストできるパッチ。  
    [Tumblrでリブログ時にタグの継承を可能にするTomblooパッチ | 圧縮電子精神音楽浮遊構造体][tombloo.extractor.tumblr.reblog.tags.js]
 
-
+*  **tombloo.service.actions.copytitle.js**  
+   ページのタイトルやURLをクリップボードにコピーするだけのパッチ。  
+   [ページのタイトルや(非圧縮の)URLをクリップボードにコピーするだけのTomblooパッチ | 圧縮電子精神音楽浮遊構造体][tombloo.service.actions.copytitle.js]
 
 
 
@@ -119,6 +121,10 @@ Firefox アドオン [Tombloo](https://github.com/to/tombloo/wiki) で利用で�
 
 
 [tombloo.extractor.tumblr.reblog.tags.js]: http://polygon-planet.blogspot.com/2011/08/tumblrtombloo.html "Tumblrでリブログ時にタグの継承を可能にするTomblooパッチ | 圧縮電子精神音楽浮遊構造体"
+
+
+[tombloo.service.actions.copytitle.js]: http://polygon-planet.blogspot.com/2011/10/urltombloo.html "ページのタイトルや(非圧縮の)URLをクリップボードにコピーするだけのTomblooパッチ | 圧縮電子精神音楽浮遊構造体"
+
 
 
 
