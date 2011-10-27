@@ -31,8 +31,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.32
- * @date       2011-09-16
+ * @version    1.33
+ * @date       2011-10-27
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -335,15 +335,15 @@ var pixivProto = {
         }, true);
         img.setAttribute('src', src);
         img.setAttribute('style', pack(<><![CDATA[
-            width: 1px;
-            height: 1px;
-            border: 0 none;
-            padding: 0;
-            margin: 0;
-            display: inline;
-            position: absolute;
-            left: -99999px;
-            top: -99999px;
+            width    : 1px;
+            height   : 1px;
+            border   : 0 none;
+            padding  : 0;
+            margin   : 0;
+            display  : inline;
+            position : absolute;
+            left     : 0px;
+            top      : 0px;
         ]]></>));
         doc.body.appendChild(img);
         return img;
