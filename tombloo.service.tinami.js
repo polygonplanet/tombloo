@@ -15,8 +15,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.03
- * @date       2011-08-01
+ * @version    1.04
+ * @date       2011-10-27
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -71,7 +71,7 @@ Tombloo.Service.extractors.register({
     getViewLinkByThumbnail : function(ctx) {
         let result, part, link;
         if (ctx && ctx.target && ctx.onLink) {
-            part = '/img.tinami.com/illust/';
+            part = '/img.tinami.com/illust';
             if (~String(ctx.target.src).indexOf(part) ||
                 ctx.target.querySelector('img[src*="' + part + '"]')
             ) {
@@ -127,8 +127,8 @@ Tombloo.Service.extractors.register({
             height   : 1px;
             display  : inline;
             position : absolute;
-            left     : -99999px;
-            top      : -99999px;
+            left     : 0px;
+            top      : 0px;
         </>.toString());
         doc.body.appendChild(img);
         img.setAttribute('src', src);
