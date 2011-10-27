@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.62
- * @date       2011-10-06
+ * @version    1.63
+ * @date       2011-10-27
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -206,7 +206,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.62',
+    VERSION: '1.63',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -1999,11 +1999,27 @@ Pot.extend({
                 waiting = true;
                 d = new Deferred();
                 d.addCallback(function() {
-                    return Pot.unescapeHTML(Pot.StringUtil.stripTags(text));
+                    return Pot.StringUtil.stripTags(text);
                 }).addCallback(function(res) {
-                    return Pot.StringUtil.removeAA(Pot.StringUtil.remove2chName(res));
+                    return wait(0.2).addCallback(function() {
+                        return Pot.unescapeHTML(res);
+                    });
                 }).addCallback(function(res) {
-                    return Pot.StringUtil.normalizeSpace(Pot.StringUtil.removeNoise(res));
+                    return wait(0.5).addCallback(function() {
+                        return Pot.StringUtil.remove2chName(res);
+                    });
+                }).addCallback(function(res) {
+                    return wait(0.75).addCallback(function() {
+                        return Pot.StringUtil.removeAA(res);
+                    });
+                }).addCallback(function(res) {
+                    return wait(1).addCallback(function() {
+                        return Pot.StringUtil.removeNoise(res);
+                    });
+                }).addCallback(function(res) {
+                    return wait(1).addCallback(function() {
+                        return Pot.StringUtil.normalizeSpace(res);
+                    });
                 }).addCallback(function(res) {
                     text = res.replace(/\s+/g, ' ');
                 }).addBoth(function() {
@@ -5659,9 +5675,10 @@ Pot.extend(Pot.BookmarkUtil, {
             // はてブ用
             restoreHatena: function(tags) {
                 let that = this, result;
-                result = tags.map(function(item) {
+                result = [];
+                Pot.forEach(tags, function(i, item) {
                     item.name = that.restoreName(item.name);
-                    return item;
+                    result[result.length] = item;
                 });
                 return result;
             },
@@ -5956,7 +5973,7 @@ Pot.extend(Pot.BookmarkUtil, {
             ];
             filter = function(a) {
                 let r = Pot.ArrayUtil.toArray(a);
-                Pot.forEach(filters, function(i, f) {
+                Pot.forEach.slow(filters, function(i, f) {
                     if (r && r.length) {
                         r = r.filter(f);
                     }
@@ -5971,7 +5988,7 @@ Pot.extend(Pot.BookmarkUtil, {
                 d2.addCallback(function(res) {
                     // 全体(最大キーワード数)のうち文章内から取り込む最低限のパーセンテージ
                     const ENTRY_RATIO = 30;
-                    const KEYWORD_MAX = 10;
+                    const KEYWORD_MAX = 15;
                     let resLen, entLen, prevLen, ratio, keywords, shuffled;
                     entries = res || [];
                     titles  = titles  && filter(titles)  || [];
@@ -5991,7 +6008,7 @@ Pot.extend(Pot.BookmarkUtil, {
                     result = Pot.ArrayUtil.merge(result.slice(0, resLen), entries.slice(0, entLen));
                     // 大文字小文字を区別しないでユニークにする
                     shuffled = false;
-                    Pot.forEver(function() {
+                    Pot.forEver.slow(function() {
                         prevLen = result.length;
                         result = Pot.ArrayUtil.unique(result, false, true);
                         if (keywords && keywords.length && result.length < prevLen) {
@@ -6617,12 +6634,15 @@ update(models.HatenaBookmark, {
             tags = fixTags.replace(tags);
             
             // 本来の処理
-            tags = items(tags).map(function(pair) {
-                return {
-                    name      : pair[0],
-                    frequency : pair[1].count
-                }
-            });
+            let (newTags = []) {
+                Pot.forEach(tags, function(name, val) {
+                    newTags[newTags.length] = {
+                        name      : name,
+                        frequency : val && val.count || val
+                    };
+                });
+                tags = newTags;
+            }
             
             // 置換したタグ名を元に戻す
             tags = fixTags.restoreHatena(tags);
@@ -9872,15 +9892,35 @@ QuickPostForm.descriptionContextMenus.push(
                 } else {
                     // CPU抑えるため小分けにする
                     d.addCallback(function() {
-                        return Pot.unescapeHTML(Pot.StringUtil.stripTags(s));
+                        return Pot.StringUtil.stripTags(s);
                     }).addCallback(function(res) {
-                        return Pot.StringUtil.removeAA(Pot.StringUtil.remove2chName(res));
+                        return wait(0.05).addCallback(function() {
+                            return Pot.unescapeHTML(res);
+                        });
                     }).addCallback(function(res) {
-                        return Pot.StringUtil.normalizeSpace(Pot.StringUtil.removeNoise(res));
+                        return wait(0.2).addCallback(function() {
+                            return Pot.StringUtil.remove2chName(res);
+                        });
                     }).addCallback(function(res) {
-                        return Pot.StringUtil.wrapBySpace(Pot.StringUtil.spacerize(res));
+                        return wait(0.25).addCallback(function() {
+                            return Pot.StringUtil.removeAA(res);
+                        });
                     }).addCallback(function(res) {
-                        return Pot.StringUtil.trim(res);
+                        return wait(0.5).addCallback(function() {
+                            return Pot.StringUtil.removeNoise(res);
+                        });
+                    }).addCallback(function(res) {
+                        return wait(1).addCallback(function() {
+                            return Pot.StringUtil.normalizeSpace(res);
+                        });
+                    }).addCallback(function(res) {
+                        return wait(1).addCallback(function() {
+                            return Pot.StringUtil.wrapBySpace(Pot.StringUtil.spacerize(res));
+                        });
+                    }).addCallback(function(res) {
+                        return wait(0).addCallback(function() {
+                            return Pot.StringUtil.trim(res);
+                        });
                     }).addCallback(function(res) {
                         let dd = Pot.DeferredUtil.repeat(patterns.length, function(i) {
                             let re = patterns[i];
