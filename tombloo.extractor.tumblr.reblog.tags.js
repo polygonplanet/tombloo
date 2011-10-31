@@ -11,7 +11,7 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.01
+ * @version    1.02
  * @date       2011-11-01
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -40,36 +40,36 @@ addAround(Tombloo.Service.extractors['ReBlog'], 'convertToParams', function(proc
 // ダッシュボードからタグを取得 + ページから取得(可能な限り)
 addAround(Tombloo.Service.extractors['ReBlog'], 'extractByEndpoint', function(proceed, args) {
     let [ctx, endpoint] = args;
-    let result, node, tags, wrapper;
+    let result, node, tags, wrapper, limit = 3, expr;
     node = ctx && ctx.target;
-    while (node) {
-        // タグっぽいものを探す (ページの場合カスタマイズしてるかもなので間違える可能性アリ)
-        wrapper = $x('./ancestor-or-self::li[starts-with(normalize-space(@class),"post")]', node);
-        if (wrapper) {
-            tags = $x('./*[starts-with(@id,"post_tags_")]', wrapper) ||
-                   $x('./*[contains(@class,"tags")]', wrapper);
-        } else {
-            tags = $x('./*[contains(@class,"tag") or contains(@class,"label") or contains(@id,"tag") or contains(@id,"label")]', node);
-        }
-        if (wrapper || tags) {
-            // 確実に間違えてる場合は無効にする
-            if (tags && (tagName(tags) === 'body' ||
-                         /tumblr.com\/archive/.test(ctx.href) ||
-                         /\b(?:container|wrapper|main)\b/.test(tags.className))) {
-                tags = null;
+    // ダッシュボード
+    if (/^https?:\/\/(?:www[.]|)tumblr[.]com\//.test(ctx.document.documentURI)) {
+        expr = './ancestor-or-self::li[starts-with(normalize-space(@class),"post")]//*[contains(@class,"tags")]/a/text()';
+        tags = $x(expr, node, true);
+    } else {
+        // ページ内
+        while (node) {
+            if (/tumblr.com\/archive/.test(ctx.href) ||
+                /\b(?:container|wrapper|main)\b/.test(node.className + ' ' + node.id)) {
+                tags = '';
+                break;
             }
-            break;
+            expr = './/*[contains(@class,"tag") or contains(@class,"label") or contains(@id,"tag") or contains(@id,"label")]/*/text()';
+            tags = $x(expr, node, true);
+            if (--limit < 0 || (tags && tags.length)) {
+                break;
+            }
+            node = node.parentNode;
         }
-        node = node.parentNode;
     }
-    if (tags) {
-        tags = convertToPlainText(tags).replace(/<\/?\w[^>]*>|\s[ox\d]\s|[\x00-\x19*\/]/gi, '');
-        //FIXME: スペースの扱いが曖昧
-        tags = tags.split(~tags.indexOf('#') ? /[#,]+/ : /[\s,]+/).map(function(tag) {
-            return tag.replace(/^#+|^\s+|\s+$|,/g, '').replace(/\s+/g, '-').trim();
+    if (!tags || !tags.length) {
+        tags = '';
+    } else {
+        tags = (tags || []).map(function(tag) {
+            return tag.replace(/^\s+|\s+$|[\x00-\x19,#*\/]/g, '').replace(/\s+/g, '-').trim();
         }).filter(function(tag) {
-            return tag && tag.length;
-        }).join(',').replace(/^Source:[\w.-]+,?/i, '');
+            return tag && tag.length && !/tag.?[(]['"]?\d+["']?[)];?$/i.test(tag);
+        }).join(',').replace(/^(?:Source|[^:]+):[\w.-]+,?/i, '');
     }
     if (tags) {
         return proceed(args).addCallback(function(res) {
