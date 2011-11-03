@@ -78,7 +78,7 @@ Firefox アドオン [Tombloo](https://github.com/to/tombloo/wiki) で利用で�
    [ページのタイトルや(非圧縮の)URLをクリップボードにコピーするだけのTomblooパッチ | 圧縮電子精神音楽浮遊構造体][tombloo.service.actions.copytitle.js]
 
 *  **tombloo.service.actions.element.js**  
-   ページ内のDOM要素を削除したり操作できるパッチ。
+   ページ内のDOM要素を削除したり操作できるパッチ。  
    [ページ内のDOM要素を削除したり操作できるTomblooパッチ | 圧縮電子精神音楽浮遊構造体][tombloo.service.actions.element.js]
 
 
