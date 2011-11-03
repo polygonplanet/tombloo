@@ -77,6 +77,17 @@ Firefox アドオン [Tombloo](https://github.com/to/tombloo/wiki) で利用で�
    ページのタイトルやURLをクリップボードにコピーするだけのパッチ。  
    [ページのタイトルや(非圧縮の)URLをクリップボードにコピーするだけのTomblooパッチ | 圧縮電子精神音楽浮遊構造体][tombloo.service.actions.copytitle.js]
 
+*  **tombloo.service.actions.element.js**  
+   ページ内のDOM要素を削除したり操作できるパッチ。
+   [ページ内のDOM要素を削除したり操作できるTomblooパッチ | 圧縮電子精神音楽浮遊構造体][tombloo.service.actions.element.js]
+
+
+
+
+
+
+
+
 
 
 [tombloo.extension.twitter.enclose.js]: http://polygon-planet.blogspot.com/2011/06/twitterposttombloo.html "TwitterにPOSTするとき先頭に“見てる”を付けてタイトルを括弧で囲うTomblooパッチ | 圧縮電子精神音楽浮遊構造体"
@@ -124,6 +135,9 @@ Firefox アドオン [Tombloo](https://github.com/to/tombloo/wiki) で利用で�
 
 
 [tombloo.service.actions.copytitle.js]: http://polygon-planet.blogspot.com/2011/10/urltombloo.html "ページのタイトルや(非圧縮の)URLをクリップボードにコピーするだけのTomblooパッチ | 圧縮電子精神音楽浮遊構造体"
+
+
+[tombloo.service.actions.element.js]: http://polygon-planet.blogspot.com/2011/11/domtombloo.html "ページ内のDOM要素を削除したり操作できるTomblooパッチ | 圧縮電子精神音楽浮遊構造体"
 
 
 
