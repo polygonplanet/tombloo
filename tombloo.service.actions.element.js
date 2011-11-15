@@ -11,8 +11,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.00
- * @date       2011-11-03
+ * @version    1.01
+ * @date       2011-11-16
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -49,6 +49,14 @@ const LABELS = {
     MENU_REMOVE_SELECTION : {
         ja : '選択範囲の要素を削除',
         en : 'Remove selection elements'
+    },
+    MENU_REMOVE_ELEMENT : {
+        ja : '要素を指定して削除',
+        en : 'Remove by specify element'
+    },
+    MENU_REMOVE_REGION : {
+        ja : '選択範囲を指定して要素を削除',
+        en : 'Remove by specify region'
     }
 };
 
@@ -77,18 +85,6 @@ Tombloo.Service.actions.register({
                     LABELS.translate('MENU_REMOVE_THIS'),
                     '<' + tagName(ctx.target) + '.../>'
                 ].join(' ');
-                /*
-                // サブメニューアイテムが選択されてる時のイベントはない!? (保留!)
-                let (cssText = ctx.target.style.cssText, style = ctx.target.style) {
-                    style.border = '3px solid #fece33';
-                    style.MozBoxShadow = '1px 1px 5px #333';
-                    callLater(5, function() {
-                        try {
-                            style.cssText = cssText;
-                        } catch (e) {}
-                    });
-                }
-                */
                 return true;
             } else {
                 return false;
@@ -126,6 +122,75 @@ Tombloo.Service.actions.register({
                 ctx.window.getSelection().deleteFromDocument();
             } catch (e) {}
         }
+    }, {
+        name  : '----',
+        type  : 'context',
+        check : function(ctx) {
+            return true;
+        }
+    }, {
+        name  : LABELS.translate('MENU_REMOVE_ELEMENT'),
+        type  : 'context',
+        check : function(ctx) {
+            return true;
+        },
+        execute : function(ctx) {
+            return selectElement(ctx.document).addCallback(function(elem) {
+                let pos, rect, mark, orgDisplay;
+                pos = getElementPosition(elem);
+                orgDisplay = elem.style.display;
+                elem.style.display = 'inline-block';
+                rect = {
+                    x : pos.x,
+                    y : pos.y,
+                    w : elem.clientWidth,
+                    h : elem.clientHeight
+                };
+                elem.style.display = orgDisplay;
+                mark = highlightElement(elem);
+                showButton(ctx.document, rect, function() {
+                    removeElement(elem);
+                }, function() {
+                    try {
+                        mark.clear();
+                    } catch (e) {}
+                }, true);
+            });
+        }
+    }, {
+        name  : LABELS.translate('MENU_REMOVE_REGION'),
+        type  : 'context',
+        check : function(ctx) {
+            return true;
+        },
+        execute : function(ctx) {
+            return selectRegion(ctx.document).addCallback(function(region) {
+                let elems, styles = [], rect;
+                rect = {
+                    x : region.position.x,
+                    y : region.position.y,
+                    w : region.dimensions.w,
+                    h : region.dimensions.h
+                };
+                elems = getElementsInRect(rect, ctx.document);
+                if (elems && elems.length) {
+                    elems.forEach(function(elem, i) {
+                        styles[i] = highlightElement(elem);
+                    });
+                    showButton(ctx.document, rect, function() {
+                        elems.forEach(function(elem, i) {
+                            removeElement(elem);
+                        });
+                    }, function() {
+                        elems.forEach(function(elem, i) {
+                            try {
+                                styles[i].clear();
+                            } catch (e) {}
+                        });
+                    });
+                }
+            });
+        }
     }]
 }, '----');
 
@@ -150,7 +215,6 @@ function stringify(x, ignoreBoolean) {
           break;
       case 'object':
           if (x) {
-            // Fixed object valueOf. e.g. new String('hoge');
             c = x.constructor;
             if (c === String || c === Number ||
                 (typeof XML !== 'undefined' && c === XML) ||
@@ -175,6 +239,124 @@ function stringify(x, ignoreBoolean) {
 
 function strip(s) {
     return stringify(s).replace(/[\s\u00A0\u3000]+/g, '');
+}
+
+
+function getElementsInRect(rect, doc) {
+    let results = [];
+    Array.prototype.slice.call(doc.body.getElementsByTagName('*')).forEach(function(elem) {
+        let pos;
+        try {
+            pos = getElementPosition(elem);
+            if (!pos || pos.x == null) {
+                throw pos;
+            }
+            if (pos.x * 1.12 >= rect.x &&
+                pos.y * 1.12 >= rect.y &&
+                elem.clientWidth  / 3 <= rect.w &&
+                pos.y + elem.clientHeight / 2 <= rect.y + rect.h
+            ) {
+                results.push(elem);
+            }
+        } catch (e) {}
+    });
+    return results;
+}
+
+
+function highlightElement(elem) {
+    let cssText, style;
+    style = elem.style;
+    cssText = style.cssText;
+    style.border          = '2px solid #fece33';
+    style.MozBorderRadius = '3px';
+    style.MozBoxShadow    = '1px 1px 5px #333';
+    return {
+        clear : function(delay) {
+            callLater(delay || 0, function() {
+                try {
+                    style.cssText = cssText;
+                } catch (e) {}
+            });
+        }
+    };
+}
+
+
+function showButton(doc, rect, remove, cancel, center) {
+    let buttons, button = doc.createElement('div');
+    button.setAttribute('style', <>
+        display            : inline-block;
+        position           : absolute;
+        left               : {Math.floor(rect.x + (rect.w * (center ? 0.492 : 0.875)))}px;
+        top                : {Math.floor(rect.y + rect.h + 22)}px;
+        z-index            : 99999998;
+        border             : 2px solid #555;
+        -moz-border-radius : 3px;
+        -moz-box-shadow    : 1px 1px 3px #333;
+        color              : #555;
+        font-size          : 12px;
+        font-family        : verdana, sans-serif;
+        padding            : 2px 4px;
+        cursor             : pointer;
+        background         : #f6f6ff;
+        -moz-user-select   : none;
+    </>.toString());
+    buttons = {
+        remove : button,
+        cancel : button.cloneNode(false)
+    };
+    buttons.remove.textContent  = 'Delete';
+    buttons.cancel.textContent  = 'Cancel';
+    buttons.remove.style.top    = (rect.y + rect.h) + 'px';
+    buttons.remove.style.zIndex = 99999999;
+    
+    buttons.remove.addEventListener('click', function() {
+        try {
+            remove();
+        } finally {
+            removeElement(buttons.remove);
+            removeElement(buttons.cancel);
+        }
+    }, false);
+    buttons.cancel.addEventListener('click', function() {
+        try {
+            cancel();
+        } finally {
+            removeElement(buttons.remove);
+            removeElement(buttons.cancel);
+        }
+    }, false);
+    
+    buttons.remove.addEventListener('mouseover', function() {
+        buttons.remove.style.background = '#c2c2ff';
+    }, false);
+    buttons.remove.addEventListener('mouseout', function() {
+        buttons.remove.style.background   = '#f6f6ff';
+        buttons.remove.style.MozBoxShadow = '1px 1px 3px #333';
+    }, false);
+    buttons.remove.addEventListener('mousedown', function() {
+        buttons.remove.style.MozBoxShadow = 'none';
+    }, false);
+    buttons.remove.addEventListener('mouseup', function() {
+        buttons.remove.style.MozBoxShadow = '1px 1px 3px #333';
+    }, false);
+    
+    buttons.cancel.addEventListener('mouseover', function() {
+        buttons.cancel.style.background   = '#ffc2c2';
+    }, false);
+    buttons.cancel.addEventListener('mouseout', function() {
+        buttons.cancel.style.background   = '#f6f6ff';
+        buttons.cancel.style.MozBoxShadow = '1px 1px 3px #333';
+    }, false);
+    buttons.cancel.addEventListener('mousedown', function() {
+        buttons.cancel.style.MozBoxShadow = 'none';
+    }, false);
+    buttons.cancel.addEventListener('mouseup', function() {
+        buttons.cancel.style.MozBoxShadow = '1px 1px 3px #333';
+    }, false);
+    doc.body.appendChild(buttons.cancel);
+    doc.body.appendChild(buttons.remove);
 }
 
 
