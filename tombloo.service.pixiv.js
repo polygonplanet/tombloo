@@ -31,8 +31,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.33
- * @date       2011-10-27
+ * @version    1.34
+ * @date       2011-11-16
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -769,10 +769,10 @@ var pixivBookmark = update({
                 }
                 // FALLTHROUGH
             case 'changed':
-                url = this.BASE_URL + 'bookmark.php';
+                url = this.BASE_URL + 'bookmark.php?type=user';
                 result = request(url).addCallback(function(res) {
                     let expr, doc = convertToHTMLDocument(res.responseText);
-                    if ($x('//form[@name="loginForm"]', doc)) {
+                    if ($x('//form[@name="login-form"]', doc)) {
                         throw new Error(getMessage('error.notLoggedin'));
                     }
                     expr = '//form[@id="f"]/input[@name="tt"]/@value';
@@ -787,7 +787,8 @@ var pixivBookmark = update({
     },
     getAuthCookie: function() {
         //FIXME: ログイン状態の判別が出来てないかも(?)
-        return getCookieString('pixiv.net', 'PHPSESSID');
+        return getCookieString('pixiv.net', 'PHPSESSID') ||
+               getCookieString('.pixiv.net', 'PHPSESSID');
     },
     getDocument: function(ps, write) {
         var doc = null;
