@@ -21,8 +21,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.12
- * @date       2011-08-27
+ * @version    1.13
+ * @date       2011-11-19
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -87,31 +87,33 @@ addAround(models[GOOGLE_PLUS_NAME], 'check', function(proceed, args) {
 // ログインしてない場合スルー
 try {
     // 各サークルを登録
-    models[GOOGLE_PLUS_NAME].getOZData().addCallback(function(data) {
+    models[GOOGLE_PLUS_NAME].getInitialData(12).addCallback(function(data) {
         let circles = [];
-        data[12][0].forEach(function(circle) {
-            let code, name, desc, has;
-            code = stringify(circle[0][0]);
-            if (code) {
-                has = false;
-                circles.forEach(function(c) {
-                    if (!has && c.code === code) {
-                        has = true;
-                    }
-                });
-                if (!has) {
-                    name = stringify(circle[1][0]);
-                    desc = stringify(circle[1][2]);
-                    if (name) {
-                        circles[circles.length] = {
-                            code : code,
-                            name : name,
-                            desc : desc
-                        };
+        if (data) {
+            data[0].forEach(function(circle) {
+                let code, name, desc, has;
+                code = stringify(circle[0][0]);
+                if (code) {
+                    has = false;
+                    circles.forEach(function(c) {
+                        if (!has && c.code === code) {
+                            has = true;
+                        }
+                    });
+                    if (!has) {
+                        name = stringify(circle[1][0]);
+                        desc = stringify(circle[1][2]);
+                        if (name) {
+                            circles[circles.length] = {
+                                code : code,
+                                name : name,
+                                desc : desc
+                            };
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
         return circles;
     }).addCallback(function(circles) {
         const GOOGLE_PLUS_ICON_HASH = 'f1212ee736a41ae21b56dff60b53fe35';
@@ -521,6 +523,7 @@ function drawIcon(src, text) {
         ctx.drawImage(img, 0, 0);
         color = generateColor(text);
         ctx.fillStyle = 'rgb(' + [color.r, color.g, color.b].join(',') + ')';
+        //TODO: 新しいアイコンに
         ctx.fillRect(7, 5, 2, 8);
         ctx.fillRect(4, 8, 8, 2);
         return canvas.toDataURL();
