@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.63
- * @date       2011-10-27
+ * @version    1.64
+ * @date       2011-12-20
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -206,7 +206,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.63',
+    VERSION: '1.64',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -2001,23 +2001,23 @@ Pot.extend({
                 d.addCallback(function() {
                     return Pot.StringUtil.stripTags(text);
                 }).addCallback(function(res) {
-                    return wait(0.2).addCallback(function() {
+                    return wait(0.02).addCallback(function() {
                         return Pot.unescapeHTML(res);
                     });
                 }).addCallback(function(res) {
-                    return wait(0.5).addCallback(function() {
+                    return wait(0.05).addCallback(function() {
                         return Pot.StringUtil.remove2chName(res);
                     });
                 }).addCallback(function(res) {
-                    return wait(0.75).addCallback(function() {
+                    return wait(0.075).addCallback(function() {
                         return Pot.StringUtil.removeAA(res);
                     });
                 }).addCallback(function(res) {
-                    return wait(1).addCallback(function() {
+                    return wait(0.02).addCallback(function() {
                         return Pot.StringUtil.removeNoise(res);
                     });
                 }).addCallback(function(res) {
-                    return wait(1).addCallback(function() {
+                    return wait(0.025).addCallback(function() {
                         return Pot.StringUtil.normalizeSpace(res);
                     });
                 }).addCallback(function(res) {
@@ -4423,30 +4423,28 @@ Pot.extend(Pot.ArrayUtil, {
      * @return {Array}                ユニークな値を持つ配列
      */
     unique: function(array, loose, ignoreCase) {
-        let result = [], len, dups = [], ia, ja, strict;
+        let result = [], len, dups = [], ia, ja, i, j, strict;
         if (Pot.isArray(array)) {
             len = array.length;
             if (len) {
                 strict = ignoreCase ? true : !loose;
-                Pot.repeat(len, function(i) {
-                    Pot.repeat({begin: i + 1, end: len}, function(j) {
-                        if (j < len) {
-                            if (ignoreCase) {
-                                ia = String(array[i]).toLowerCase();
-                                ja = String(array[j]).toLowerCase();
-                            } else {
-                                ia = array[i];
-                                ja = array[j];
-                            }
-                            if ((strict && ia === ja) || ia == ja) {
-                                dups[j] = i;
-                            }
+                for (i = 0; i < len; i++) {
+                    for (j = i + 1; j < len; j++) {
+                        if (ignoreCase) {
+                            ia = String(array[i]).toLowerCase();
+                            ja = String(array[j]).toLowerCase();
+                        } else {
+                            ia = array[i];
+                            ja = array[j];
                         }
-                    });
+                        if ((strict && ia === ja) || ia == ja) {
+                            dups[j] = i;
+                        }
+                    }
                     if (!(i in dups)) {
                         result[result.length] = array[i];
                     }
-                });
+                }
             }
         }
         return result;
@@ -5973,10 +5971,13 @@ Pot.extend(Pot.BookmarkUtil, {
             ];
             filter = function(a) {
                 let r = Pot.ArrayUtil.toArray(a);
-                Pot.forEach.slow(filters, function(i, f) {
+                Pot.forEach(filters, function(i, f) {
                     if (r && r.length) {
                         r = r.filter(f);
                     }
+                });
+                r = r.map(function(v) {
+                  return Pot.StringUtil.trim(v.replace(/^['"]+|["']+$/g, ''));
                 });
                 return r;
             };
@@ -6077,7 +6078,7 @@ Pot.extend(Pot.BookmarkUtil, {
      * キーワード抽出とAPI取得の組み合わせ
      */
     getRecommends: function(url) {
-        const MAX_TAGS = 15;
+        const MAX_TAGS = 20;
         return Pot.BookmarkUtil.getRecentUserTags(url).addCallback(function(tags) {
             if (tags && tags.length >= MAX_TAGS) {
                 return succeed().addCallback(function() {
@@ -6226,41 +6227,39 @@ update(models.GoogleBookmarks, {
             if (doc.getElementById('gaia_loginform')) {
                 throw new Error(getMessage('error.notLoggedin'));
             }
-            try {
-                json = evalInSandbox('(' + res.responseText.replace(/^\s*['{[(]*[)\]}']+/, '') + ')', API_FIND_URL);
-                if (json.threadTitles[0].sectionContent[0].url == url) {
-                    result = true;
-                }
-                return result;
-            } catch (e) {
-                // 非公式APIのため、通常の処理も兼ねておく
-                return request(FIND_URL, {
-                    queryString : {
-                        start  : 0,
-                        num    : 1,
-                        output : 'xml',
-                        q      : url,
-                        hl     : 'en'
-                    }
-                }).addCallback(function(res) {
-                    let result = false, uri, doc;
-                    doc = convertToHTMLDocument(res.responseText);
-                    if (doc.getElementById('gaia_loginform')) {
-                        throw new Error(getMessage('error.notLoggedin'));
-                    }
-                    try {
-                        doc = convertToXML(res.responseText);
-                        for each (uri in doc..bookmarks..url.text()) {
-                            if (uri == url) {
-                                self.privateCache.bookmarked.add(url);
-                                result = true;
-                                break;
-                            }
-                        }
-                    } catch (e) {}
-                    return result;
-                });
+            json = evalInSandbox('(' + res.responseText.replace(/^\s*['{[(]*[)\]}']+/, '') + ')', API_FIND_URL);
+            if (json.threadTitles[0].sectionContent[0].url == url) {
+                result = true;
             }
+            return result;
+        }).addErrback(function() {
+            // 非公式APIのため、通常の処理も兼ねておく
+            return request(FIND_URL, {
+                queryString : {
+                    start  : 0,
+                    num    : 1,
+                    output : 'xml',
+                    q      : url,
+                    hl     : 'en'
+                }
+            }).addCallback(function(res) {
+                let result = false, uri, doc;
+                doc = convertToHTMLDocument(res.responseText);
+                if (doc.getElementById('gaia_loginform')) {
+                    throw new Error(getMessage('error.notLoggedin'));
+                }
+                try {
+                    doc = convertToXML(res.responseText);
+                    for each (uri in doc..bookmarks..url.text()) {
+                        if (uri == url) {
+                            self.privateCache.bookmarked.add(url);
+                            result = true;
+                            break;
+                        }
+                    }
+                } catch (e) {}
+                return result;
+            });
         });
     },
     getBookmarkTagsByURI: function(url) {
@@ -6279,40 +6278,38 @@ update(models.GoogleBookmarks, {
             if (doc.getElementById('gaia_loginform')) {
                 throw new Error(getMessage('error.notLoggedin'));
             }
-            try {
-                json = evalInSandbox('(' + res.responseText.replace(/^\s*['{[(]*[)\]}']+/, '') + ')', API_FIND_URL);
-                labels = json.threadTitles[0].sectionContent[0].labels;
-                if (Pot.isArray(labels)) {
-                    labels = Pot.BookmarkUtil.normalizeTags(labels);
-                } else {
-                    throw labels;
-                }
-                return labels;
-            } catch (e) {
-                return request(FIND_URL, {
-                    queryString : {
-                        start  : 0,
-                        num    : 1,
-                        output : 'xml',
-                        q      : url,
-                        hl     : 'en'
-                    }
-                }).addCallback(function(res) {
-                    let labels, label, tag, result, doc;
-                    labels = [];
-                    try {
-                        doc = convertToXML(res.responseText);
-                        for each (label in doc..bookmarks.(url.text() == url).parent()..label.text()) {
-                            tag = Pot.StringUtil.trim(label);
-                            if (tag && tag.length) {
-                                labels[labels.length] = tag;
-                            }
-                        }
-                    } catch (e) {}
-                    result = Pot.BookmarkUtil.normalizeTags(labels);
-                    return result;
-                });
+            json = evalInSandbox('(' + res.responseText.replace(/^\s*['{[(]*[)\]}']+/, '') + ')', API_FIND_URL);
+            labels = json.threadTitles[0].sectionContent[0].labels;
+            if (Pot.isArray(labels)) {
+                labels = Pot.BookmarkUtil.normalizeTags(labels);
+            } else {
+                throw labels;
             }
+            return labels;
+        }).addErrback(function() {
+            return request(FIND_URL, {
+                queryString : {
+                    start  : 0,
+                    num    : 1,
+                    output : 'xml',
+                    q      : url,
+                    hl     : 'en'
+                }
+            }).addCallback(function(res) {
+                let labels, label, tag, result, doc;
+                labels = [];
+                try {
+                    doc = convertToXML(res.responseText);
+                    for each (label in doc..bookmarks.(url.text() == url).parent()..label.text()) {
+                        tag = Pot.StringUtil.trim(label);
+                        if (tag && tag.length) {
+                            labels[labels.length] = tag;
+                        }
+                    }
+                } catch (e) {}
+                result = Pot.BookmarkUtil.normalizeTags(labels);
+                return result;
+            });
         });
     },
     getBookmarkDescriptionByURI: function(uri) {
@@ -6348,58 +6345,56 @@ update(models.GoogleBookmarks, {
             if (doc.getElementById('gaia_loginform')) {
                 throw new Error(getMessage('error.notLoggedin'));
             }
-            try {
-                json = evalInSandbox('(' + res.responseText.replace(/^\s*['{[(]*[)\]}']+/, '') + ')', API_FIND_URL);
-                description = json.threadTitles[0].sectionContent[0].description;
-                if (!Pot.isString(description)) {
-                    throw description;
+            json = evalInSandbox('(' + res.responseText.replace(/^\s*['{[(]*[)\]}']+/, '') + ')', API_FIND_URL);
+            description = json.threadTitles[0].sectionContent[0].description;
+            if (!Pot.isString(description)) {
+                throw description;
+            }
+            return Pot.StringUtil.trim(description);
+        }).addErrback(function() {
+            return request(FIND_URL, {
+                queryString : {
+                    start  : 0,
+                    num    : 1,
+                    output : 'rss',
+                    q      : uri,
+                    hl     : 'en'
                 }
-                return Pot.StringUtil.trim(description);
-            } catch (e) {
-                return request(FIND_URL, {
-                    queryString : {
-                        start  : 0,
-                        num    : 1,
-                        output : 'rss',
-                        q      : uri,
-                        hl     : 'en'
-                    }
-                }).addCallback(function(res) {
-                    let desc = null, items, doc, text;
-                    text = fixRSS.execute(res.responseText);
-                    doc = convertToHTMLDocument(text);
-                    if (doc.getElementById('gaia_loginform')) {
-                        throw new Error(getMessage('error.notLoggedin'));
-                    }
-                    items = Pot.ArrayUtil.toArray(doc.getElementsByTagName('item') || []);
-                    (Pot.isArray(items) ? items : []).forEach(function(item) {
-                        let link;
-                        try {
-                            if (desc === null && item) {
-                                link = item.getElementsByTagName(fixRSS.name);
-                                if (link && link[0] && link[0].innerHTML == uri) {
-                                    desc = item.getElementsByTagName('smh:bkmk_annotation');
+            }).addCallback(function(res) {
+                let desc = null, items, doc, text;
+                text = fixRSS.execute(res.responseText);
+                doc = convertToHTMLDocument(text);
+                if (doc.getElementById('gaia_loginform')) {
+                    throw new Error(getMessage('error.notLoggedin'));
+                }
+                items = Pot.ArrayUtil.toArray(doc.getElementsByTagName('item') || []);
+                (Pot.isArray(items) ? items : []).forEach(function(item) {
+                    let link;
+                    try {
+                        if (desc === null && item) {
+                            link = item.getElementsByTagName(fixRSS.name);
+                            if (link && link[0] && link[0].innerHTML == uri) {
+                                desc = item.getElementsByTagName('smh:bkmk_annotation');
+                                if (!desc || desc.length === 0) {
+                                    desc = item.getElementsByTagNameNS('smh', 'signature');
                                     if (!desc || desc.length === 0) {
-                                        desc = item.getElementsByTagNameNS('smh', 'signature');
-                                        if (!desc || desc.length === 0) {
-                                            desc = item.getElementsByTagName('bkmk_annotation');
-                                        }
-                                    }
-                                    if (desc && desc.length && desc[0]) {
-                                        desc = Pot.StringUtil.stringify(desc[0].innerHTML);
+                                        desc = item.getElementsByTagName('bkmk_annotation');
                                     }
                                 }
+                                if (desc && desc.length && desc[0]) {
+                                    desc = Pot.StringUtil.stringify(desc[0].innerHTML);
+                                }
                             }
-                            if (!desc || !Pot.isString(desc)) {
-                                throw desc;
-                            }
-                        } catch (e) {
-                            desc = null;
                         }
-                    });
-                    return desc ? Pot.StringUtil.trim(desc) : '';
+                        if (!desc || !Pot.isString(desc)) {
+                            throw desc;
+                        }
+                    } catch (e) {
+                        desc = null;
+                    }
                 });
-            }
+                return desc ? Pot.StringUtil.trim(desc) : '';
+            });
         });
     },
     getAnnotation: function(ps) {
@@ -6448,8 +6443,9 @@ update(models.GoogleBookmarks, {
                             bkmk       : ps.itemUrl,
                             annotation : self.getAnnotation(ps),
                             labels     : joinText(tags, ','),
-                            btnA       : fs.btnA,
+                            //btnA       : fs.btnA,
                             sig        : fs.sig,
+                            prev       : '/mark',
                             // 'zx' 必要かもしれないユニーク乱数パラメータ
                             zx         : Math.random().toString(36).split('.').pop()
                         }
@@ -6491,6 +6487,32 @@ update(models.GoogleBookmarks, {
                                 };
                             });
                             return Pot.callLazy(d);
+                        }).addErrback(function() {
+                            return request('https://www.google.com/bookmarks/').addCallback(function(res) {
+                                let d, items, tag, tags = [], doc = convertToHTMLDocument(res.responseText);
+                                items = $x('//*[@id="sidenav"]//li//a[contains(@href,"label")]/text()', doc, true);
+                                d = Pot.DeferredUtil.repeat(items.length, function(i) {
+                                    tag = Pot.StringUtil.trim(items[i]);
+                                    if (tag.length) {
+                                        tags[tags.length] = {
+                                            name      : tag,
+                                            frequency : -1
+                                        };
+                                    }
+                                }).addCallback(function() {
+                                    tags = self.privateCache.tags.normalize(tags);
+                                    return {
+                                        duplicated  : bookmarked,
+                                        recommended : keywords || [],
+                                        tags        : tags,
+                                        form        : {
+                                            tags        : postTags || [],
+                                            description : description
+                                        }
+                                    };
+                                });
+                                return Pot.callLazy(d);
+                            });
                         });
                     });
                 });
@@ -9898,23 +9920,23 @@ QuickPostForm.descriptionContextMenus.push(
                             return Pot.unescapeHTML(res);
                         });
                     }).addCallback(function(res) {
-                        return wait(0.2).addCallback(function() {
+                        return wait(0.02).addCallback(function() {
                             return Pot.StringUtil.remove2chName(res);
                         });
                     }).addCallback(function(res) {
-                        return wait(0.25).addCallback(function() {
+                        return wait(0.02).addCallback(function() {
                             return Pot.StringUtil.removeAA(res);
                         });
                     }).addCallback(function(res) {
-                        return wait(0.5).addCallback(function() {
+                        return wait(0.05).addCallback(function() {
                             return Pot.StringUtil.removeNoise(res);
                         });
                     }).addCallback(function(res) {
-                        return wait(1).addCallback(function() {
+                        return wait(0.1).addCallback(function() {
                             return Pot.StringUtil.normalizeSpace(res);
                         });
                     }).addCallback(function(res) {
-                        return wait(1).addCallback(function() {
+                        return wait(0.1).addCallback(function() {
                             return Pot.StringUtil.wrapBySpace(Pot.StringUtil.spacerize(res));
                         });
                     }).addCallback(function(res) {
