@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.64
- * @date       2011-12-20
+ * @version    1.65
+ * @date       2011-12-24
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -206,7 +206,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.64',
+    VERSION: '1.65',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -6932,7 +6932,7 @@ update(models.Delicious, {
                     throw new Error(getMessage('error.notLoggedin'));
                 }
                 return info.logged_in_username ||
-                    decodeURIComponent(getCookieString('delicious.com', '_user')).extract(/user=(.*?)\s+/);
+                    decodeURIComponent(getCookieString('delicious.com', '_user')).extract(/user=(.*?)(?:\s|[+])/);
             });
         });
     },
@@ -6946,7 +6946,9 @@ update(models.Delicious, {
             'http://www.delicious.com',
             'http://delicious.com',
             'www.delicious.com',
-            'delicious.com'
+            '.www.delicious.com',
+            'delicious.com',
+            '.delicious.com'
         ];
         let self = this;
         // http://www.delicious.com/help/api
@@ -6983,7 +6985,7 @@ update(models.Delicious, {
      * @return {Array}
      */
     getUserTags : function(user) {
-        // 同期でエラーが起きないようにする
+        const TAGS_URL = 'http://delicious.com/save/confirm';
         let self = this, d, username;
         d = ((user) ? succeed(user) : this.getCurrentUser());
         return d.addCallback(function(user) {
@@ -6993,26 +6995,17 @@ update(models.Delicious, {
             if (auth !== false) {
                 return self.getUserTagsByAPI();
             } else {
+                // 同期でエラーが起きないようにする
                 return succeed().addCallback(function() {
-                    return request('http://feeds.delicious.com/v2/json/tags/' + username);
-                }).addCallback(function(res) {
-                    let tags = JSON.parse(res.responseText);
-                    // タグが無いか?(取得失敗時も発生)
-                    if (!tags || isEmpty(tags)) {
-                        return [];
-                    }
-                    return reduce(function(memo, tag) {
-                        memo.push({
-                            name      : tag[0],
-                            frequency : tag[1]
+                    return request(TAGS_URL).addCallback(function(res) {
+                        let doc = convertToHTMLDocument(res.responseText);
+                        return doc.getElementById('autocompleteTags').value.trim().split(/\s*,\s*/).map(function(tag) {
+                            return {
+                                name      : tag,
+                                frequency : -1
+                            };
                         });
-                        return memo;
-                    }, tags, []);
-                }).addErrback(function(err) {
-                    // Delicious移管によりfeedが停止されタグの取得に失敗する
-                    // 再開時に動作するように接続を試行し、失敗したら空にしてエラーを回避する
-                    error(err);
-                    return [];
+                    });
                 });
             }
         });
@@ -7040,7 +7033,7 @@ update(models.Delicious, {
                             for each (let tag in xml..tag) {
                                 tags[tags.length] = {
                                     name      : tag.@tag.toString(),
-                                    frequency : Number(tag.@count)
+                                    frequency : +(tag.@count)
                                 };
                             }
                         } catch (e) {}
@@ -7212,20 +7205,27 @@ update(models.Delicious, {
                                             }
                                         });
                                 }).addCallback(function(res) {
-                                    let doc = convertToHTMLDocument(res.responseText);
+                                    let doc = convertToHTMLDocument(res.responseText),
+                                        tags = doc.querySelector('input[name="tags"]').value,
+                                        desc = doc.querySelector('textarea[name="description"]').value;
                                     return {
                                         editPage : 'http://www.delicious.com/save?url=' + encodeURIComponent(url),
                                         form : {
-                                            item        : doc.getElementById('saveTitle').value,
-                                            description : doc.getElementById('saveNotes').value,
-                                            tags        : doc.getElementById('saveTags').value.split(','),
+                                            item        : doc.querySelector('input[name="title"]').value,
+                                            description : desc,
+                                            tags        : tags.split(/\s*,\s*/),
                                             private     : Pot.getPref(POT_BOOKMARK_PRIVATE) ? 'true' :
-                                                            doc.getElementById('savePrivate').checked
+                                                            doc.querySelector('input[name="private"]').checked
                                         },
-                                        duplicated  : !!doc.querySelector('.saveFlag'),
-                                        recommended : Array.prototype.concat.call([],
-                                            $x('id("recommendedField")//a[contains(@class, "m")]/text()', doc, true) || [],
-                                            suggests.keywords
+                                        //duplicated  : !!doc.querySelector('.saveFlag'),
+                                        //TODO: ブックマーク済みかどうか
+                                        duplicated  : !!(tags.trim() || desc.trim()),
+                                        recommended : Pot.BookmarkUtil.normalizeTags(
+                                            Array.prototype.concat.call([],
+                                                $x('//*[contains(@ap,"recoTags")]' +
+                                                   '//*[contains(@class,"tag")]//span/text()', doc, true) || [],
+                                                suggests.keywords
+                                            )
                                         )
                                     };
                                 })
@@ -7284,32 +7284,39 @@ update(models.Delicious, {
      */
     postByForm : function(ps) {
         const SAVE_URL = 'http://www.delicious.com/save';
-        let tags, notes, title, isPrivate;
+        let tags, notes, title, isPrivate, username;
         let (tr = Pot.BookmarkUtil.truncateFields, name = this.name) {
             title = tr(name, 'title', ps.item);
             tags  = tr(name, 'tagLength', Pot.BookmarkUtil.appendConstantTags(ps.tags));
             notes = tr(name, 'comment', joinText([ps.body, ps.description], ' ', true));
         }
         isPrivate = (ps.private || Pot.getPref(POT_BOOKMARK_PRIVATE));
-        return this.getCurrentUser().addCallback(function() {
+        return this.getCurrentUser().addCallback(function(user) {
+            username = user;
             return request(SAVE_URL, {
                 queryString : {
-                    title : title,
-                    url   : ps.itemUrl
+                    url : ps.itemUrl
                 }
             });
         }).addCallback(function(res) {
-            let doc, form;
-            doc = convertToHTMLDocument(res.responseText);
-            form = doc.getElementById('main') || doc.querySelector('.content');
+            let doc = convertToHTMLDocument(res.responseText),
+                form = formContents(doc) || {};
             Pot.QuickPostForm.resetCandidates();
             return request(SAVE_URL, {
-                sendContent : update(formContents(form) || {}, {
-                    title   : title,
-                    url     : ps.itemUrl,
-                    note    : notes,
-                    tags    : joinText(tags, ','),
-                    private : isPrivate ? 'true' : 'false'
+                sendContent : update(update({
+                    no_image           : 'true',
+                    stack_id           : '',
+                    csrf_token         : ''
+                }, form), {
+                    title              : title,
+                    url                : ps.itemUrl,
+                    oldUrl             : ps.itemUrl,
+                    note               : notes,
+                    tags               : joinText(tags, ','),
+                    private            : isPrivate ? 'true' : 'false',
+                    logged_in_username : username,
+                    csrf_token         : form.csrfToken || form.csrf_token || '',
+                    stack_id           : form.stackId   || form.stack_id   || ''
                 })
             });
         });
