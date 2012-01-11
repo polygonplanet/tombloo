@@ -12,8 +12,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.04
- * @date       2011-08-06
+ * @version    1.05
+ * @date       2012-01-09
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -122,28 +122,36 @@ update(Tombloo.Service.actions[getMessage('label.action.changeAcount')], {
             ].join(',')
         );
         win.addEventListener('load', function() {
-            let doSort = function() {
-                let timeout = 5 * 1000, start = +new Date;
-                till(function() {
-                    let end = false;
-                    if (sort()) {
-                        end = true;
-                    } else if (+new Date - start > timeout) {
-                        end = true;
-                    }
-                    return end;
-                });
-            };
-            usersList = win.document.getElementById('users');
-            modelSelect = win.document.getElementById('models');
             callLater(1, function() {
-                modelSelect.addEventListener('select', function() {
-                    doSort();
-                }, true);
-            });
-            callLater(0.12, function() {
-                resize().addCallback(function() {
-                    doSort();
+                let doSort = function() {
+                    let timeout = 5 * 1000, start = +new Date;
+                    till(function() {
+                        let end = false;
+                        if (sort()) {
+                            end = true;
+                        } else if (+new Date - start > timeout) {
+                            end = true;
+                        }
+                        return end;
+                    });
+                };
+                usersList = win.document.getElementById('users');
+                modelSelect = win.document.getElementById('models');
+                /*
+                callLater(1, function() {
+                    modelSelect.addEventListener('select', function() {
+                        callLater(2.5, function() {
+                            //doSort();
+                        });
+                    }, false);
+                });
+                */
+                callLater(0.12, function() {
+                    resize().addCallback(function() {
+                        //callLater(1, function() {
+                        //    doSort();
+                        //});
+                    });
                 });
             });
         }, true);
