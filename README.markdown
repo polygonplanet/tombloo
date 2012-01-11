@@ -81,7 +81,9 @@ Firefox アドオン [Tombloo](https://github.com/to/tombloo/wiki) で利用で�
    ページ内のDOM要素を削除したり操作できるパッチ。  
    [ページ内のDOM要素を削除したり操作できるTomblooパッチ | 圧縮電子精神音楽浮遊構造体][tombloo.service.actions.element.js]
 
-
+*  **tombloo.service.soundcloud.changeaccount.js**  
+   Tomblooの「アカウントの切り替え」にSoundCloudを追加するパッチ。  
+   [Tomblooの「アカウントの切り替え」にSoundCloudを追加するパッチ | 圧縮電子精神音楽浮遊構造体][tombloo.service.soundcloud.changeaccount.js]
 
 
 
@@ -138,6 +140,10 @@ Firefox アドオン [Tombloo](https://github.com/to/tombloo/wiki) で利用で�
 
 
 [tombloo.service.actions.element.js]: http://polygon-planet.blogspot.com/2011/11/domtombloo.html "ページ内のDOM要素を削除したり操作できるTomblooパッチ | 圧縮電子精神音楽浮遊構造体"
+
+
+[tombloo.service.soundcloud.changeaccount.js]: http://polygon-planet.blogspot.com/2012/01/tombloosoundcloud.html "Tomblooの「アカウントの切り替え」にSoundCloudを追加するパッチ | 圧縮電子精神音楽浮遊構造体"
+
 
 
 
