@@ -11,8 +11,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.01
- * @date       2011-08-04
+ * @version    1.02
+ * @date       2012-01-26
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -116,7 +116,33 @@ models.register({
 });
 
 
-
+// http://p.tl/api.php
+models.register({
+    name : 'p.tl',
+    ICON : 'http://p.tl/images/favicon.ico',
+    API_URL : 'http://p.tl/api/api_simple.php',
+    API_KEY : '0ffc2883d3b54f861b37c77f8d734314e926a9aa',
+    shorten : function(url) {
+        let that = this;
+        if (String(url).indexOf('//p.tl/') !== -1) {
+            return succeed(url);
+        }
+        return request(this.API_URL + '?' + queryString({
+            key : that.API_KEY,
+            url : url
+        })).addCallback(function(res) {
+            debug(res);
+            return JSON.parse(res.responseText).short_url;
+        });
+    },
+    expand : function(url) {
+        return request(url, {
+            redirectionLimit : 0
+        }).addCallback(function(res) {
+            return res.channel.URI.spec;
+        });
+    }
+});
 
 
 // メニューを登録
@@ -166,6 +192,11 @@ Tombloo.Service.actions.register({
             service : 'goo.gl'
         }),
         createMenuItem({
+            label   : 'link',
+            type    : 'context',
+            service : 'p.tl'
+        }),
+        createMenuItem({
             label   : '----',
             type    : 'context',
             link    : true
@@ -189,6 +220,11 @@ Tombloo.Service.actions.register({
             label   : 'page',
             type    : 'context',
             service : 'goo.gl'
+        }),
+        createMenuItem({
+            label   : 'page',
+            type    : 'context',
+            service : 'p.tl'
         }),
         createMenuItem({
             label   : '----',
@@ -230,7 +266,9 @@ Tombloo.Service.actions.register({
                 );
             }
         }
-    ]
+    ].filter(function(item) {
+        return item;
+    })
 }, '----');
 
 
@@ -255,7 +293,14 @@ function createMenuItem(params) {
             })(RE)
         };
     } else {
-        link = params.label === 'link';
+        let (value = getPref('patches.polygonplanet.service.actions.urlshortener.ignore.' + params.service)) {
+            if (value == null && params.service) {
+                setPref('patches.polygonplanet.service.actions.urlshortener.ignore.' + params.service, false);
+            } else if (value) {
+                return false;
+            }
+        }
+        link = (params.label === 'link');
         item = {
             name  : joinText([
                 LABELS.translate(link ? 'linkMenu' : 'pageMenu'),
