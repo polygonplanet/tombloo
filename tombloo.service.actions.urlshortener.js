@@ -11,8 +11,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.02
- * @date       2012-01-26
+ * @version    1.03
+ * @date       2012-01-27
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -131,8 +131,33 @@ models.register({
             key : that.API_KEY,
             url : url
         })).addCallback(function(res) {
-            debug(res);
             return JSON.parse(res.responseText).short_url;
+        });
+    },
+    expand : function(url) {
+        return request(url, {
+            redirectionLimit : 0
+        }).addCallback(function(res) {
+            return res.channel.URI.spec;
+        });
+    }
+});
+
+
+// http://tinyurl.com/
+models.register({
+    name : 'tinyurl.com',
+    ICON : 'http://tinyurl.com/favicon.ico',
+    API_URL : 'http://tinyurl.com/api-create.php',
+    shorten : function(url) {
+        let that = this;
+        if (String(url).indexOf('//tinyurl.com/') !== -1) {
+            return succeed(url);
+        }
+        return request(this.API_URL + '?' + queryString({
+            url : url
+        })).addCallback(function(res) {
+            return res.responseText;
         });
     },
     expand : function(url) {
@@ -197,6 +222,11 @@ Tombloo.Service.actions.register({
             service : 'p.tl'
         }),
         createMenuItem({
+            label   : 'link',
+            type    : 'context',
+            service : 'tinyurl.com'
+        }),
+        createMenuItem({
             label   : '----',
             type    : 'context',
             link    : true
@@ -225,6 +255,11 @@ Tombloo.Service.actions.register({
             label   : 'page',
             type    : 'context',
             service : 'p.tl'
+        }),
+        createMenuItem({
+            label   : 'page',
+            type    : 'context',
+            service : 'tinyurl.com'
         }),
         createMenuItem({
             label   : '----',
