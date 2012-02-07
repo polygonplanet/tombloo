@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.65
- * @date       2011-12-24
+ * @version    1.66
+ * @date       2012-02-08
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -6171,6 +6171,9 @@ forEach({
 (function() {
 
 
+let userTagsCache, doUpdateTags = true;
+
+
 update(models.GoogleBookmarks, {
     name: 'GoogleBookmarks',
     ICON: models.Google.ICON,
@@ -6202,7 +6205,9 @@ update(models.GoogleBookmarks, {
                 //
                 //FIXME: #503 API制限をキャッシュでどうにかする
                 //
-                Pot.QuickPostForm.resetCandidates();
+                if (doUpdateTags) {
+                    Pot.QuickPostForm.resetCandidates();
+                }
                 if (Pot.isArray(tags)) {
                     result = tags || [];
                 }
@@ -6434,8 +6439,18 @@ update(models.GoogleBookmarks, {
                     } else {
                         url = 'https://www.google.com/bookmarks/mark';
                     }
+                    
+                    if (tags && tags.length && userTagsCache) {
+                        tags.forEach(function(tag) {
+                            userTagsCache[userTagsCache.length] = {
+                                name      : tag,
+                                frequency : -1
+                            };
+                        });
+                    }
+                    
                     // オートコンプリート補完タグを更新
-                    Pot.QuickPostForm.resetCandidates();
+                    //Pot.QuickPostForm.resetCandidates();
                     return request(url, {
                         redirectionLimit: 0,
                         sendContent: {
@@ -6449,6 +6464,10 @@ update(models.GoogleBookmarks, {
                             // 'zx' 必要かもしれないユニーク乱数パラメータ
                             zx         : Math.random().toString(36).split('.').pop()
                         }
+                    }).addErrback(function(err) {
+                        userTagsCache = null;
+                        doUpdateTags = true;
+                        throw err;
                     });
                 });
             });
@@ -6465,7 +6484,15 @@ update(models.GoogleBookmarks, {
             return Pot.BookmarkUtil.getRecommends(url).addCallback(function(keywords) {
                 return self.getBookmarkDescriptionByURI(url).addCallback(function(description) {
                     return self.getBookmarkTagsByURI(url).addCallback(function(postTags) {
-                        return request(LIST_LABELS_URL).addCallback(function(res) {
+                        return (userTagsCache && !doUpdateTags) ? succeed({
+                            duplicated  : bookmarked,
+                            recommended : keywords || [],
+                            tags        : userTagsCache,
+                            form        : {
+                                tags        : postTags || [],
+                                description : description
+                            }
+                        }) : request(LIST_LABELS_URL).addCallback(function(res) {
                             let tags = [], d, json = JSON.parse(res.responseText);
                             json.labels.pop();
                             json.counts.pop();
@@ -6476,6 +6503,10 @@ update(models.GoogleBookmarks, {
                                 };
                             }).addCallback(function() {
                                 tags = self.privateCache.tags.normalize(tags);
+                                
+                                userTagsCache = tags;
+                                doUpdateTags = false;
+                                
                                 return {
                                     duplicated  : bookmarked,
                                     recommended : keywords || [],
@@ -6501,6 +6532,10 @@ update(models.GoogleBookmarks, {
                                     }
                                 }).addCallback(function() {
                                     tags = self.privateCache.tags.normalize(tags);
+                                    
+                                    userTagsCache = tags;
+                                    doUpdateTags = false;
+                                    
                                     return {
                                         duplicated  : bookmarked,
                                         recommended : keywords || [],
@@ -6527,6 +6562,9 @@ update(models.GoogleBookmarks, {
 // Update - Hatena Bookmark
 //-----------------------------------------------------------------------------
 (function() {
+
+
+let userTagsCache, doUpdateTags = true;
 
 
 update(models.HatenaBookmark, {
@@ -6572,7 +6610,9 @@ update(models.HatenaBookmark, {
                 //
                 //FIXME: #503 API制限をキャッシュでどうにかする
                 //
-                Pot.QuickPostForm.resetCandidates();
+                if (doUpdateTags) {
+                    Pot.QuickPostForm.resetCandidates();
+                }
                 if (Pot.isArray(tags)) {
                     result = tags || [];
                 }
@@ -6643,6 +6683,9 @@ update(models.HatenaBookmark, {
         });
     },
     getUserTags: function(user) {
+        if (userTagsCache && !doUpdateTags) {
+            return succeed(userTagsCache);
+        }
         return request('http://b.hatena.ne.jp/' + user + '/tags.json').addCallback(function(res) {
             let fixTags, tags = JSON.parse(res.responseText)['tags'];
             // ----------------------------------------------------------------
@@ -6672,11 +6715,24 @@ update(models.HatenaBookmark, {
             fixTags.clear();
             fixTags = null;
             
+            userTagsCache = tags;
+            doUpdateTags = false;
+            
             return tags;
         });
     },
     addBookmark: function(url, title, tags, description) {
         let privateMode = Pot.getPref(POT_BOOKMARK_PRIVATE);
+        
+        if (tags && tags.length && userTagsCache) {
+            tags.forEach(function(tag) {
+                userTagsCache[userTagsCache.length] = {
+                    name      : tag,
+                    frequency : -1
+                };
+            });
+        }
+        
         return Hatena.getToken().addCallback(function(token) {
             return request('http://b.hatena.ne.jp/bookmarklet.edit', {
                 redirectionLimit: 0,
@@ -6688,6 +6744,10 @@ update(models.HatenaBookmark, {
                     // plusのみ有効
                     private : (privateMode ? 1 : 0).toString()
                 }
+            }).addErrback(function(err) {
+                userTagsCache = null;
+                doUpdateTags = true;
+                throw err;
             });
         });
     },
@@ -6883,6 +6943,9 @@ update(models.HatenaBookmark, {
 (function() {
 
 
+let userTagsCache, doUpdateTags = true;
+
+
 update(models.Delicious, {
     name: 'Delicious',
     ICON: 'http://www.delicious.com/favicon.ico',
@@ -6913,7 +6976,9 @@ update(models.Delicious, {
                 //
                 //FIXME: #503 API制限をキャッシュでどうにかする
                 //
-                Pot.QuickPostForm.resetCandidates();
+                if (doUpdateTags) {
+                    Pot.QuickPostForm.resetCandidates();
+                }
                 if (Pot.isArray(tags)) {
                     result = tags || [];
                 }
@@ -6987,6 +7052,11 @@ update(models.Delicious, {
     getUserTags : function(user) {
         const TAGS_URL = 'http://delicious.com/save/confirm';
         let self = this, d, username;
+        
+        if (userTagsCache && !doUpdateTags) {
+            return succeed(userTagsCache);
+        }
+        
         d = ((user) ? succeed(user) : this.getCurrentUser());
         return d.addCallback(function(user) {
             username = user;
@@ -7008,6 +7078,10 @@ update(models.Delicious, {
                     });
                 });
             }
+        }).addCallback(function(tags) {
+            userTagsCache = tags;
+            doUpdateTags = false;
+            return tags;
         });
     },
     /**
@@ -7264,7 +7338,17 @@ update(models.Delicious, {
             if (isPrivate) {
                 sendContent.shared = 'no';
             }
-            Pot.QuickPostForm.resetCandidates();
+            
+            if (tags && tags.length && userTagsCache) {
+                tags.forEach(function(tag) {
+                    userTagsCache[userTagsCache.length] = {
+                        name      : tag,
+                        frequency : -1
+                    };
+                });
+            }
+            
+            //Pot.QuickPostForm.resetCandidates();
             return request(API_URL, {
                 headers : {
                     Authorization : auth
@@ -7277,6 +7361,10 @@ update(models.Delicious, {
             } else {
                 throw err;
             }
+        }).addErrback(function(err) {
+            userTagsCache = null;
+            doUpdateTags = true;
+            throw err;
         });
     },
     /**
@@ -7301,7 +7389,17 @@ update(models.Delicious, {
         }).addCallback(function(res) {
             let doc = convertToHTMLDocument(res.responseText),
                 form = formContents(doc) || {};
-            Pot.QuickPostForm.resetCandidates();
+            
+            if (tags && tags.length && userTagsCache) {
+                tags.forEach(function(tag) {
+                    userTagsCache[userTagsCache.length] = {
+                        name      : tag,
+                        frequency : -1
+                    };
+                });
+            }
+            
+            //Pot.QuickPostForm.resetCandidates();
             return request(SAVE_URL, {
                 sendContent : update(update({
                     no_image           : 'true',
@@ -7453,6 +7551,9 @@ update(models.Pinboard, {
 (function() {
 
 
+let userTagsCache, doUpdateTags = true;
+
+
 update(models.LivedoorClip, {
     name: 'LivedoorClip',
     ICON: 'http://clip.livedoor.com/favicon.ico',
@@ -7484,7 +7585,9 @@ update(models.LivedoorClip, {
                 //
                 //FIXME: #503 API制限をキャッシュでどうにかする
                 //
-                Pot.QuickPostForm.resetCandidates();
+                if (doUpdateTags) {
+                    Pot.QuickPostForm.resetCandidates();
+                }
                 if (Pot.isArray(tags)) {
                     result = tags || [];
                 }
@@ -7503,7 +7606,15 @@ update(models.LivedoorClip, {
                 tags = tr(name, 'tagLength', LivedoorClip.validateTags(append(ps.tags)));
                 notes = tr(name, 'comment', joinText([ps.body, ps.description], ' ', true));
             }
-            Pot.QuickPostForm.resetCandidates();
+            if (tags && tags.length && userTagsCache) {
+                tags.forEach(function(tag) {
+                    userTagsCache[userTagsCache.length] = {
+                        name      : tag,
+                        frequency : -1
+                    };
+                });
+            }
+            //Pot.QuickPostForm.resetCandidates();
             return request(LivedoorClip.POST_URL, {
                 redirectionLimit: 0,
                 sendContent: {
@@ -7515,6 +7626,10 @@ update(models.LivedoorClip, {
                     notes   : notes,
                     public  : (ps.private || Pot.getPref(POT_BOOKMARK_PRIVATE)) ? 'off' : 'on'
                 }
+            }).addErrback(function(err) {
+                userTagsCache = null;
+                doUpdateTags = true;
+                throw err;
             });
         });
     },
@@ -7622,21 +7737,28 @@ update(models.LivedoorClip, {
                     return y ? ($x(x, doc, y) || []) : Pot.StringUtil.stringify($x(x, doc));
                 };
                 duplicated = !!$x('//form[@name="delete_form"]', doc);
-                tags = [];
-                val('//div[@class="TagBox"]/span/text()', true).forEach(function(tag) {
-                    let name = Pot.StringUtil.trim(tag);
-                    if (name && name.length) {
-                        tags[tags.length] = {
-                            name      : name,
-                            frequency : -1
-                        };
-                    }
-                });
+                
+                if (userTagsCache && !doUpdateTags) {
+                    tags = userTagsCache;
+                } else {
+                    tags = [];
+                    val('//div[@class="TagBox"]/span/text()', true).forEach(function(tag) {
+                        let name = Pot.StringUtil.trim(tag);
+                        if (name && name.length) {
+                            tags[tags.length] = {
+                                name      : name,
+                                frequency : -1
+                            };
+                        }
+                    });
+                    tags = that.privateCache.tags.normalize(tags);
+                    userTagsCache = tags;
+                    doUpdateTags = false;
+                }
                 item = val('//input[@name="my_title"]/@value');
                 postTags = val('//input[@name="tags"]/@value');
                 postTags = Pot.BookmarkUtil.normalizeTags(postTags);
                 description = val('//textarea[@name="notes"]/text()');
-                tags = that.privateCache.tags.normalize(tags);
                 return {
                     editPage    : Pot.sprintf('%s?link=%s', that.POST_URL, encodeURIComponent(url)),
                     recommended : keywords || [],
