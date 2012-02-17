@@ -10,8 +10,8 @@
  * ※通知はウザイ可能性があるのでその場合はパッチ削除
  *
  *
- * @version    1.06
- * @date       2011-07-29
+ * @version    1.07
+ * @date       2012-02-18
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -89,7 +89,7 @@ update(Tombloo.Service, {
      * @return {Deferred}           ポスト完了後に呼び出される
      */
     post: function(ps, posters, recursive) {
-        var self = this, ds = {}, isFavorite, args = arguments, postCancel;
+        var self = this, ds = {}, isFavorite, args = arguments, postCancel, isTumblr;
         
         // エラー後再ポスト時のデバッグに使用
         debug(ps);
@@ -141,6 +141,10 @@ update(Tombloo.Service, {
                 
                 allLen++;
                 [success, res] = ress[name];
+                
+                if (~name.toLowerCase().indexOf(retryName)) {
+                    isTumblr = true;
+                }
                 
                 if (success) {
                     doneNames.push(name);
@@ -236,11 +240,23 @@ update(Tombloo.Service, {
                     ps.itemUrl || ps.pageUrl
                 );
                 
-                // 通知メッセージ (ウザイ可能性アリ!)
-                //
-                // (設定ダイアログにON/OFF追加できないか調査中)
-                //
-                notify(title, message, notify.ICON_INFO);
+                // 通知メッセージ 
+                
+                // 「Tumblrのリブログ/ポスト残量を表示するTomblooパッチ」が有効の場合は表示
+                // https://github.com/polygonplanet/tombloo/blob/master/tombloo.model.tumblr.postlimit.message.js
+                if (isTumblr && Tumblr.ReblogPostLimit) {
+                    Tumblr.ReblogPostLimit.post.getCount().addCallback(function(postCount) {
+                        return Tumblr.ReblogPostLimit.reblog.getCount().addCallback(function(reblogCount) {
+                            title += format(' [Post]: %s/%s, [Reblog]: %s/%s',
+                                postCount,   Tumblr.ReblogPostLimit.post.LIMIT,
+                                reblogCount, Tumblr.ReblogPostLimit.reblog.LIMIT
+                            );
+                            notify(title, message, notify.ICON_INFO);
+                        });
+                    }).addErrback(function() {}); // ここでのエラーはスルー
+                } else {
+                    notify(title, message, notify.ICON_INFO);
+                }
             }
         });
     }
