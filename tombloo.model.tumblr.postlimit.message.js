@@ -13,7 +13,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.03
+ * @version    1.04
  * @date       2012-02-17
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -30,7 +30,7 @@
 //TODO: 正確な時間がいつまでたっても不明 => 14:00 or 14:15 ぽい
 const RESET_TIME = {
     HOURS   : 14, // 時
-    MINUTES : 15  // 分
+    MINUTES :  0  // 分
 };
 
 // ポストの最大数
@@ -97,26 +97,64 @@ update(Tumblr, {
 
         const KEY_COUNT = {
             POST   : 'postCount',
-            REBLOG : 'reblogCount'
+            REBLOG : 'reblogCount',
+            LAST   : 'lastTime'
         };
 
         let env = defineTumblrLimitEnv(),
+            getNextResetTime = function() {
+                let d = new Date, hours = d.getHours(), min = d.getMinutes(), add = 1;
+
+                if (hours >= 0 &&
+                    (hours < RESET_TIME.HOURS ||
+                        (hours === RESET_TIME.HOURS && min < RESET_TIME.MINUTES)
+                    )
+                ) {
+                    add = 0;
+                }
+                return new Date(
+                    d.getFullYear(), d.getMonth(), d.getDate() + add,
+                    RESET_TIME.HOURS, RESET_TIME.MINUTES, 0
+                ).getTime();
+            },
+            getNow = function() {
+                return '' + (+new Date);
+            },
+            getRemainder = function(d) {
+                let diff = getNextResetTime() - (d || (getNow() - 0));
+                return parseInt(diff / (60 * 60 * 1000));
+            },
             isResetable = function() {
-                let d = new Date, hour = d.getHours(), min = d.getMinutes();
-                return hour > RESET_TIME.HOURS ||
-                    hour.pad(2) + min.pad(2) > RESET_TIME.HOURS.pad(2) + RESET_TIME.MINUTES.pad(2);
+                return getRemainder(getLastTime()) <= 0;
+            },
+            getLastTime = function() {
+                let last = env.getPref(KEY_COUNT.LAST);
+                if (!last) {
+                    last = getNow();
+                    env.setPref(KEY_COUNT.LAST, last);
+                }
+                return +last;
+            },
+            setLastTime = function() {
+                env.setPref(KEY_COUNT.LAST, getNow());
             },
             getCounter = function(key) {
                 let counter = env.getPref(key);
                 return (counter ? JSON.parse(counter) : {}) || {};
             },
             resetAll = function(type) {
-                let v = JSON.stringify({});
                 'POST REBLOG'.split(' ').forEach(function(key) {
                     if (!type || type === key) {
-                        env.setPref(KEY_COUNT[key], v);
+                        let (counter = env.getPref(KEY_COUNT[key])) {
+                            counter = (counter ? JSON.parse(counter) : {}) || {};
+                            keys(counter).forEach(function(k) {
+                                counter[k] = 0;
+                            });
+                            env.setPref(KEY_COUNT[key], JSON.stringify(counter));
+                        }
                     }
                 });
+                setLastTime();
             };
 
         return {
@@ -129,7 +167,10 @@ update(Tumblr, {
                             counter[user] = 0;
                             resetAll();
                         } else {
-                            counter[user] = counter[user] || 0;
+                            if (counter[user] == null) {
+                                counter[user] = 0;
+                                setLastTime();
+                            }
                         }
                         return counter[user];
                     });
@@ -140,6 +181,7 @@ update(Tumblr, {
 
                     return (Tumblr.user ? succeed(Tumblr.user) : Tumblr.getCurrentUser()).addCallback(function(user) {
                         counter[user] = value;
+                        setLastTime();
                         env.setPref(KEY_COUNT.POST, JSON.stringify(counter));
                         if (value >= POST_LIMIT) {
                             let (reblogCounter = getCounter(KEY_COUNT.REBLOG)) {
@@ -151,20 +193,23 @@ update(Tumblr, {
                     });
                 },
                 reset : function() {
-                    resetAll('POST');
+                    resetAll();
+                },
+                isResetable : function() {
+                    return isResetable();
                 },
                 setMax : function() {
                     return this.setCount(POST_LIMIT);
                 },
                 isMax : function() {
-                    return this.getCount().then(function(c) {
+                    return this.getCount().addCallback(function(c) {
                         return c >= POST_LIMIT;
                     });
                 },
                 add : function() {
                     let that = this;
                     return this.getCount().addCallback(function(c) {
-                        that.setCount(c + 1);
+                        that.setCount((c || 0) + 1);
                     });
                 },
                 checkInForm : function() {
@@ -205,7 +250,10 @@ update(Tumblr, {
                             counter[user] = 0;
                             resetAll();
                         } else {
-                            counter[user] = counter[user] || 0;
+                            if (counter[user] == null) {
+                                counter[user] = 0;
+                                setLastTime();
+                            }
                         }
                         return counter[user];
                     });
@@ -216,6 +264,7 @@ update(Tumblr, {
 
                     return (Tumblr.user ? succeed(Tumblr.user) : Tumblr.getCurrentUser()).addCallback(function(user) {
                         counter[user] = value;
+                        setLastTime();
                         env.setPref(KEY_COUNT.REBLOG, JSON.stringify(counter));
                         if (value >= REBLOG_LIMIT) {
                             let (postCounter = getCounter(KEY_COUNT.POST)) {
@@ -227,20 +276,23 @@ update(Tumblr, {
                     });
                 },
                 reset : function() {
-                    resetAll('REBLOG');
+                    resetAll();
+                },
+                isResetable : function() {
+                    return isResetable();
                 },
                 setMax : function() {
                     return this.setCount(REBLOG_LIMIT);
                 },
                 isMax : function() {
-                    return this.getCount().then(function(c) {
+                    return this.getCount().addCallback(function(c) {
                         return c >= REBLOG_LIMIT;
                     });
                 },
                 add : function() {
                     let that = this;
                     return this.getCount().addCallback(function(c) {
-                        that.setCount(c + 1);
+                        that.setCount((c || 0) + 1);
                     });
                 }
             }
@@ -257,15 +309,10 @@ addAround(Tumblr, 'post', function(proceed, args) {
         //  があればそこから設定
         Tumblr.ReblogPostLimit.post.checkInForm().addCallback(function(res) {
             if (!res) {
-                Tumblr.ReblogPostLimit.post.isMax().addCallback(function(isMax) {
-                    if (isMax) {
-                        // リミットに達してたらリセット
-                        Tumblr.ReblogPostLimit.post.reset();
-                        Tumblr.ReblogPostLimit.reblog.reset();
-                    }
-                    // 1 加算
-                    Tumblr.ReblogPostLimit.post.add();
-                });
+                if (Tumblr.ReblogPostLimit.post.isResetable()) {
+                    Tumblr.ReblogPostLimit.post.reset();
+                }
+                Tumblr.ReblogPostLimit.post.add();
             }
         }).addErrback(function() {}); // ここでのエラーは無視
     });
@@ -274,15 +321,14 @@ addAround(Tumblr, 'post', function(proceed, args) {
 
 addAround(Tumblr, 'favor', function(proceed, args) {
     return proceed(args).addCallback(function() {
-        Tumblr.ReblogPostLimit.reblog.isMax().addCallback(function(isMax) {
-            if (isMax) {
-                // リミットに達してたらリセット
-                Tumblr.ReblogPostLimit.post.reset();
-                Tumblr.ReblogPostLimit.reblog.reset();
+        Tumblr.ReblogPostLimit.post.checkInForm().addCallback(function(res) {
+            if (!res) {
+                if (Tumblr.ReblogPostLimit.reblog.isResetable()) {
+                    Tumblr.ReblogPostLimit.reblog.reset();
+                }
+                Tumblr.ReblogPostLimit.reblog.add();
             }
-            // 1 加算
-            Tumblr.ReblogPostLimit.reblog.add();
-        });
+        }).addErrback(function() {});
     });
 });
 
