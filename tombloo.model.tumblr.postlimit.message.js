@@ -13,7 +13,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.02
+ * @version    1.03
  * @date       2012-02-17
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -26,11 +26,11 @@
  */
 (function() {
 
-// リセットされる時間 (日本時間 )
-//TODO: 正確な時間がいつまでたっても不明
+// リセットされる時間 (日本時間 GMT+900)
+//TODO: 正確な時間がいつまでたっても不明 => 14:00 or 14:15 ぽい
 const RESET_TIME = {
-    HOURS   : 16, // 時
-    MINUTES : 30  // 分
+    HOURS   : 14, // 時
+    MINUTES : 15  // 分
 };
 
 // ポストの最大数
@@ -110,10 +110,12 @@ update(Tumblr, {
                 let counter = env.getPref(key);
                 return (counter ? JSON.parse(counter) : {}) || {};
             },
-            resetAll = function() {
+            resetAll = function(type) {
                 let v = JSON.stringify({});
                 'POST REBLOG'.split(' ').forEach(function(key) {
-                    env.setPref(KEY_COUNT[key], v);
+                    if (!type || type === key) {
+                        env.setPref(KEY_COUNT[key], v);
+                    }
                 });
             };
 
@@ -148,8 +150,16 @@ update(Tumblr, {
                         return value;
                     });
                 },
+                reset : function() {
+                    resetAll('POST');
+                },
                 setMax : function() {
                     return this.setCount(POST_LIMIT);
+                },
+                isMax : function() {
+                    return this.getCount().then(function(c) {
+                        return c >= POST_LIMIT;
+                    });
                 },
                 add : function() {
                     let that = this;
@@ -216,8 +226,16 @@ update(Tumblr, {
                         return value;
                     });
                 },
+                reset : function() {
+                    resetAll('REBLOG');
+                },
                 setMax : function() {
                     return this.setCount(REBLOG_LIMIT);
+                },
+                isMax : function() {
+                    return this.getCount().then(function(c) {
+                        return c >= REBLOG_LIMIT;
+                    });
                 },
                 add : function() {
                     let that = this;
@@ -239,8 +257,15 @@ addAround(Tumblr, 'post', function(proceed, args) {
         //  があればそこから設定
         Tumblr.ReblogPostLimit.post.checkInForm().addCallback(function(res) {
             if (!res) {
-                // なければ 1 加算
-                Tumblr.ReblogPostLimit.post.add();
+                Tumblr.ReblogPostLimit.post.isMax().addCallback(function(isMax) {
+                    if (isMax) {
+                        // リミットに達してたらリセット
+                        Tumblr.ReblogPostLimit.post.reset();
+                        Tumblr.ReblogPostLimit.reblog.reset();
+                    }
+                    // 1 加算
+                    Tumblr.ReblogPostLimit.post.add();
+                });
             }
         }).addErrback(function() {}); // ここでのエラーは無視
     });
@@ -249,13 +274,21 @@ addAround(Tumblr, 'post', function(proceed, args) {
 
 addAround(Tumblr, 'favor', function(proceed, args) {
     return proceed(args).addCallback(function() {
-        Tumblr.ReblogPostLimit.reblog.add();
+        Tumblr.ReblogPostLimit.reblog.isMax().addCallback(function(isMax) {
+            if (isMax) {
+                // リミットに達してたらリセット
+                Tumblr.ReblogPostLimit.post.reset();
+                Tumblr.ReblogPostLimit.reblog.reset();
+            }
+            // 1 加算
+            Tumblr.ReblogPostLimit.reblog.add();
+        });
     });
 });
 
 
 // メニューを登録
-let (LABEL = 'Tumblr POST/REBLOG Limit') {
+let (LABEL = 'Tumblr Post/Reblog Limit') {
     Tombloo.Service.actions.register({
         name  : LABEL,
         type  : 'context,menu',
@@ -265,8 +298,8 @@ let (LABEL = 'Tumblr POST/REBLOG Limit') {
             // 遅延するため 1 つ前の状態が表示される
             return Tumblr.ReblogPostLimit.post.getCount().addCallback(function(postCount) {
                 return Tumblr.ReblogPostLimit.reblog.getCount().addCallback(function(reblogCount) {
-                    that.name = 'POST ' + postCount + '/' + POST_LIMIT +
-                                ', REBLOG ' + reblogCount + '/' + REBLOG_LIMIT;
+                    that.name = 'Post: ' + postCount + '/' + POST_LIMIT +
+                                ', Reblog: ' + reblogCount + '/' + REBLOG_LIMIT;
                     return true;
                 });
             });
