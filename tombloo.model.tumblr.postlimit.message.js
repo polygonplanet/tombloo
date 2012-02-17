@@ -13,8 +13,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.04
- * @date       2012-02-17
+ * @version    1.05
+ * @date       2012-02-18
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -159,6 +159,7 @@ update(Tumblr, {
 
         return {
             post : {
+                LIMIT : POST_LIMIT,
                 getCount : function() {
                     let counter = getCounter(KEY_COUNT.POST);
 
@@ -242,6 +243,7 @@ update(Tumblr, {
                 }
             },
             reblog : {
+                LIMIT : REBLOG_LIMIT,
                 getCount : function() {
                     let counter = getCounter(KEY_COUNT.REBLOG);
 
@@ -353,6 +355,7 @@ let (LABEL = 'Tumblr Post/Reblog Limit') {
         execute : function(ctx) {
             let that = this;
             this.check().addCallback(function() {
+                // alert以外に何かないかな…
                 alert(that.name);
             });
         }
