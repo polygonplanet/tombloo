@@ -13,7 +13,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.05
+ * @version    1.06
  * @date       2012-02-18
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -113,7 +113,7 @@ update(Tumblr, {
                     add = 0;
                 }
                 return new Date(
-                    d.getFullYear(), d.getMonth(), d.getDate() + add,
+                    d.getFullYear(), d.getMonth() + 1, d.getDate() + add,
                     RESET_TIME.HOURS, RESET_TIME.MINUTES, 0
                 ).getTime();
             },
