@@ -13,7 +13,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.06
+ * @version    1.07
  * @date       2012-02-18
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -27,7 +27,6 @@
 (function() {
 
 // リセットされる時間 (日本時間 GMT+900)
-//TODO: 正確な時間がいつまでたっても不明 => 14:00 or 14:15 ぽい
 const RESET_TIME = {
     HOURS   : 14, // 時
     MINUTES :  0  // 分
@@ -102,18 +101,9 @@ update(Tumblr, {
         };
 
         let env = defineTumblrLimitEnv(),
-            getNextResetTime = function() {
-                let d = new Date, hours = d.getHours(), min = d.getMinutes(), add = 1;
-
-                if (hours >= 0 &&
-                    (hours < RESET_TIME.HOURS ||
-                        (hours === RESET_TIME.HOURS && min < RESET_TIME.MINUTES)
-                    )
-                ) {
-                    add = 0;
-                }
+            getResetTime = function(d, add) {
                 return new Date(
-                    d.getFullYear(), d.getMonth() + 1, d.getDate() + add,
+                    d.getFullYear(), d.getMonth(), d.getDate() + (add || 0),
                     RESET_TIME.HOURS, RESET_TIME.MINUTES, 0
                 ).getTime();
             },
@@ -121,22 +111,24 @@ update(Tumblr, {
                 return '' + (+new Date);
             },
             getRemainder = function(d) {
-                let diff = getNextResetTime() - (d || (getNow() - 0));
-                return parseInt(diff / (60 * 60 * 1000));
+                let next = getResetTime(new Date),
+                    now = (getNow() - 0),
+                    diff = next - now;
+                return parseInt(diff / (60 * 1000));
             },
             isResetable = function() {
-                return getRemainder(getLastTime()) <= 0;
+                let rem = getRemainder();
+                return rem <= 0 && getLastTime() < getNow() - 0;
             },
             getLastTime = function() {
                 let last = env.getPref(KEY_COUNT.LAST);
-                if (!last) {
-                    last = getNow();
-                    env.setPref(KEY_COUNT.LAST, last);
+                if (!last || new Date(last - 0).getHours() !== RESET_TIME.HOURS) {
+                    env.setPref(KEY_COUNT.LAST, '' + getResetTime(new Date));
                 }
                 return +last;
             },
-            setLastTime = function() {
-                env.setPref(KEY_COUNT.LAST, getNow());
+            setLastTime = function(d) {
+                env.setPref(KEY_COUNT.LAST, '' + (d || getNow()));
             },
             getCounter = function(key) {
                 let counter = env.getPref(key);
@@ -154,7 +146,6 @@ update(Tumblr, {
                         }
                     }
                 });
-                setLastTime();
             };
 
         return {
@@ -166,11 +157,11 @@ update(Tumblr, {
                     return (Tumblr.user ? succeed(Tumblr.user) : Tumblr.getCurrentUser()).addCallback(function(user) {
                         if (isResetable()) {
                             counter[user] = 0;
+                            setLastTime(getResetTime(new Date, 1));
                             resetAll();
                         } else {
                             if (counter[user] == null) {
                                 counter[user] = 0;
-                                setLastTime();
                             }
                         }
                         return counter[user];
@@ -182,7 +173,6 @@ update(Tumblr, {
 
                     return (Tumblr.user ? succeed(Tumblr.user) : Tumblr.getCurrentUser()).addCallback(function(user) {
                         counter[user] = value;
-                        setLastTime();
                         env.setPref(KEY_COUNT.POST, JSON.stringify(counter));
                         if (value >= POST_LIMIT) {
                             let (reblogCounter = getCounter(KEY_COUNT.REBLOG)) {
@@ -250,11 +240,11 @@ update(Tumblr, {
                     return (Tumblr.user ? succeed(Tumblr.user) : Tumblr.getCurrentUser()).addCallback(function(user) {
                         if (isResetable()) {
                             counter[user] = 0;
+                            setLastTime(getResetTime(new Date, 1));
                             resetAll();
                         } else {
                             if (counter[user] == null) {
                                 counter[user] = 0;
-                                setLastTime();
                             }
                         }
                         return counter[user];
@@ -266,7 +256,6 @@ update(Tumblr, {
 
                     return (Tumblr.user ? succeed(Tumblr.user) : Tumblr.getCurrentUser()).addCallback(function(user) {
                         counter[user] = value;
-                        setLastTime();
                         env.setPref(KEY_COUNT.REBLOG, JSON.stringify(counter));
                         if (value >= REBLOG_LIMIT) {
                             let (postCounter = getCounter(KEY_COUNT.POST)) {
