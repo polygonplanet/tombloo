@@ -85,6 +85,11 @@ Firefox アドオン [Tombloo](https://github.com/to/tombloo/wiki) で利用で�
    Tomblooの「アカウントの切り替え」にSoundCloudを追加するパッチ。  
    [Tomblooの「アカウントの切り替え」にSoundCloudを追加するパッチ | 圧縮電子精神音楽浮遊構造体][tombloo.service.soundcloud.changeaccount.js]
 
+*  **tombloo.model.tumblr.postlimit.message.js**  
+   Tumblrのリブログ/ポストのリミット残数が確認できるTomblooパッチ。  
+   [Tumblrのリブログ/ポストのリミット残数が確認できるTomblooパッチ | 圧縮電子精神音楽浮遊構造体][tombloo.model.tumblr.postlimit.message.js]
+
+
 
 
 
@@ -144,6 +149,8 @@ Firefox アドオン [Tombloo](https://github.com/to/tombloo/wiki) で利用で�
 
 [tombloo.service.soundcloud.changeaccount.js]: http://polygon-planet.blogspot.com/2012/01/tombloosoundcloud.html "Tomblooの「アカウントの切り替え」にSoundCloudを追加するパッチ | 圧縮電子精神音楽浮遊構造体"
 
+
+[tombloo.model.tumblr.postlimit.message.js]: http://polygon-planet.blogspot.com/2012/02/tumblrtombloo.html "Tumblrのリブログ/ポストのリミット残数が確認できるTomblooパッチ | 圧縮電子精神音楽浮遊構造体"
 
 
 
