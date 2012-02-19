@@ -1,7 +1,7 @@
 /**
  * Tombloo.Model.Tumblr.PostLimit.Message - Tombloo patches
  *
- * Tumblrのリブログ/ポスト残量を表示するTomblooパッチ
+ * Tumblrのリブログ/ポストのリミット残数が確認できるTomblooパッチ
  *
  * 機能:
  * --------------------------------------------------------------------------
@@ -13,8 +13,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.07
- * @date       2012-02-18
+ * @version    1.08
+ * @date       2012-02-20
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -101,17 +101,34 @@ update(Tumblr, {
         };
 
         let env = defineTumblrLimitEnv(),
-            getResetTime = function(d, add) {
-                return new Date(
-                    d.getFullYear(), d.getMonth(), d.getDate() + (add || 0),
-                    RESET_TIME.HOURS, RESET_TIME.MINUTES, 0
-                ).getTime();
+            getResetTime = function() {
+                let last = env.getPref(KEY_COUNT.LAST),
+                    d, hours, add, result;
+                if (last && new Date(last - 0).getHours() === RESET_TIME.HOURS) {
+                    d = new Date(+last);
+                    hours = d.getHours();
+                    add = (hours >= 0 && hours < RESET_TIME.HOURS) ? 0 : 1;
+                    result = new Date(
+                        d.getFullYear(), d.getMonth(), d.getDate() + add,
+                        RESET_TIME.HOURS, RESET_TIME.MINUTES, 0
+                    ).getTime();
+                } else {
+                    d = new Date;
+                    result = new Date(
+                        d.getFullYear(), d.getMonth(), d.getDate() - 1,
+                        RESET_TIME.HOURS, RESET_TIME.MINUTES, 0
+                    ).getTime();
+                    env.setPref(KEY_COUNT.LAST, '' + result);
+                }
+                return result;
             },
             getNow = function() {
                 return '' + (+new Date);
             },
-            getRemainder = function(d) {
-                let next = getResetTime(new Date),
+            getRemainder = function() {
+                let d = new Date,
+                    hours = d.getHours(),
+                    next = getResetTime(),
                     now = (getNow() - 0),
                     diff = next - now;
                 return parseInt(diff / (60 * 1000));
@@ -123,7 +140,7 @@ update(Tumblr, {
             getLastTime = function() {
                 let last = env.getPref(KEY_COUNT.LAST);
                 if (!last || new Date(last - 0).getHours() !== RESET_TIME.HOURS) {
-                    env.setPref(KEY_COUNT.LAST, '' + getResetTime(new Date));
+                    env.setPref(KEY_COUNT.LAST, '' + getResetTime());
                 }
                 return +last;
             },
@@ -157,7 +174,7 @@ update(Tumblr, {
                     return (Tumblr.user ? succeed(Tumblr.user) : Tumblr.getCurrentUser()).addCallback(function(user) {
                         if (isResetable()) {
                             counter[user] = 0;
-                            setLastTime(getResetTime(new Date, 1));
+                            setLastTime(getResetTime());
                             resetAll();
                         } else {
                             if (counter[user] == null) {
@@ -240,7 +257,7 @@ update(Tumblr, {
                     return (Tumblr.user ? succeed(Tumblr.user) : Tumblr.getCurrentUser()).addCallback(function(user) {
                         if (isResetable()) {
                             counter[user] = 0;
-                            setLastTime(getResetTime(new Date, 1));
+                            setLastTime(getResetTime());
                             resetAll();
                         } else {
                             if (counter[user] == null) {
