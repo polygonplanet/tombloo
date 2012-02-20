@@ -13,7 +13,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.08
+ * @version    1.09
  * @date       2012-02-20
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -126,9 +126,7 @@ update(Tumblr, {
                 return '' + (+new Date);
             },
             getRemainder = function() {
-                let d = new Date,
-                    hours = d.getHours(),
-                    next = getResetTime(),
+                let next = getResetTime(),
                     now = (getNow() - 0),
                     diff = next - now;
                 return parseInt(diff / (60 * 1000));
@@ -316,12 +314,14 @@ addAround(Tumblr, 'post', function(proceed, args) {
         // 「You've used <b>76%</b> of your daily photo uploads. You can upload more tomorrow.」
         //  があればそこから設定
         Tumblr.ReblogPostLimit.post.checkInForm().addCallback(function(res) {
-            if (!res) {
-                if (Tumblr.ReblogPostLimit.post.isResetable()) {
-                    Tumblr.ReblogPostLimit.post.reset();
-                }
-                Tumblr.ReblogPostLimit.post.add();
-            }
+            return Tumblr.ReblogPostLimit.post.isMax().addCallback(function(isMaxPost) {
+                return Tumblr.ReblogPostLimit.reblog.isMax().addCallback(function(isMaxReblog) {
+                    if (isMaxPost || isMaxReblog || Tumblr.ReblogPostLimit.post.isResetable()) {
+                        Tumblr.ReblogPostLimit.post.reset();
+                    }
+                    Tumblr.ReblogPostLimit.post.add();
+                });
+            });
         }).addErrback(function() {}); // ここでのエラーは無視
     });
 });
@@ -330,12 +330,14 @@ addAround(Tumblr, 'post', function(proceed, args) {
 addAround(Tumblr, 'favor', function(proceed, args) {
     return proceed(args).addCallback(function() {
         Tumblr.ReblogPostLimit.post.checkInForm().addCallback(function(res) {
-            if (!res) {
-                if (Tumblr.ReblogPostLimit.reblog.isResetable()) {
-                    Tumblr.ReblogPostLimit.reblog.reset();
-                }
-                Tumblr.ReblogPostLimit.reblog.add();
-            }
+            return Tumblr.ReblogPostLimit.post.isMax().addCallback(function(isMaxPost) {
+                return Tumblr.ReblogPostLimit.reblog.isMax().addCallback(function(isMaxReblog) {
+                    if (isMaxPost || isMaxReblog || Tumblr.ReblogPostLimit.post.isResetable()) {
+                        Tumblr.ReblogPostLimit.reblog.reset();
+                    }
+                    Tumblr.ReblogPostLimit.reblog.add();
+                });
+            });
         }).addErrback(function() {});
     });
 });
