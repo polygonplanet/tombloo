@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.67
- * @date       2012-02-26
+ * @version    1.68
+ * @date       2012-02-27
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -6960,30 +6960,30 @@ update(models.HatenaDiary, {
             return ps.description;
         },
         photo : function(ps, title) {
-            return <>
+            return succeed(<>
                 <blockquote cite={ps.pageUrl} title={title}>
                     <img src={ps.itemUrl} />
                 </blockquote>
                 <div>
                 {ps.description}
                 </div>
-            </>.toString();
+            </>.toString());
         },
         link : function(ps, title) {
-            return <>
+            return succeed(<>
                 <h2><a href={ps.pageUrl} title={title}>{ps.page}</a></h2>
                 <div>
                 {ps.description}
                 </div>
-            </>.toString();
+            </>.toString());
         },
         quote : function(ps, title) {
-            return <>
+            return succeed(<>
                 <blockquote cite={ps.pageUrl} title={title}>{ps.body}</blockquote>
                 <div>
                 {ps.description}
                 </div>
-            </>.toString();
+            </>.toString());
         },
         bookmark : function(ps, title) {
             let util = Pot.StringUtil,
@@ -6994,59 +6994,67 @@ update(models.HatenaDiary, {
                     );
                 },
                 summarize = function(s) {
-                    let ret = '', mov = function(t) {
-                        let mc;
-                        try {
-                            mc = new Pot.MarkovChainer();
-                            return util.stringify(mc.summarize(clean(t)));
-                        } finally {
-                            mc.clear();
-                            mc = null;
-                        }
-                    };
-                    if (s) {
+                    let d = new Deferred(),
+                        mov = function(t) {
+                            let mc;
+                            try {
+                                mc = new Pot.MarkovChainer();
+                                return util.stringify(mc.summarize(clean(t)));
+                            } finally {
+                                mc.clear();
+                                mc = null;
+                            }
+                        };
+                    if (!s) {
+                        d.callback('');
+                    } else {
                         if (s.length < 80) {
-                            ret = util.trim(s);
+                            d.callback(util.trim(s));
                         } else {
-                            let (waiting = true) {
-                                Pot.callLazy(function() {
-                                    for (let i = 0; i < 3; i++) {
+                            callLater(0.1, function() {
+                                let (i, ret) {
+                                    for (i = 0; i < 3; i++) {
                                         ret = mov(s);
                                         if (ret) {
                                             break;
                                         }
                                     }
-                                    waiting = false;
-                                });
-                                till(function() {
-                                    return waiting !== true;
-                                });
-                            }
+                                    d.callback(ret);
+                                }
+                            });
                         }
                     }
-                    return ret;
+                    return d;
                 };
-            return <>
-                <h2><a href={ps.pageUrl} title={title}>{ps.page}</a></h2>
-                <div>
-                {summarize(ps.description)}
-                </div>
-            </>.toString();
+            return wait(0).addCallback(function() {
+                return summarize(ps.description).addCallback(function(desc) {
+                    return <>
+                        <h2><a href={ps.pageUrl} title={title}>{ps.page}</a></h2>
+                        <div>
+                        {desc}
+                        </div>
+                    </>.toString();
+                });
+            });
         }
     },
     post : function(ps) {
         let that = this;
-        return Hatena.getUserInfo().addCallback(function(info) {
-            let title = ps.item || ps.page || '',
-                endpoint = [that.POST_URL, info.name, ''].join('/');
-            return request(endpoint, {
-                redirectionLimit : 0,
-                referrer         : endpoint,
-                sendContent      : {
-                    rkm   : info.rkm,
-                    title : Hatena.reprTags(ps.tags) + title,
-                    body  : that.converters[ps.type](ps, title)
-                }
+        return wait(0.1).addCallback(function() {
+            return Hatena.getUserInfo().addCallback(function(info) {
+                let title = ps.item || ps.page || '';
+                return that.converters[ps.type](ps, title).addCallback(function(body) {
+                    let endpoint = [that.POST_URL, info.name, ''].join('/');
+                    return request(endpoint, {
+                        redirectionLimit : 0,
+                        referrer         : endpoint,
+                        sendContent      : {
+                            rkm   : info.rkm,
+                            title : Hatena.reprTags(ps.tags) + title,
+                            body  : body
+                        }
+                    });
+                });
             });
         });
     }
