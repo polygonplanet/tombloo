@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.66
- * @date       2012-02-08
+ * @version    1.67
+ * @date       2012-02-26
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -177,6 +177,9 @@ const POT_SEPARATE_USER_DATA_FOLDERS = 'separateUserDataFolders';
 
 // ローマ字入力のかな変換キーマップ
 const POT_ROMA_READING_KEYS      = 'userRomaReadingKeys';
+
+// @internal
+const POT_HATENA_DIARY_CLIP_MODE = 'hatenaDiaryClipMode';
 
 //
 // 先頭のコメント全てを取り込むのに必要なサイズ (internal only)
@@ -6937,6 +6940,120 @@ update(models.HatenaBookmark, {
 
 
 })();
+//-----------------------------------------------------------------------------
+// Update - Hatena Diary
+//-----------------------------------------------------------------------------
+(function() {
+
+
+if (Pot.getPref(POT_HATENA_DIARY_CLIP_MODE) !== true) {
+    return;
+}
+
+
+update(models.HatenaDiary, {
+    check : function(ps) {
+        return /regular|photo|quote|link|bookmark/.test(ps.type) && !ps.file;
+    },
+    converters : {
+        regular : function(ps, title) {
+            return ps.description;
+        },
+        photo : function(ps, title) {
+            return <>
+                <blockquote cite={ps.pageUrl} title={title}>
+                    <img src={ps.itemUrl} />
+                </blockquote>
+                <div>
+                {ps.description}
+                </div>
+            </>.toString();
+        },
+        link : function(ps, title) {
+            return <>
+                <h2><a href={ps.pageUrl} title={title}>{ps.page}</a></h2>
+                <div>
+                {ps.description}
+                </div>
+            </>.toString();
+        },
+        quote : function(ps, title) {
+            return <>
+                <blockquote cite={ps.pageUrl} title={title}>{ps.body}</blockquote>
+                <div>
+                {ps.description}
+                </div>
+            </>.toString();
+        },
+        bookmark : function(ps, title) {
+            let util = Pot.StringUtil,
+                clean = function(s) {
+                    return Pot.QuickPostForm.callDescriptionContextMenu(
+                        'ノイズを除去',
+                        util.removeAA(util.remove2chName(util.stringify(s)), 70)
+                    );
+                },
+                summarize = function(s) {
+                    let ret = '', mov = function(t) {
+                        let mc;
+                        try {
+                            mc = new Pot.MarkovChainer();
+                            return util.stringify(mc.summarize(clean(t)));
+                        } finally {
+                            mc.clear();
+                            mc = null;
+                        }
+                    };
+                    if (s) {
+                        if (s.length < 80) {
+                            ret = util.trim(s);
+                        } else {
+                            let (waiting = true) {
+                                Pot.callLazy(function() {
+                                    for (let i = 0; i < 3; i++) {
+                                        ret = mov(s);
+                                        if (ret) {
+                                            break;
+                                        }
+                                    }
+                                    waiting = false;
+                                });
+                                till(function() {
+                                    return waiting !== true;
+                                });
+                            }
+                        }
+                    }
+                    return ret;
+                };
+            return <>
+                <h2><a href={ps.pageUrl} title={title}>{ps.page}</a></h2>
+                <div>
+                {summarize(ps.description)}
+                </div>
+            </>.toString();
+        }
+    },
+    post : function(ps) {
+        let that = this;
+        return Hatena.getUserInfo().addCallback(function(info) {
+            let title = ps.item || ps.page || '',
+                endpoint = [that.POST_URL, info.name, ''].join('/');
+            return request(endpoint, {
+                redirectionLimit : 0,
+                referrer         : endpoint,
+                sendContent      : {
+                    rkm   : info.rkm,
+                    title : Hatena.reprTags(ps.tags) + title,
+                    body  : that.converters[ps.type](ps, title)
+                }
+            });
+        });
+    }
+});
+
+
+}());
 //-----------------------------------------------------------------------------
 // Update - Delicious
 //-----------------------------------------------------------------------------
