@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.68
- * @date       2012-02-27
+ * @version    1.69
+ * @date       2012-02-28
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -5085,7 +5085,10 @@ Pot.extend({
             },
             joinWords: function(words) {
                 let result = [], re, word, last, glue;
-                re = /[a-zA-Z0-9_ａ-ｚＡ-Ｚ０-９＿]/;
+                re = {
+                    alpha : /[a-zA-Z_ａ-ｚＡ-Ｚ＿]/,
+                    num   : /[0-9０-９]/
+                };
                 if (words && this.isArray(words)) {
                     this.loop(words.length, function(i) {
                         word = words[i];
@@ -5093,7 +5096,9 @@ Pot.extend({
                             glue = '';
                             last = result[result.length - 1];
                             if (last) {
-                                if (re.test(last) && re.test(word)) {
+                                if ((re.alpha.test(last) && re.alpha.test(word)) ||
+                                    (re.num.test(last) && re.num.test(word))
+                                ) {
                                     glue = ' ';
                                 }
                             }
@@ -6578,7 +6583,9 @@ update(models.HatenaBookmark, {
         return Pot.BookmarkUtil.check(ps);
     },
     post: function(ps) {
-        Pot.QuickPostForm.resetCandidates();
+        if (doUpdateTags) {
+            Pot.QuickPostForm.resetCandidates();
+        }
         // タイトルは共有されているため送信しない
         return this.addBookmark(
             ps.itemUrl,
@@ -7050,7 +7057,7 @@ update(models.HatenaDiary, {
                         referrer         : endpoint,
                         sendContent      : {
                             rkm   : info.rkm,
-                            title : Hatena.reprTags(ps.tags) + title,
+                            title : Hatena.reprTags(HatenaBookmark.validateTags(ps.tags)) + title,
                             body  : body
                         }
                     });
@@ -7481,7 +7488,7 @@ update(models.Delicious, {
                 sendContent : sendContent
             });
         }).addErrback(function(err) {
-            if (err && err.message && err.message.status == 502) {
+            if (err && err.message && (err.message.status == 502 || err.message.status == 503)) {
                 return self.postByForm(ps);
             } else {
                 throw err;
