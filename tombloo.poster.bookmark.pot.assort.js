@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.69
- * @date       2012-02-28
+ * @version    1.70
+ * @date       2012-03-03
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -5436,6 +5436,8 @@ Pot.extend({
 
 Pot.BookmarkUtil = {};
 Pot.extend(Pot.BookmarkUtil, {
+    userTagsCache: null,
+    doUpdateTags: true,
     checkPattern: /(?:photo|quote|link|conversation|video|bookmark)/,
     check: function(ps) {
         return ps && Pot.BookmarkUtil.checkPattern.test(ps.type) && !ps.file;
@@ -6179,9 +6181,6 @@ forEach({
 (function() {
 
 
-let userTagsCache, doUpdateTags = true;
-
-
 update(models.GoogleBookmarks, {
     name: 'GoogleBookmarks',
     ICON: models.Google.ICON,
@@ -6206,20 +6205,24 @@ update(models.GoogleBookmarks, {
             }
         },
         tags: {
-            normalize: function(tags) {
+            normalize: function(tags, resetOnly) {
                 let result = [];
                 //
                 // 増えたタグの解析を行うようにする
                 //
                 //FIXME: #503 API制限をキャッシュでどうにかする
                 //
-                if (doUpdateTags) {
+                if (Pot.BookmarkUtil.doUpdateTags) {
                     Pot.QuickPostForm.resetCandidates();
                 }
                 if (Pot.isArray(tags)) {
                     result = tags || [];
                 }
-                return Pot.BookmarkUtil.normalizeTags(result);
+                if (resetOnly) {
+                    return result;
+                } else {
+                    return Pot.BookmarkUtil.normalizeTags(result);
+                }
             }
         }
     },
@@ -6448,9 +6451,9 @@ update(models.GoogleBookmarks, {
                         url = 'https://www.google.com/bookmarks/mark';
                     }
                     
-                    if (tags && tags.length && userTagsCache) {
+                    if (tags && tags.length && Pot.BookmarkUtil.userTagsCache) {
                         tags.forEach(function(tag) {
-                            userTagsCache[userTagsCache.length] = {
+                            Pot.BookmarkUtil.userTagsCache[Pot.BookmarkUtil.userTagsCache.length] = {
                                 name      : tag,
                                 frequency : -1
                             };
@@ -6473,8 +6476,10 @@ update(models.GoogleBookmarks, {
                             zx         : Math.random().toString(36).split('.').pop()
                         }
                     }).addErrback(function(err) {
-                        userTagsCache = null;
-                        doUpdateTags = true;
+                        if (getPref('tagProvider') === self.name) {
+                            Pot.BookmarkUtil.userTagsCache = null;
+                            Pot.BookmarkUtil.doUpdateTags = true;
+                        }
                         throw err;
                     });
                 });
@@ -6492,10 +6497,10 @@ update(models.GoogleBookmarks, {
             return Pot.BookmarkUtil.getRecommends(url).addCallback(function(keywords) {
                 return self.getBookmarkDescriptionByURI(url).addCallback(function(description) {
                     return self.getBookmarkTagsByURI(url).addCallback(function(postTags) {
-                        return (userTagsCache && !doUpdateTags) ? succeed({
+                        return (Pot.BookmarkUtil.userTagsCache && !Pot.BookmarkUtil.doUpdateTags) ? succeed({
                             duplicated  : bookmarked,
                             recommended : keywords || [],
-                            tags        : userTagsCache,
+                            tags        : Pot.BookmarkUtil.userTagsCache,
                             form        : {
                                 tags        : postTags || [],
                                 description : description
@@ -6512,8 +6517,8 @@ update(models.GoogleBookmarks, {
                             }).addCallback(function() {
                                 tags = self.privateCache.tags.normalize(tags);
                                 
-                                userTagsCache = tags;
-                                doUpdateTags = false;
+                                Pot.BookmarkUtil.userTagsCache = tags;
+                                Pot.BookmarkUtil.doUpdateTags = false;
                                 
                                 return {
                                     duplicated  : bookmarked,
@@ -6541,8 +6546,8 @@ update(models.GoogleBookmarks, {
                                 }).addCallback(function() {
                                     tags = self.privateCache.tags.normalize(tags);
                                     
-                                    userTagsCache = tags;
-                                    doUpdateTags = false;
+                                    Pot.BookmarkUtil.userTagsCache = tags;
+                                    Pot.BookmarkUtil.doUpdateTags = false;
                                     
                                     return {
                                         duplicated  : bookmarked,
@@ -6572,9 +6577,6 @@ update(models.GoogleBookmarks, {
 (function() {
 
 
-let userTagsCache, doUpdateTags = true;
-
-
 update(models.HatenaBookmark, {
     name: 'HatenaBookmark',
     ICON: 'http://b.hatena.ne.jp/favicon.ico',
@@ -6583,7 +6585,7 @@ update(models.HatenaBookmark, {
         return Pot.BookmarkUtil.check(ps);
     },
     post: function(ps) {
-        if (doUpdateTags) {
+        if (Pot.BookmarkUtil.doUpdateTags) {
             Pot.QuickPostForm.resetCandidates();
         }
         // タイトルは共有されているため送信しない
@@ -6620,7 +6622,7 @@ update(models.HatenaBookmark, {
                 //
                 //FIXME: #503 API制限をキャッシュでどうにかする
                 //
-                if (doUpdateTags) {
+                if (Pot.BookmarkUtil.doUpdateTags) {
                     Pot.QuickPostForm.resetCandidates();
                 }
                 if (Pot.isArray(tags)) {
@@ -6693,8 +6695,8 @@ update(models.HatenaBookmark, {
         });
     },
     getUserTags: function(user) {
-        if (userTagsCache && !doUpdateTags) {
-            return succeed(userTagsCache);
+        if (Pot.BookmarkUtil.userTagsCache && !Pot.BookmarkUtil.doUpdateTags) {
+            return succeed(Pot.BookmarkUtil.userTagsCache);
         }
         return request('http://b.hatena.ne.jp/' + user + '/tags.json').addCallback(function(res) {
             let fixTags, tags = JSON.parse(res.responseText)['tags'];
@@ -6725,18 +6727,18 @@ update(models.HatenaBookmark, {
             fixTags.clear();
             fixTags = null;
             
-            userTagsCache = tags;
-            doUpdateTags = false;
+            Pot.BookmarkUtil.userTagsCache = tags;
+            Pot.BookmarkUtil.doUpdateTags = false;
             
             return tags;
         });
     },
     addBookmark: function(url, title, tags, description) {
-        let privateMode = Pot.getPref(POT_BOOKMARK_PRIVATE);
+        let that = this, privateMode = Pot.getPref(POT_BOOKMARK_PRIVATE);
         
-        if (tags && tags.length && userTagsCache) {
+        if (tags && tags.length && Pot.BookmarkUtil.userTagsCache) {
             tags.forEach(function(tag) {
-                userTagsCache[userTagsCache.length] = {
+                Pot.BookmarkUtil.userTagsCache[Pot.BookmarkUtil.userTagsCache.length] = {
                     name      : tag,
                     frequency : -1
                 };
@@ -6755,8 +6757,10 @@ update(models.HatenaBookmark, {
                     private : (privateMode ? 1 : 0).toString()
                 }
             }).addErrback(function(err) {
-                userTagsCache = null;
-                doUpdateTags = true;
+                if (getPref('tagProvider') === that.name) {
+                    Pot.BookmarkUtil.userTagsCache = null;
+                    Pot.BookmarkUtil.doUpdateTags = true;
+                }
                 throw err;
             });
         });
@@ -7075,9 +7079,6 @@ update(models.HatenaDiary, {
 (function() {
 
 
-let userTagsCache, doUpdateTags = true;
-
-
 update(models.Delicious, {
     name: 'Delicious',
     ICON: 'http://www.delicious.com/favicon.ico',
@@ -7101,20 +7102,24 @@ update(models.Delicious, {
             }
         },
         tags: {
-            normalize: function(tags) {
+            normalize: function(tags, resetOnly) {
                 let result = [];
                 //
                 // 増えたタグの解析を行うようにする
                 //
                 //FIXME: #503 API制限をキャッシュでどうにかする
                 //
-                if (doUpdateTags) {
+                if (Pot.BookmarkUtil.doUpdateTags) {
                     Pot.QuickPostForm.resetCandidates();
                 }
                 if (Pot.isArray(tags)) {
                     result = tags || [];
                 }
-                return Pot.ArrayUtil.unique(result);
+                if (resetOnly) {
+                    return result;
+                } else {
+                    return Pot.ArrayUtil.unique(result);
+                }
             }
         }
     },
@@ -7185,8 +7190,8 @@ update(models.Delicious, {
         const TAGS_URL = 'http://delicious.com/save/confirm';
         let self = this, d, username;
         
-        if (userTagsCache && !doUpdateTags) {
-            return succeed(userTagsCache);
+        if (Pot.BookmarkUtil.userTagsCache && !Pot.BookmarkUtil.doUpdateTags) {
+            return succeed(Pot.BookmarkUtil.userTagsCache);
         }
         
         d = ((user) ? succeed(user) : this.getCurrentUser());
@@ -7197,6 +7202,7 @@ update(models.Delicious, {
             if (auth !== false) {
                 return self.getUserTagsByAPI();
             } else {
+                
                 // 同期でエラーが起きないようにする
                 return succeed().addCallback(function() {
                     return request(TAGS_URL).addCallback(function(res) {
@@ -7211,8 +7217,8 @@ update(models.Delicious, {
                 });
             }
         }).addCallback(function(tags) {
-            userTagsCache = tags;
-            doUpdateTags = false;
+            Pot.BookmarkUtil.userTagsCache = tags;
+            Pot.BookmarkUtil.doUpdateTags = false;
             return tags;
         });
     },
@@ -7223,6 +7229,11 @@ update(models.Delicious, {
         //FIXME: 全てのタグが取得できない(recentになっている) API 改善待ち
         const API_URL = 'https://api.del.icio.us/v1/tags/get';
         let self = this;
+        
+        if (Pot.BookmarkUtil.userTagsCache && !Pot.BookmarkUtil.doUpdateTags) {
+            return succeed(Pot.BookmarkUtil.userTagsCache);
+        }
+        
         return succeed().addCallback(function() {
             return (user ? succeed(user) : self.getCurrentUser()).addCallback(function(username) {
                 return self.getAPIAuth(true, username);
@@ -7247,6 +7258,10 @@ update(models.Delicious, {
                     return tags;
                 });
             });
+        }).addCallback(function(tags) {
+            Pot.BookmarkUtil.userTagsCache = tags;
+            Pot.BookmarkUtil.doUpdateTags = false;
+            return tags;
         });
     },
     isBookmarked : function(url) {
@@ -7374,7 +7389,7 @@ update(models.Delicious, {
                             if (Pot.getPref(POT_BOOKMARK_PRIVATE)) {
                                 isPrivate = true;
                             }
-                            allTags = self.privateCache.tags.normalize(suggests.userTags);
+                            allTags = self.privateCache.tags.normalize(suggests.userTags, true);
                             result = {
                                 editPage : 'http://www.delicious.com/save?url=' + encodeURIComponent(url),
                                 form : {
@@ -7471,9 +7486,9 @@ update(models.Delicious, {
                 sendContent.shared = 'no';
             }
             
-            if (tags && tags.length && userTagsCache) {
+            if (tags && tags.length && Pot.BookmarkUtil.userTagsCache) {
                 tags.forEach(function(tag) {
-                    userTagsCache[userTagsCache.length] = {
+                    Pot.BookmarkUtil.userTagsCache[Pot.BookmarkUtil.userTagsCache.length] = {
                         name      : tag,
                         frequency : -1
                     };
@@ -7494,8 +7509,10 @@ update(models.Delicious, {
                 throw err;
             }
         }).addErrback(function(err) {
-            userTagsCache = null;
-            doUpdateTags = true;
+            if (getPref('tagProvider') === self.name) {
+                Pot.BookmarkUtil.userTagsCache = null;
+                Pot.BookmarkUtil.doUpdateTags = true;
+            }
             throw err;
         });
     },
@@ -7522,9 +7539,9 @@ update(models.Delicious, {
             let doc = convertToHTMLDocument(res.responseText),
                 form = formContents(doc) || {};
             
-            if (tags && tags.length && userTagsCache) {
+            if (tags && tags.length && Pot.BookmarkUtil.userTagsCache) {
                 tags.forEach(function(tag) {
-                    userTagsCache[userTagsCache.length] = {
+                    Pot.BookmarkUtil.userTagsCache[Pot.BookmarkUtil.userTagsCache.length] = {
                         name      : tag,
                         frequency : -1
                     };
@@ -7660,7 +7677,9 @@ update(models.Pinboard, {
             });
         }).addCallback(function(res) {
             let form = formContents(res.responseText);
-            Pot.QuickPostForm.resetCandidates();
+            if (Pot.BookmarkUtil.doUpdateTags) {
+                Pot.QuickPostForm.resetCandidates();
+            }
             return request(ADD_URL, {
                 sendContent : update(form, {
                     title       : title,
@@ -7681,9 +7700,6 @@ update(models.Pinboard, {
 // Update - LivedoorClip
 //-----------------------------------------------------------------------------
 (function() {
-
-
-let userTagsCache, doUpdateTags = true;
 
 
 update(models.LivedoorClip, {
@@ -7717,7 +7733,7 @@ update(models.LivedoorClip, {
                 //
                 //FIXME: #503 API制限をキャッシュでどうにかする
                 //
-                if (doUpdateTags) {
+                if (Pot.BookmarkUtil.doUpdateTags) {
                     Pot.QuickPostForm.resetCandidates();
                 }
                 if (Pot.isArray(tags)) {
@@ -7728,6 +7744,7 @@ update(models.LivedoorClip, {
         }
     },
     post: function(ps) {
+        let that = this;
         return LivedoorClip.getToken().addCallback(function(token) {
             let title, tags, notes;
             {
@@ -7738,9 +7755,9 @@ update(models.LivedoorClip, {
                 tags = tr(name, 'tagLength', LivedoorClip.validateTags(append(ps.tags)));
                 notes = tr(name, 'comment', joinText([ps.body, ps.description], ' ', true));
             }
-            if (tags && tags.length && userTagsCache) {
+            if (tags && tags.length && Pot.BookmarkUtil.userTagsCache) {
                 tags.forEach(function(tag) {
-                    userTagsCache[userTagsCache.length] = {
+                    Pot.BookmarkUtil.userTagsCache[Pot.BookmarkUtil.userTagsCache.length] = {
                         name      : tag,
                         frequency : -1
                     };
@@ -7759,8 +7776,10 @@ update(models.LivedoorClip, {
                     public  : (ps.private || Pot.getPref(POT_BOOKMARK_PRIVATE)) ? 'off' : 'on'
                 }
             }).addErrback(function(err) {
-                userTagsCache = null;
-                doUpdateTags = true;
+                if (getPref('tagProvider') === that.name) {
+                    Pot.BookmarkUtil.userTagsCache = null;
+                    Pot.BookmarkUtil.doUpdateTags = true;
+                }
                 throw err;
             });
         });
@@ -7870,8 +7889,8 @@ update(models.LivedoorClip, {
                 };
                 duplicated = !!$x('//form[@name="delete_form"]', doc);
                 
-                if (userTagsCache && !doUpdateTags) {
-                    tags = userTagsCache;
+                if (Pot.BookmarkUtil.userTagsCache && !Pot.BookmarkUtil.doUpdateTags) {
+                    tags = Pot.BookmarkUtil.userTagsCache;
                 } else {
                     tags = [];
                     val('//div[@class="TagBox"]/span/text()', true).forEach(function(tag) {
@@ -7884,8 +7903,8 @@ update(models.LivedoorClip, {
                         }
                     });
                     tags = that.privateCache.tags.normalize(tags);
-                    userTagsCache = tags;
-                    doUpdateTags = false;
+                    Pot.BookmarkUtil.userTagsCache = tags;
+                    Pot.BookmarkUtil.doUpdateTags = false;
                 }
                 item = val('//input[@name="my_title"]/@value');
                 postTags = val('//input[@name="tags"]/@value');
@@ -8233,7 +8252,9 @@ update(models.YahooBookmarks, {
                 //
                 //FIXME: #503 API制限をキャッシュでどうにかする
                 //
-                Pot.QuickPostForm.resetCandidates();
+                if (Pot.BookmarkUtil.doUpdateTags) {
+                    Pot.QuickPostForm.resetCandidates();
+                }
                 if (Pot.isArray(tags)) {
                     result = tags || [];
                 }
@@ -8264,7 +8285,9 @@ update(models.YahooBookmarks, {
                 tags = tr(name, 'tagLength', append(ps.tags));
                 desc = tr(name, 'comment', joinText([ps.body, ps.description], ' ', true));
             }
-            Pot.QuickPostForm.resetCandidates();
+            if (Pot.BookmarkUtil.doUpdateTags) {
+                Pot.QuickPostForm.resetCandidates();
+            }
             return request(DONE_URL, {
                 redirectionLimit : 0,
                 sendContent : {
@@ -8612,7 +8635,9 @@ update(models.FirefoxBookmark, {
                 comment
             ).addBoth(function() {
                 // オートコンプリートで使うタグをリセット
-                Pot.QuickPostForm.resetCandidates();
+                if (Pot.BookmarkUtil.doUpdateTags) {
+                    Pot.QuickPostForm.resetCandidates();
+                }
             });
         });
     },
@@ -9349,7 +9374,9 @@ Pot.extend({
     QuickPostForm: {
         // オートコンプリートで使うタグをリセット
         resetCandidates: function() {
-            QuickPostForm.candidates = [];
+            if (Pot.BookmarkUtil.doUpdateTags) {
+                QuickPostForm.candidates = [];
+            }
         },
         /**
          * 呼び出し元から指定の名前(name)を持つメニューを取得
