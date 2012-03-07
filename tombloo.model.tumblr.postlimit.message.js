@@ -13,8 +13,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.09
- * @date       2012-02-20
+ * @version    1.10
+ * @date       2012-03-08
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -50,38 +50,56 @@ update(Tumblr, {
      */
     postForm : function(fn) {
         return succeed().addCallback(fn).addCallback(function(res) {
-            let url = res.channel.URI.asciiSpec.replace(/\?.*/, '');
+            let url = res.channel.URI.asciiSpec.replace(/[?#].*/, ''),
+                msg, text, doc, err, isReblog,
+                resetCount = function() {
+                    let key = isReblog ? 'reblog' : 'post';
+                    return Tumblr.ReblogPostLimit[key].isMax().addCallback(function(isMax) {
+                        if (isMax) {
+                            Tumblr.ReblogPostLimit[key].reset();
+                        }
+                    }).addErrback(function() {});
+                };
 
-            switch (true) {
-                case /dashboard/.test(url):
-                    return;
-                case /login/.test(url):
-                    throw new Error(getMessage('error.notLoggedin'));
-                default: {
-                    let msg, text, doc, err;
-
-                    // このチェックをするためリダイレクトを追う必要がある
-                    // You've used 100% of your daily photo uploads. You can upload more tomorrow.
-                    text = res.responseText;
-                    msg = "You've exceeded your daily post limit.";
-                    if (text.indexOf('more tomorrow') !== -1 ||
-                        /exceeded.*?upload.*?limit/i.test(text)
-                    ) {
-                        Tumblr.ReblogPostLimit.post.setMax().addCallback(function() {
-                            Tumblr.ReblogPostLimit.reblog.setMax();
-                        });
-                        throw new Error(msg);
-                    }
-
-                    // 確実にエラーメッセージが表示されるよう修正
-                    doc = convertToHTMLDocument(text);
-                    err = doc.getElementById('errors') ||
-                        $x('//*[starts-with(@class,"error")]', doc);
-                    if (err) {
-                        throw new Error(convertToPlainText(err.textContent) || msg);
-                    }
-                }
+            if (/\/login/.test(url)) {
+                throw new Error(getMessage('error.notLoggedin'));
             }
+
+            text = res.responseText;
+            doc = convertToHTMLDocument(text);
+            msg = "You've exceeded your daily post limit.";
+            isReblog = !!$x(
+                '//li[starts-with(@id,"post_")' +
+                        ' and contains(@class,"is_reblog")' +
+                        ' and contains(@class,"post")]' +
+                    '//form[@action="/delete"]',
+                doc
+            );
+
+            if (/\/dashboard/.test(url)) {
+                resetCount();
+                return;
+            }
+
+            // このチェックをするためリダイレクトを追う必要がある
+            // You've used 100% of your daily photo uploads. You can upload more tomorrow.
+            if (~text.indexOf('more tomorrow') ||
+                /exceeded.*?upload.*?limit/i.test(text)
+            ) {
+                if (isReblog) {
+                    Tumblr.ReblogPostLimit.reblog.setMax();
+                } else {
+                    Tumblr.ReblogPostLimit.post.setMax();
+                }
+                throw new Error(msg);
+            }
+
+            err = doc.getElementById('errors') || $x('//*[starts-with(@class,"error")]', doc);
+            msg = err && convertToPlainText(err.textContent);
+            if (msg) {
+                throw new Error(msg);
+            }
+            resetCount();
         });
     },
     // Tumblr model 拡張
