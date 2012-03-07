@@ -38,7 +38,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.72
+ * @version    1.73
  * @date       2012-03-08
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/

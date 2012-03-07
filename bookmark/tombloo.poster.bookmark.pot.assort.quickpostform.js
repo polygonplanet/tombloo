@@ -18,7 +18,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.19
+ * @version  1.20
  * @date     2012-03-08
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog    : http://polygon-planet.blogspot.com/
@@ -668,7 +668,7 @@ update(FormPanel.prototype.types, {
             if (Pot.getPref('selectionAutoInsert')) {
                 re.push({
                     by: bySp(<><![CDATA[
-                            var onContentCopy = function [()] [{] [\s\S]*? [}] , true [()] ;?
+                            var onContentCopy = function [()]+ [{] [\s\S]*? [}] , true [()] ;?
                         ]]></>),
                     to: toSp(<><![CDATA[
                             var selection = broad(window.opener.content.getSelection());
@@ -771,7 +771,7 @@ update(FormPanel.prototype.types, {
             // FIXME: 非表示時の挙動を検討する
             // nsISelectionListener
             notifySelectionChanged : (function() {
-                if (!Pot.getPref('selectionAutoInsert')) {
+                if (!DescriptionBox.prototype.notifySelectionChanged && !Pot.getPref('selectionAutoInsert')) {
                     return function() {};
                 } else {
                     return function(doc, sel, reason) {
