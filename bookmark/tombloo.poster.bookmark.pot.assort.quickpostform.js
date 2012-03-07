@@ -18,8 +18,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.18
- * @date     2011-08-18
+ * @version  1.19
+ * @date     2012-03-08
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog    : http://polygon-planet.blogspot.com/
  *            - Twitter : http://twitter.com/polygon_planet
@@ -664,6 +664,21 @@ update(FormPanel.prototype.types, {
                         ]]></>)
                 }
             ];
+            // 選択範囲のテキスト自動挿入を復活
+            if (Pot.getPref('selectionAutoInsert')) {
+                re.push({
+                    by: bySp(<><![CDATA[
+                            var onContentCopy = function [()] [{] [\s\S]*? [}] , true [()] ;?
+                        ]]></>),
+                    to: toSp(<><![CDATA[
+                            var selection = broad(window.opener.content.getSelection());
+                            selection.addSelectionListener(self);
+                            window.addEventListener('unload', function() {
+                                selection.removeSelectionListener(self);
+                            }, true);
+                        ]]></>)
+                });
+            }
             re.forEach(function(item) {
                 code = code.replace(item.by, item.to);
             });
@@ -750,7 +765,30 @@ update(FormPanel.prototype.types, {
                     self.customMenus.push(appendMenuItem(df, '----'));
                     this.elmContext.insertBefore(df, this.elmContext.firstChild);
                 }
-            }
+            },
+            // 選択範囲のテキスト自動挿入を復活
+            //
+            // FIXME: 非表示時の挙動を検討する
+            // nsISelectionListener
+            notifySelectionChanged : (function() {
+                if (!Pot.getPref('selectionAutoInsert')) {
+                    return function() {};
+                } else {
+                    return function(doc, sel, reason) {
+                        if (sel.isCollapsed || reason != ISelectionListener.MOUSEUP_REASON) {
+                            return;
+                        }
+                        this.replaceSelection(sel.toString().trim());
+
+                        // 別ウィンドウのため一度ウィンドウのフォーカスも戻す
+                        window.focus();
+                        this.elmDescription.focus();
+
+                        // valueを変えると先頭に戻ってしまうため最後に移動し直す
+                        this.elmInput.scrollTop = this.elmInput.scrollHeight;
+                    };
+                }
+            }())
         });
     })();
     

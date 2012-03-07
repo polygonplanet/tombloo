@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.70
- * @date       2012-03-03
+ * @version    1.71
+ * @date       2012-03-08
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -174,6 +174,9 @@ const POT_BOOKMARK_PRIVATE       = 'bookmarkPrivate';
 
 // メディアファイル(Photo/Audio)をホスト名でフォルダ分けして保存する
 const POT_SEPARATE_USER_DATA_FOLDERS = 'separateUserDataFolders';
+
+// 選択したテキストを自動挿入する
+const POT_SELECTION_AUTO_INSERT  = 'selectionAutoInsert';
 
 // ローマ字入力のかな変換キーマップ
 const POT_ROMA_READING_KEYS      = 'userRomaReadingKeys';
@@ -11470,6 +11473,10 @@ Pot.extend(Pot.SetupUtil, {
                         $1id="%s" 
                         $1name="extensions.tombloo.%s" 
                         $1type="bool"/>
+                    $1<preference 
+                        $1id="%s" 
+                        $1name="extensions.tombloo.%s" 
+                        $1type="bool"/>
                     $1$2$3
                 ]]></>),
                     POT_PREF_KEY_PREFIX + POT_SHORTCUTKEY_BOOKMARK,
@@ -11479,7 +11486,9 @@ Pot.extend(Pot.SetupUtil, {
                     POT_PREF_KEY_PREFIX + POT_BOOKMARK_PRIVATE,
                     POT_PREF_KEY_PREFIX + POT_BOOKMARK_PRIVATE,
                     POT_PREF_KEY_PREFIX + POT_SEPARATE_USER_DATA_FOLDERS,
-                    POT_PREF_KEY_PREFIX + POT_SEPARATE_USER_DATA_FOLDERS
+                    POT_PREF_KEY_PREFIX + POT_SEPARATE_USER_DATA_FOLDERS,
+                    POT_PREF_KEY_PREFIX + POT_SELECTION_AUTO_INSERT,
+                    POT_PREF_KEY_PREFIX + POT_SELECTION_AUTO_INSERT
                 )
             },
             {
@@ -11583,6 +11592,7 @@ Pot.extend(Pot.SetupUtil, {
             },
             {
                 // 「メディアファイル(Photo/Audio等)をフォルダ分けして保存」を追加
+                // 「選択したテキストを自動挿入する」を追加
                 from: Pot.SetupUtil.createPattern(<><![CDATA[
                     ([\u0009\u0020]*)(<textbox\b 
                         readonly = ["']true['"] value = ["']&label.example; {ProfD}/tombloo['"] />
@@ -11593,10 +11603,16 @@ Pot.extend(Pot.SetupUtil, {
                     $1<row align="center">
                         $1<label value="&label.%s;"/>
                         $1<checkbox preference="%s" />
+                    $1</row>
+                    $1<row align="center">
+                        $1<label value="&label.%s;"/>
+                        $1<checkbox preference="%s" />
                     $1</row>$3
                 ]]></>),
                     POT_SEPARATE_USER_DATA_FOLDERS,
-                    POT_PREF_KEY_PREFIX + POT_SEPARATE_USER_DATA_FOLDERS
+                    POT_PREF_KEY_PREFIX + POT_SEPARATE_USER_DATA_FOLDERS,
+                    POT_SELECTION_AUTO_INSERT,
+                    POT_PREF_KEY_PREFIX + POT_SELECTION_AUTO_INSERT
                 )
             },
             {
@@ -11671,6 +11687,7 @@ Pot.extend(Pot.SetupUtil, {
                     <!ENTITY label.bookmarkPrivate "非公開でブックマークする(対応してる場合)">
                     <!ENTITY label.shortcutkey.quickPost.bookmark "ショートカット - Bookmarkクイックポスト">
                     <!ENTITY label.separateUserDataFolders "メディア(Photo等)をフォルダ分けして保存">
+                    <!ENTITY label.selectionAutoInsert "選択したテキストを自動挿入する(再起動が必要)">
                 ]]></>).wrap('\n')
             );
             if (!success) {
@@ -11689,6 +11706,7 @@ Pot.extend(Pot.SetupUtil, {
                     <!ENTITY label.bookmarkPrivate "Bookmark private if supported on the service.">
                     <!ENTITY label.shortcutkey.quickPost.bookmark "Shortcutkey - Bookmark Quick Post">
                     <!ENTITY label.separateUserDataFolders "Save media(photo etc.) as separate folders">
+                    <!ENTITY label.selectionAutoInsert "Automatically insert the selected text. (requires restart)">
                 ]]></>).wrap('\n')
             );
             if (!success) {
