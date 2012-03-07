@@ -18,7 +18,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.21
+ * @version  1.22
  * @date     2012-03-08
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog    : http://polygon-planet.blogspot.com/
@@ -670,7 +670,7 @@ update(FormPanel.prototype.types, {
             }
             re.push({
                 by: bySp(<><![CDATA[
-                        ([{({({]?[}] , true [)] ;?)( [}] [)] ;? [}]+ )$
+                        ([{({({]?[}] , true [)] ;?)( (?:[}] [)] ;?)? [}]+ |)$
                     ]]></>),
                 to: toSp(<><![CDATA[
                         $1;
