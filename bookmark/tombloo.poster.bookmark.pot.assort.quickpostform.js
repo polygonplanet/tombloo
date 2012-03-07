@@ -18,7 +18,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.20
+ * @version  1.21
  * @date     2012-03-08
  * @author   polygon planet <polygon.planet@gmail.com>
  *            - Blog    : http://polygon-planet.blogspot.com/
@@ -652,18 +652,7 @@ update(FormPanel.prototype.types, {
     // ----- DescriptionBox -----
     (function() {
         override('DescriptionBox', function(code) {
-            var re = [
-                {
-                    by: bySp(<><![CDATA[
-                            ([{({({]?[}] , true [)] ;?)( [}] [)] ;? [}]+ )$
-                        ]]></>),
-                    to: toSp(<><![CDATA[
-                            $1;
-                            self.potInitBookmarkDescriptionBox(ps);
-                            $2
-                        ]]></>)
-                }
-            ];
+            var re = [];
             // 選択範囲のテキスト自動挿入を復活
             if (Pot.getPref('selectionAutoInsert')) {
                 re.push({
@@ -679,6 +668,16 @@ update(FormPanel.prototype.types, {
                         ]]></>)
                 });
             }
+            re.push({
+                by: bySp(<><![CDATA[
+                        ([{({({]?[}] , true [)] ;?)( [}] [)] ;? [}]+ )$
+                    ]]></>),
+                to: toSp(<><![CDATA[
+                        $1;
+                        self.potInitBookmarkDescriptionBox(ps);
+                        $2
+                    ]]></>)
+            });
             re.forEach(function(item) {
                 code = code.replace(item.by, item.to);
             });
