@@ -38,7 +38,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.71
+ * @version    1.72
  * @date       2012-03-08
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
@@ -11600,11 +11600,11 @@ Pot.extend(Pot.SetupUtil, {
                 ]]></>),
                 to: Pot.sprintf(Pot.StringUtil.mtrim(<><![CDATA[
                     $1$2$3
-                    $1<row align="center">
+                    $1<row align="center" style="margin: 0.7em 0 0.5em 0;">
                         $1<label value="&label.%s;"/>
                         $1<checkbox preference="%s" />
                     $1</row>
-                    $1<row align="center">
+                    $1<row align="center" style="margin: 0.7em 0 0.5em 0;">
                         $1<label value="&label.%s;"/>
                         $1<checkbox preference="%s" />
                     $1</row>$3
