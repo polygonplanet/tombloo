@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.75
- * @date       2012-03-08
+ * @version    1.76
+ * @date       2012-03-09
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -1926,14 +1926,30 @@ Pot.extend({
                 alpha.low = alpha.up.toLowerCase();
                 ids = Pot.StringUtil.trim(<>
                     autopagerize_page_element
+                    content-main
                     head-line
+                    headline
+                    news_right
+                    entry_detail
+                    str-contentsleft
+                    col1
+                    kijibox
+                    ynDetail
+                    tmplNews
+                    CONTENTS_MAIN
+                    NewsArticle
+                    articleBox
+                    fs-all
+                    MainBox
                     entry-content
+                    articlebody
                     article-body
                     article
                     blog-body
                     body
                     h-entry
                     entry
+                    main_content
                     main-content
                     block-content
                     contents-block
@@ -1943,6 +1959,8 @@ Pot.extend({
                     section
                     post
                     container
+                    wrap
+                    wrapper
                 </>).split(/\s+/);
                 re = /-/g;
                 node = null;
