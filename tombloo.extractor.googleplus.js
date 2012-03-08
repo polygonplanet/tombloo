@@ -11,8 +11,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.02
- * @date       2011-12-13
+ * @version    1.03
+ * @date       2012-03-09
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -39,7 +39,7 @@ Tombloo.Service.extractors.register([{
             proxy  : /^(?:https?:|)\/+(?:\w+?-)*?opensocial[.]googleusercontent[.]com\//,
             image  : /[?].*url=([^&]+)(?:[&]|$)/i,
             photo  : /^(?:https?:|)\/+(?:\w+[.])*?googleusercontent[.]com\//,
-            resize : /\/[a-z][0-9]{1,8}(?:[\w-]*)\/(?![a-z][0-9]{1,8}(?:[\w-]*)\/)/i,
+            resize : /(\/[a-z][0-9]{1,8}(?:[\w-]*)\/)((?:(?![a-z][0-9]{1,8}(?:[\w-]*)\/).)*)$/i,
             icon   : /[?]\w+=\d+.*$|\/[a-z]\d+(?:-[a-z])*(?=\/photo[.](?:jpe?g|png|gif)$)/i
         };
         if (url) {
@@ -48,7 +48,7 @@ Tombloo.Service.extractors.register([{
                 uri = url.match(patterns.image)[1];
             } else if (patterns.photo.test(url)) {
                 if (patterns.resize.test(url)) {
-                    uri = url.replace(patterns.resize, '/h0/');
+                    uri = url.replace(patterns.resize, '/h0/$2');
                 } else if (patterns.icon.test(url)) {
                     uri = url.replace(patterns.icon, '');
                 }
