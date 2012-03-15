@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.76
- * @date       2012-03-09
+ * @version    1.77
+ * @date       2012-03-15
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -212,7 +212,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.65',
+    VERSION: '1.77',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -8580,7 +8580,13 @@ update(models.Twitter, {
 
 
 if (typeof(PlacesUtils) === 'undefined') {
-    Components.utils.import('resource://gre/modules/utils.js');
+    try {
+        Components.utils.import('resource://gre/modules/PlacesUtils.jsm');
+    } catch (e) {
+        try {
+            Components.utils.import('resource://gre/modules/utils.js');
+        } catch (e) {}
+    }
 }
 
 update(models.FirefoxBookmark, {
