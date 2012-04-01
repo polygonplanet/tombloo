@@ -11,7 +11,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.04
+ * @version    1.05
  * @date       2012-04-01
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Twitter : http://twitter.com/polygon_planet
@@ -86,8 +86,10 @@ var alphanumSort = (function() {
     }
 
     return function(array) {
-      array.sort(alphanumCase);
-      return array;
+        if (array && array.length >= 2) {
+            array.sort(alphanumCase);
+        }
+        return array;
     };
 }());
 
