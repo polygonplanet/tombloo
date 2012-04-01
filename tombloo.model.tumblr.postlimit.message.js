@@ -10,15 +10,15 @@
  * - ポスト上限に達した時のエラーメッセージを確実に表示する
  * - ポスト/リブログ残りの可能数をメニューに表示
  * - (残り残量は Tombloo 以外でポストすると狂う)
+ * - クリックするとログイン中のアカウントも表示
+ * - サマータイム対応(?)
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.10
- * @date       2012-03-08
- * @author     polygon planet <polygon.planet@gmail.com>
- *              - Blog    : http://polygon-planet.blogspot.com/
+ * @version    1.11
+ * @date       2012-04-01
+ * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Twitter : http://twitter.com/polygon_planet
- *              - Tumblr  : http://polygonplanet.tumblr.com/
  * @license    Same as Tombloo
  * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.tumblr.postlimit.message.js
  *
@@ -27,12 +27,15 @@
 (function() {
 
 // リセットされる時間 (日本時間 GMT+900)
+//XXX: 日本以外だとずれる。。
 const RESET_TIME = {
-    HOURS   : 14, // 時
-    MINUTES :  0  // 分
+    // 14:00 - DST
+    HOURS   : 14 - (isDstInNY() ? 1 : 0),
+    MINUTES :  0
 };
 
 // ポストの最大数
+//XXX: Photoだけ
 const POST_LIMIT   = 75;
 
 // リブログの最大数
@@ -381,8 +384,8 @@ let (LABEL = 'Tumblr Post/Reblog Limit') {
         execute : function(ctx) {
             let that = this;
             this.check().addCallback(function() {
-                // alert以外に何かないかな…
-                alert(that.name);
+                // アカウント名が表示されるので注意!
+                alert(that.name + '\nLogin: ' + Tumblr.user);
             });
         }
     }, '----');
@@ -393,7 +396,41 @@ let (LABEL = 'Tumblr Post/Reblog Limit') {
     }, LABEL);
 }
 
+// サマータイム(Daylight Saving Time)チェック
+function isDstInNY(date) {
+    let dst = {}, tz = {},
+        i, j, start, end, pos, year;
 
+    date || (date = new Date);
+    year = date.getFullYear();
+
+    start = new Date(year, 3 - 1, 1, 2, 0, 0);
+    for (i = 1, j = 0; i <= 14; i++) {
+        start.setDate(i);
+        if (start.getDay() === 0) {
+            if (++j === 2) {
+                break;
+            }
+        }
+    }
+    dst.start = +start;
+
+    end = new Date(year, 11 - 1, 1, 1, 0, 0);
+    for (i = 1; i <= 7; i++) {
+        end.setDate(i);
+        if (end.getDay() === 0) {
+            break;
+        }
+    }
+    dst.end = +end;
+
+    tz.offset = date.getTimezoneOffset();
+    tz.ny = -5 * 60; // GMT-0500
+    pos = +date + (tz.offset + tz.ny) * 60 * 1000;
+    return dst.start <= pos && dst.end > pos;
+}
+
+// pref
 function defineTumblrLimitEnv() {
     /**
      * setPref/getPref で使うキー名 (キャッシュに使用)
