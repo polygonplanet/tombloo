@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.77
- * @date       2012-03-15
+ * @version    1.78
+ * @date       2012-04-01
  * @author     polygon planet <polygon.planet@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -212,7 +212,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.77',
+    VERSION: '1.78',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -1907,6 +1907,7 @@ Pot.extend({
      * @return {String}             取得したテキスト
      */
     getTextContent: function(context, xpath) {
+        const TEXT_LIMIT = 0x7FFF << 2;
         let text = '', d, waiting, doc, re, ids, node, found, names, expr, alpha, format;
         if (context && Pot.isString(context)) {
             [doc, expr] = [xpath, context];
@@ -2023,7 +2024,10 @@ Pot.extend({
                 waiting = true;
                 d = new Deferred();
                 d.addCallback(function() {
-                    return Pot.StringUtil.stripTags(text);
+                    //XXX: length<=450000 くらいあると固まる(?)
+                    return new String(text).replace(/\s+/g, ' ').slice(0, TEXT_LIMIT);
+                }).addCallback(function(res) {
+                    return Pot.StringUtil.stripTags(res);
                 }).addCallback(function(res) {
                     return wait(0.02).addCallback(function() {
                         return Pot.unescapeHTML(res);
@@ -4068,11 +4072,12 @@ Pot.extend(Pot.StringUtil, {
         };
         s = Pot.StringUtil.stringify(text);
         tpls = [{
-            format: '^ %s{0,3} %s? %s %s? %s{3}%s%s{2}%s%s{2}%s? (?:%s %s %s|) %s{2}:%s{2}(?::%s{2}|)(?:[.]%s{1,2}|) (?:%s|)%s$',
-            flags: 'gim'
+            format: ' %s{0,3} %s? %s %s? %s{3}%s%s{2}%s%s{2}%s? (?:%s %s %s|) %s{2}:%s{2}(?::%s{2}|)(?:[.]%s{1,2}|) (?:%s|)%s' +
+                    '(?:\\r\\n|\\r|\\n|)',
+            flags: 'gi'
         }, {
             format: '(?:\\b|) %s{0,3} %s? %s %s? %s{3}%s%s{2}%s%s{2}%s? (?:%s %s %s|) %s{2}:%s{2}(?::%s{2}|)(?:[.]%s{1,2}|) (?:%s|)%s?' +
-                    '(?=[\\u0100-\\uFFFF]|[\\r\\n]|\\b|$|)',
+                    '(?=[\\u0100-\\uFFFF\\r\\n]|\\b|$|)',
             flags: 'gi'
         }];
         patterns = [];
@@ -4082,7 +4087,7 @@ Pot.extend(Pot.StringUtil, {
                     tpl.format,
                     re.numbers, re.colon, re.name, re.colon,
                     re.numbers, re.year, re.number, re.month, re.number, re.date,
-                    re.open, re.day, re.close,re.number, re.number, re.number, re.number, re.id, re.be
+                    re.open, re.day, re.close, re.number, re.number, re.number, re.number, re.id, re.be
                 ).replace(/\s+/g, re.space),
                 tpl.flags
             ));
@@ -8079,15 +8084,20 @@ update(models.Yahoo, {
                     });
                 });
                 df.addCallback(function() {
-                    let results = [], item, clean, invalid, dp;
-                    clean = /[,\s\u00A0\u3000]+/g;
+                    let results = [], item, clean, cleang, invalid, dp;
+                    clean = /[,\s\u00A0\u3000]+/;
+                    cleang = /[,\s\u00A0\u3000]+/g;
                     // 数字/記号だけorマルチバイト1文字だけはダメ
                     invalid = /^[!-@[-`\]{-~}\s]+$|^[\u0100-\uFFFF]$/;
                     dp = Pot.DeferredUtil.repeat(result.length, function(idx) {
-                        Pot.ArrayUtil.emptyFilter(Pot.StringUtil.trim(result[idx])
-                            .split(clean)).forEach(function(v) 
-                        {
-                            item = Pot.StringUtil.trim(v).replace(clean, '');
+                        let words = [], ws = Pot.StringUtil.trim(result[idx]).split(clean);
+                        Pot.ArrayUtil.emptyFilter(ws).forEach(function(v) {
+                            Pot.ArrayUtil.emptyFilter(Pot.StringUtil.trim(v).split(clean)).forEach(function(cv) {
+                                words[words.length] = cv;
+                            });
+                        });
+                        words.forEach(function(v) {
+                            item = Pot.StringUtil.trim(v).replace(cleang, '');
                             if (item && item.length && !invalid.test(item)) {
                                 results[results.length] = item;
                             }
