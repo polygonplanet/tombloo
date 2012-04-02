@@ -11,12 +11,10 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.00
- * @date       2012-01-22
- * @author     polygon planet <polygon.planet@gmail.com>
- *              - Blog    : http://polygon-planet.blogspot.com/
+ * @version    1.01
+ * @date       2012-04-02
+ * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Twitter : http://twitter.com/polygon_planet
- *              - Tumblr  : http://polygonplanet.tumblr.com/
  * @license    Same as Tombloo
  * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.twitpic.fixicon.js
  *
@@ -25,7 +23,7 @@
 (function () {
 
 update(models.Twitpic, {
-    ICON     : 'https://twitpic.com/favicon.ico',
+    ICON     : 'https://twitpic.com/images/favicon.ico',
     POST_URL : 'https://twitpic.com/upload',
     check : function(ps) {
         return ps.type == 'photo';
