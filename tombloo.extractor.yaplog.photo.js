@@ -10,8 +10,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.00
- * @date       2012-04-20
+ * @version    1.01
+ * @date       2012-04-21
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -27,7 +27,7 @@ Tombloo.Service.extractors.register([{
     name  : 'Photo - yaplog!',
     ICON  : 'http://www.yaplog.jp/img/common/favicon.ico',
     check : function(ctx) {
-        return ctx.onImage && ctx.onLink && ctx.target &&
+        return ctx.onImage && ctx.target &&
                /\/(?:image|img)\//.test(ctx.target.src) &&
                /^(?:\w+[.])*?yaplog[.]jp$/.test(ctx.host);
     },
