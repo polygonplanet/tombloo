@@ -10,7 +10,7 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.01
+ * @version    1.02
  * @date       2012-04-21
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
@@ -32,10 +32,16 @@ Tombloo.Service.extractors.register([{
                /^(?:\w+[.])*?yaplog[.]jp$/.test(ctx.host);
     },
     extract : function(ctx) {
+        var orgSrc = ctx.target.src;
         ctx.target = {
             src : ctx.target.src.replace(/([.][^.]+)$/, '_large$1')
         };
-        return Tombloo.Service.extractors['Photo'].extract(ctx);
+        return Tombloo.Service.extractors['Photo'].extract(ctx).addErrback(function() {
+            ctx.target = {
+                src : orgSrc
+            };
+            return Tombloo.Service.extractors['Photo'].extract(ctx);
+        });
     }
 }], 'Photo', false);
 
