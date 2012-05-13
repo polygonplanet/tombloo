@@ -11,10 +11,10 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.02
- * @date       2011-11-01
- * @author     polygon planet <polygon.planet@gmail.com>
- *              - Blog    : http://polygon-planet.blogspot.com/
+ * @version    1.03
+ * @date       2012-05-13
+ * @author     polygon planet <polygon.planet.aqua@gmail.com>
+ *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
  *              - Tumblr  : http://polygonplanet.tumblr.com/
  * @license    Same as Tombloo
@@ -68,7 +68,7 @@ addAround(Tombloo.Service.extractors['ReBlog'], 'extractByEndpoint', function(pr
         tags = (tags || []).map(function(tag) {
             return tag.replace(/^\s+|\s+$|[\x00-\x19,#*\/]/g, '').replace(/\s+/g, '-').trim();
         }).filter(function(tag) {
-            return tag && tag.length && !/tag.?[(]['"]?\d+["']?[)];?$/i.test(tag);
+            return tag && tag.length && !/^Tags:$|tag.?[(]['"]?\d+["']?[)];?$/i.test(tag);
         }).join(',').replace(/^(?:Source|[^:]+):[\w.-]+,?/i, '');
     }
     if (tags) {
