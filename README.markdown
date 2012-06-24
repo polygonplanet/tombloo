@@ -113,6 +113,11 @@ raw: のほうのリンク、または 各スクリプトのビュー (ファイ
    Tumblrにポストすると動かなくなるgifアニメを減色して動かすTomblooパッチ。  
    [Tumblrにポストすると動かなくなるgifアニメを減色して動かすTomblooパッチ | 圧縮電子どうのこうの][tombloo.extractor.diet.gif.js]
 
+*  **tombloo.model.tumblr.confirm.reblog.js**  
+   [raw: tombloo.model.tumblr.confirm.reblog.js][tombloo.model.tumblr.confirm.reblog.js(raw)]  
+   Tumblrでリブログ/ポストするとき特定のアカウントだったら警告するTomblooパッチ。  
+   [Tumblrでリブログ/ポストするとき特定のアカウントだったら警告するTomblooパッチ | 圧縮電子どうのこうの][tombloo.model.tumblr.confirm.reblog.js]
+
 
 
 
@@ -197,6 +202,10 @@ raw: のほうのリンク、または 各スクリプトのビュー (ファイ
 
 [tombloo.extractor.diet.gif.js]: http://polygon-planet-log.blogspot.com/2012/04/tumblrgiftombloo.html "Tumblrにポストすると動かなくなるgifアニメを減色して動かすTomblooパッチ | 圧縮電子どうのこうの"
 [tombloo.extractor.diet.gif.js(raw)]: https://github.com/polygonplanet/tombloo/raw/master/tombloo.extractor.diet.gif.js "tombloo.extractor.diet.gif.js(raw)"
+
+
+[tombloo.model.tumblr.confirm.reblog.js]: http://polygon-planet-log.blogspot.com/2012/06/tumblrtombloo.html "Tumblrでリブログ/ポストするとき特定のアカウントだったら警告するTomblooパッチ | 圧縮電子どうのこうの"
+[tombloo.model.tumblr.confirm.reblog.js(raw)]: https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.tumblr.confirm.reblog.js "tombloo.model.tumblr.confirm.reblog.js(raw)"
 
 
 
