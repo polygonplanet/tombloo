@@ -118,6 +118,14 @@ raw: のほうのリンク、または 各スクリプトのビュー (ファイ
    Tumblrでリブログ/ポストするとき特定のアカウントだったら警告するTomblooパッチ。  
    [Tumblrでリブログ/ポストするとき特定のアカウントだったら警告するTomblooパッチ | 圧縮電子どうのこうの][tombloo.model.tumblr.confirm.reblog.js]
 
+*  **tombloo.service.twitter.changeaccount.js**  
+   [raw: tombloo.service.twitter.changeaccount.js][tombloo.service.twitter.changeaccount.js(raw)]  
+   Tomblooの「アカウントの切り替え」にTwitterを追加するパッチ。  
+   [Tomblooの「アカウントの切り替え」にTwitterを追加するパッチ | 圧縮電子どうのこうの][tombloo.service.twitter.changeaccount.js]
+
+
+
+
 
 
 
@@ -206,6 +214,10 @@ raw: のほうのリンク、または 各スクリプトのビュー (ファイ
 
 [tombloo.model.tumblr.confirm.reblog.js]: http://polygon-planet-log.blogspot.com/2012/06/tumblrtombloo.html "Tumblrでリブログ/ポストするとき特定のアカウントだったら警告するTomblooパッチ | 圧縮電子どうのこうの"
 [tombloo.model.tumblr.confirm.reblog.js(raw)]: https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.tumblr.confirm.reblog.js "tombloo.model.tumblr.confirm.reblog.js(raw)"
+
+
+[tombloo.service.twitter.changeaccount.js]: http://polygon-planet-log.blogspot.com/2012/06/tomblootwitter.html "Tomblooの「アカウントの切り替え」にTwitterを追加するパッチ | 圧縮電子どうのこうの"
+[tombloo.service.twitter.changeaccount.js(raw)]: https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.twitter.changeaccount.js "tombloo.service.twitter.changeaccount.js(raw)"
 
 
 
