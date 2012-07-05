@@ -10,7 +10,7 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.00
+ * @version    1.01
  * @date       2012-07-05
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
@@ -37,7 +37,7 @@ update(ReadItLater, {
             const SUCCESS      = 1;
             const NOT_LOGGEDIN = 2;
             const ERROR_SAVING = 3;
-            let width = img.width, res;
+            let res = img.width;
             if (res !== SUCCESS) {
                 if (res === NOT_LOGGEDIN) {
                     throw new Error(getMessage('error.notLoggedin'));
