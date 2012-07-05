@@ -10,7 +10,7 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.02
+ * @version    1.03
  * @date       2012-07-05
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
@@ -45,14 +45,11 @@ update(ReadItLater, {
             });
         };
         let createParams = function(p) {
-            let r = update({
+            return update({
                 v    : 1,
                 h    : '29d8',
                 rand : Math.random()
             }, p);
-            
-            debug(r);
-            return r;
         };
 
         return send(createParams({
