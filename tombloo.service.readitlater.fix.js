@@ -10,7 +10,7 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.01
+ * @version    1.02
  * @date       2012-07-05
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
@@ -25,27 +25,48 @@
 
 update(ReadItLater, {
     post : function(ps) {
+        const API_URI      = 'http://getpocket.com/v2/r.gif';
+        const SUCCESS      = 1;
+        const NOT_LOGGEDIN = 2;
+        const ERROR_SAVING = 3;
+
         let that = this;
-        return loadImage('http://getpocket.com/v2/r.gif?' + queryString({
-            v    : 1,
-            h    : '29d8',
-            rand : Math.random(),
-            u    : ps.itemUrl,
-            t    : ps.item,
-            tags : JSON.stringify(ps.tags || [])
-        })).addCallback(function(img) {
-            const SUCCESS      = 1;
-            const NOT_LOGGEDIN = 2;
-            const ERROR_SAVING = 3;
-            let res = img.width;
-            if (res !== SUCCESS) {
-                if (res === NOT_LOGGEDIN) {
-                    throw new Error(getMessage('error.notLoggedin'));
-                } else if (res === ERROR_SAVING) {
-                    throw new Error(that.name + ': Error saving');
+        let send = function(p) {
+            return loadImage(API_URI + '?' + queryString(p)).addCallback(function(img) {
+                let res = img.width;
+                if (res !== SUCCESS) {
+                    if (res === NOT_LOGGEDIN) {
+                        throw new Error(getMessage('error.notLoggedin'));
+                    } else if (res === ERROR_SAVING) {
+                        throw new Error(that.name + ': Error saving');
+                    }
                 }
+                return true;
+            });
+        };
+        let createParams = function(p) {
+            let r = update({
+                v    : 1,
+                h    : '29d8',
+                rand : Math.random()
+            }, p);
+            
+            debug(r);
+            return r;
+        };
+
+        return send(createParams({
+            u : ps.itemUrl,
+            t : ps.item
+        })).addCallback(function(res) {
+            if (ps.tags && ps.tags.length) {
+                return send(createParams({
+                    u    : ps.itemUrl,
+                    tags : JSON.stringify(ps.tags)
+                }));
+            } else {
+                return res;
             }
-            return true;
         });
     }
 });
