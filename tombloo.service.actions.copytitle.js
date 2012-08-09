@@ -8,13 +8,14 @@
  * [Service Actions Copy Title patch]
  *
  * - ページのタイトルやURLをクリップボードにコピーする
+ * - Amazonの長いURLを短くしてコピーする
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.00
- * @date       2011-10-20
- * @author     polygon planet <polygon.planet@gmail.com>
- *              - Blog    : http://polygon-planet.blogspot.com/
+ * @version    1.01
+ * @date       2012-08-09
+ * @author     polygon planet <polygon.planet.aqua@gmail.com>
+ *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
  *              - Tumblr  : http://polygonplanet.tumblr.com/
  * @license    Same as Tombloo
@@ -49,6 +50,10 @@ const LABELS = {
     MENU_COPY_URL : {
         ja : 'このページのURLをコピー',
         en : 'Copy the page URL'
+    },
+    MENU_COPY_AMAZON : {
+        ja : 'AmazonのURLを短くしてコピー',
+        en : 'Copy the short Amazon URL'
     }
 };
 
@@ -90,6 +95,24 @@ Tombloo.Service.actions.register({
         },
         execute : function(ctx) {
             copyString(ctx.href);
+        }
+    }, {
+        name  : LABELS.translate('MENU_COPY_AMAZON'),
+        type  : 'context',
+        check : function(ctx) {
+            return ctx && ctx.href && /(?:^|\b)amazon\b/i.test(ctx.host);
+        },
+        execute : function(ctx) {
+            let asin = function() {
+                    return ctx.document.getElementById('ASIN') ||
+                        ctx.document.getElementsByName('ASIN.0')[0] ||
+                        {value : ''};
+                }().value,
+                href = ('' + ctx.href) || '',
+                re = /^(https?:\/+[^\/]+\/).*$/,
+                url = asin && href.replace(re, '$1dp/' + asin) || 'error';
+
+            copyString(url);
         }
     }]
 }, '----');
