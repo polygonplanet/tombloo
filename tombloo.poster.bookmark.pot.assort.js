@@ -38,10 +38,10 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.78
- * @date       2012-04-01
- * @author     polygon planet <polygon.planet@gmail.com>
- *              - Blog    : http://polygon-planet.blogspot.com/
+ * @version    1.79
+ * @date       2012-08-09
+ * @author     polygon planet <polygon.planet.aqua@gmail.com>
+ *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
  *              - Tumblr  : http://polygonplanet.tumblr.com/
  * @license    Same as Tombloo
@@ -212,7 +212,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.78',
+    VERSION: '1.79',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -6196,7 +6196,7 @@ forEach({
         return patterns.pqlcvb.test(ps.type) && !ps.file;
     }
 }, function([name, check]) {
-    update(models[name], {check: check});
+    update(models[name] || {}, {check: check});
 });
 
 
@@ -7727,6 +7727,12 @@ update(models.Pinboard, {
 //-----------------------------------------------------------------------------
 (function() {
 
+// 「livedoor クリップ」のサービス提供終了 2012年9月10日
+// http://blog.livedoor.jp/staff_clip/archives/52265344.html
+if (Pot.date('Ymd') - 0 >= 20120910) {
+    return;
+}
+
 
 update(models.LivedoorClip, {
     name: 'LivedoorClip',
@@ -8595,7 +8601,12 @@ if (typeof(PlacesUtils) === 'undefined') {
     } catch (e) {
         try {
             Components.utils.import('resource://gre/modules/utils.js');
-        } catch (e) {}
+        } catch (e) {
+            callLater(3, function() {
+                alert('Cannot load modules (Firefox Bookmark)');
+            });
+            return;
+        }
     }
 }
 
@@ -8605,6 +8616,44 @@ update(models.FirefoxBookmark, {
     ANNO_DESCRIPTION: 'bookmarkProperties/description',
     check: function(ps) {
         return Pot.BookmarkUtil.check(ps);
+    },
+    privateCache: {
+        bookmarked: {
+            data: null,
+            has: function(url) {
+                return this.data && this.data.has(url);
+            },
+            add: function(url) {
+                if (!this.data) {
+                    this.data = new Pot.Hash();
+                }
+                this.data.set(url, true);
+            },
+            clear: function() {
+                this.data && this.data.clear();
+            }
+        },
+        tags: {
+            normalize: function(tags, resetOnly) {
+                let result = [];
+                //
+                // 増えたタグの解析を行うようにする
+                //
+                //FIXME: #503 API制限をキャッシュでどうにかする
+                //
+                if (Pot.BookmarkUtil.doUpdateTags) {
+                    Pot.QuickPostForm.resetCandidates();
+                }
+                if (Pot.isArray(tags)) {
+                    result = tags || [];
+                }
+                if (resetOnly) {
+                    return result;
+                } else {
+                    return Pot.ArrayUtil.unique(result);
+                }
+            }
+        }
     },
     addBookmark: function(uri, title, tags, description) {
         let self = this, ps, folder, bs = NavBookmarksService, index = bs.DEFAULT_INDEX;
@@ -8636,6 +8685,16 @@ update(models.FirefoxBookmark, {
                     Pot.ArrayUtil.unique(Pot.BookmarkUtil.normalizeTags(tags)),
                     Pot.ArrayUtil.unique(self.getBookmarkTagsByURI(ps.itemUrl))
                 );
+                
+                if (tags && tags.length && Pot.BookmarkUtil.userTagsCache) {
+                    tags.forEach(function(tag) {
+                        Pot.BookmarkUtil.userTagsCache[Pot.BookmarkUtil.userTagsCache.length] = {
+                            name      : tag,
+                            frequency : -1
+                        };
+                    });
+                }
+                
                 // フォルダが未指定の場合は未整理のブックマークになる
                 folder = (!folder) ? bs.unfiledBookmarksFolder : self.createFolder(folder);
             }).addCallback(function() {
@@ -8652,6 +8711,12 @@ update(models.FirefoxBookmark, {
                 });
                 self.setDescription(uri, description);
                 return succeed(uri);
+            }).addErrback(function(err) {
+                if (getPref('tagProvider') === that.name) {
+                    Pot.BookmarkUtil.userTagsCache = null;
+                    Pot.BookmarkUtil.doUpdateTags = true;
+                }
+                throw err;
             });
             callLater(1, function() { d.callback(); });
             return d;
@@ -8659,6 +8724,11 @@ update(models.FirefoxBookmark, {
     },
     post: function(ps) {
         let self = this, title, tags, comment;
+        
+        if (Pot.BookmarkUtil.doUpdateTags) {
+            Pot.QuickPostForm.resetCandidates();
+        }
+        
         // POSTボタン押したあと硬直するのでwaitをいれる
         return wait(1).addCallback(function() {
             title = Pot.BookmarkUtil.truncateFields(self.name, 'title', ps.item);
@@ -8820,6 +8890,25 @@ update(models.FirefoxBookmark, {
             return Pot.BookmarkUtil.normalizeTags(tags);
         });
     },
+    getAllTags: function() {
+        
+        if (Pot.BookmarkUtil.userTagsCache && !Pot.BookmarkUtil.doUpdateTags) {
+            return Pot.BookmarkUtil.userTagsCache;
+        }
+        
+        let tags = [], allTags = PlacesUtils.tagging.allTags;
+        Pot.forEach(allTags || [], function(i, tag) {
+            tags[tags.length] = {
+                name      : tag,
+                frequency : -1
+            };
+        });
+        
+        Pot.BookmarkUtil.userTagsCache = tags;
+        Pot.BookmarkUtil.doUpdateTags = false;
+        
+        return tags;
+    },
     getBookmarkDescriptionByURI: function(uri) {
         let self = this;
         return succeed().addCallback(function() {
@@ -8827,15 +8916,10 @@ update(models.FirefoxBookmark, {
         });
     },
     getSuggestions: function(url) {
-        let self = this, d, tags = [], allTags = PlacesUtils.tagging.allTags;
+        let self = this, d, tags = [];
         d = new Deferred();
         d.addCallback(function() {
-            Pot.forEach(allTags || [], function(i, tag) {
-                tags[tags.length] = {
-                    name: tag,
-                    frequency: -1
-                };
-            });
+            tags = self.getAllTags();
         }).addCallback(function() {
             return self.getBookmarkTagsByURI(url).addCallback(function(postTags) {
                 return self.getBookmarkDescriptionByURI(url).addCallback(function(description) {

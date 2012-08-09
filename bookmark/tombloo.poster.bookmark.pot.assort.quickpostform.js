@@ -18,10 +18,10 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.22
- * @date     2012-03-08
- * @author   polygon planet <polygon.planet@gmail.com>
- *            - Blog    : http://polygon-planet.blogspot.com/
+ * @version  1.23
+ * @date     2012-08-09
+ * @author   polygon planet <polygon.planet.aqua@gmail.com>
+ *            - Blog    : http://polygon-planet-log.blogspot.com/
  *            - Twitter : http://twitter.com/polygon_planet
  *            - Tumblr  : http://polygonplanet.tumblr.com/
  * @license  Same as Tombloo
@@ -139,9 +139,17 @@ update(FormPanel.prototype.types, {
             },
             // ブックマークしてるユーザー数を表示 (実装しているサービスのみ)
             potShowEnteredUsersCount: function() {
-                const POT_DEFAULT_ENTRY_PROVIDERS = [
-                    'HatenaBookmark', 'Twitter', 'Delicious', 'LivedoorClip', 'YahooBookmarks'
-                ];
+                const POT_DEFAULT_ENTRY_PROVIDERS = function() {
+                    let r = [
+                        'HatenaBookmark', 'Twitter', 'Delicious', 'LivedoorClip', 'YahooBookmarks'
+                    ];
+                    // 「livedoor クリップ」のサービス提供終了 2012年9月10日
+                    // http://blog.livedoor.jp/staff_clip/archives/52265344.html
+                    if (Pot.date('Ymd') - 0 >= 20120910) {
+                        r.splice(3, 1);
+                    }
+                    return r;
+                }();
                 let self = this, url, d;
                 url = ps && ps.itemUrl;
                 if (url) {
