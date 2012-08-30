@@ -38,7 +38,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.81
+ * @version    1.82
  * @date       2012-08-30
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
@@ -215,7 +215,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.81',
+    VERSION: '1.82',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -11442,6 +11442,7 @@ Pot.extend(Pot.SetupUtil, {
     setupCanceled: false,
     setupCompleted: false,
     progress: {},
+    isInstalling: false,
     progressLog: function() {
         let msg = '', args = Pot.ArrayUtil.toArray(arguments);
         if (Pot.SetupUtil.progress && Pot.SetupUtil.progress.update) {
@@ -12075,7 +12076,9 @@ Pot.extend(Pot.SetupUtil, {
                 return dd;
             }).addCallback(function() {
                 // リロードで自動的にインストールがはじまる(win7は始まらない)
+                
                 reload();
+                
                 return callLater(1, function() {
                     Pot.SetupUtil.autoUpdaterEnabled = false;
                     Pot.SetupUtil.ensureInstall();
@@ -12092,6 +12095,7 @@ Pot.extend(Pot.SetupUtil, {
         }
         return maybeDeferred(d);
     },
+    
     /**
      * アップデートできるか確認して可能ならアップデートする
      */
@@ -12205,8 +12209,17 @@ Pot.extend(Pot.SetupUtil, {
     ensureInstall: function() {
         try {
             if (!Pot.SetupUtil.isInstalled()) {
+                if (Pot.SetupUtil.isInstalling) {
+                    throw new Error('Already being installed');
+                }
+                Pot.SetupUtil.isInstalling = true;
                 callLater(0, function() {
                     Pot.SetupUtil.install();
+                }).addBoth(function(err) {
+                    Pot.SetupUtil.isInstalling = false;
+                    if (err && err instanceof Error) {
+                        throw err;
+                    }
                 });
             }
         } catch (e) {
