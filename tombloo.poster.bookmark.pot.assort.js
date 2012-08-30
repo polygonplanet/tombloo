@@ -38,7 +38,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.83
+ * @version    1.84
  * @date       2012-08-30
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
@@ -215,7 +215,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.83',
+    VERSION: '1.84',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -12929,7 +12929,7 @@ Tombloo.Service.actions.register({
                             <label value="Blog article:"/>
                             <label class="text-link"
                                     style="-moz-user-focus: ignore;"
-                                    value="http://polygon-planet.blogspot.com/2011/06/audiobookmarktombloo.html"
+                                    value="http://polygon-planet-log.blogspot.com/2011/06/audiobookmarktombloo_19.html"
                                     onclick="env.addTab(this.value);"/>
                         </hbox>
                         <spacer height="2"/>
