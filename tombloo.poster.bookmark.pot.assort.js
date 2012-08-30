@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.84
- * @date       2012-08-30
+ * @version    1.85
+ * @date       2012-08-31
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -215,7 +215,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.84',
+    VERSION: '1.85',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -8040,8 +8040,8 @@ update(models.Yahoo, {
                             sentence: Pot.StringUtil.stringify(s),
                             response: 'surface,pos'
                         }).addCallback(function(res) {
-                            let surface = list(res.ma_result.word_list.word.surface);
-                            Pot.forEach(list(res.ma_result.word_list.word.pos), function(i, p) {
+                            let surface = $x('//surface/text()', res, true);
+                            Pot.forEach($x('//pos/text()', res, true), function(i, p) {
                                 result[result.length] = {
                                     surface : surface[i].toString(),
                                     pos     : p.toString()
@@ -8140,7 +8140,7 @@ update(models.Yahoo, {
                             sentence: Pot.StringUtil.stringify(s),
                             response: 'reading'
                         }).addCallback(function(res) {
-                            Array.prototype.push.apply(result, list(res.ma_result.word_list.word.reading));
+                            Array.prototype.push.apply(result, $x('//reading/text()', res, true));
                             return wait(0);
                         });
                     });
