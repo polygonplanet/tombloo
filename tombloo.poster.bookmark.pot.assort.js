@@ -38,7 +38,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.82
+ * @version    1.83
  * @date       2012-08-30
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
@@ -215,7 +215,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.82',
+    VERSION: '1.83',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -12075,10 +12075,6 @@ Pot.extend(Pot.SetupUtil, {
                 });
                 return dd;
             }).addCallback(function() {
-                // リロードで自動的にインストールがはじまる(win7は始まらない)
-                
-                reload();
-                
                 return callLater(1, function() {
                     Pot.SetupUtil.autoUpdaterEnabled = false;
                     Pot.SetupUtil.ensureInstall();
