@@ -15,7 +15,7 @@
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Twitter : http://twitter.com/polygon_planet
  * @license    Same as Tombloo
- * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.twitpic.fixicon.js
+ * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.twitter.fixtoken.js
  *
  * Tombloo: https://github.com/to/tombloo/wiki
  */
