@@ -10,8 +10,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.00
- * @date       2012-05-16
+ * @version    1.01
+ * @date       2012-08-30
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Twitter : http://twitter.com/polygon_planet
  * @license    Same as Tombloo
@@ -20,6 +20,8 @@
  * Tombloo: https://github.com/to/tombloo/wiki
  */
 (function() {
+
+var orgGetToken = Twitter.getToken;
 
 update(Twitter, {
     getToken : function() {
@@ -32,6 +34,8 @@ update(Twitter, {
                 authenticity_token : html.extract(/authenticity_token.+value="(.+?)"/),
                 siv                : html.extract(/logout\?siv=(.+?)"/)
             };
+        }).addErrback(function() {
+            return orgGetToken();
         });
     }
 });
