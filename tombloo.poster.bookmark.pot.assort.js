@@ -38,7 +38,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.80
+ * @version    1.81
  * @date       2012-08-30
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
@@ -70,6 +70,9 @@ const MAX_LENGTH = {
     Local: {},
     Evernote: {},
     FirefoxBookmark: {},
+    //
+    // 「livedoor クリップ」のサービス提供終了 2012年9月10日
+    // http://blog.livedoor.jp/staff_clip/archives/52265344.html
     //
     // http://help.livedoor.com/clip/qa2816
     // 最大数を超えると自動でカットされる、長すぎるとエラー
@@ -212,7 +215,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.80',
+    VERSION: '1.81',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
