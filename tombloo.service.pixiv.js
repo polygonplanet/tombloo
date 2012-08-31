@@ -31,10 +31,10 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.34
- * @date       2011-11-16
- * @author     polygon planet <polygon.planet@gmail.com>
- *              - Blog    : http://polygon-planet.blogspot.com/
+ * @version    1.35
+ * @date       2012-08-31
+ * @author     polygon planet <polygon.planet.aqua@gmail.com>
+ *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
  *              - Tumblr  : http://polygonplanet.tumblr.com/
  * @license    Same as Tombloo
@@ -1903,7 +1903,9 @@ update(pixivThumbsExpander, {
             return;
         }
         css(img, {
-            border: '1px solid #568fd9',
+            borderWidth: '1px',
+            borderStyle: 'solid',
+            borderColor: '#568fd9',
             MozBorderRadius: 3,
             borderRadius: 3,
             padding: 2,
@@ -1911,6 +1913,9 @@ update(pixivThumbsExpander, {
             //cursor: 'zoom-in',
             cursor: '-moz-zoom-in'
         });
+        try {
+            img.style.setProperty('border-color', '#568fd9', 'important');
+        } catch (e) {}
         return img;
     },
     setNopStyle: function(nop) {
@@ -1929,9 +1934,11 @@ update(pixivThumbsExpander, {
             return;
         }
         doc = this.getDocument();
-        this.loadingCanvas.stop();
-        hide(loading);
-        removeNode(loading);
+        try {
+            this.loadingCanvas.stop();
+            hide(loading);
+            removeNode(loading);
+        } catch (e) {}
         removeNode(mimg);
         css(nop, { display: 'inline' });
         errmsg = doc.createElement('div');
@@ -1962,10 +1969,15 @@ update(pixivThumbsExpander, {
             return;
         }
         doc = this.getDocument();
-        loading = this.loadingCanvas.canvas;
-        if (loading.parentNode) {
-            loading.parentNode.removeChild(loading);
+        try {
+            this.loadingCanvas.canvas.parentNode.removeChild(this.loadingCanvas.canvas);
+        } catch (e) {
+            // ignore
+        } finally {
+            this.loadingCanvas = defineLoadingCanvas();
         }
+        this.initLoadingCanvas();
+        loading = this.loadingCanvas.canvas;
         hide(simg);
         nop.appendChild(loading);
         show(loading);
@@ -2122,6 +2134,7 @@ update(pixivThumbsExpander, {
                 this.toggleImage(nop);
             }
         } catch (e) {
+            debug(e);
             throw e;
         }
     },
@@ -2132,8 +2145,9 @@ update(pixivThumbsExpander, {
         }
         doc = this.getDocument();
         if (li && this.isParentNode(li) &&
-            !li.querySelector('.' + this.nopId)) {
-            
+            !li.querySelector('.' + this.nopId) &&
+            !/\brank-detail\b/.test(li.className)) {
+
             nop = doc.createElement('a');
             attr(nop, {
                 className: this.nopId,
@@ -2162,10 +2176,11 @@ update(pixivThumbsExpander, {
                         self.emitImage.call(self, a, nop, simg);
                     }
                 });
-                return false;
-            }, true);
+            }, false);
             this.setImageStyle(simg);
             this.setNopStyle(nop);
+            //XXX: スクロール出すか出さないか
+            //css(li, {overflow : 'visible'});
             show(li, 'inline-block');
         }
     },
