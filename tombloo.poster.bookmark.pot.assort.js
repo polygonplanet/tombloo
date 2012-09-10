@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.85
- * @date       2012-08-31
+ * @version    1.86
+ * @date       2012-09-11
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -215,7 +215,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.85',
+    VERSION: '1.86',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -7733,6 +7733,11 @@ update(models.Pinboard, {
 // 「livedoor クリップ」のサービス提供終了 2012年9月10日
 // http://blog.livedoor.jp/staff_clip/archives/52265344.html
 if (Pot.date('Ymd') - 0 >= 20120910) {
+    update(models.LivedoorClip || {}, {
+        check: function(ps) {
+            return false;
+        }
+    });
     return;
 }
 
