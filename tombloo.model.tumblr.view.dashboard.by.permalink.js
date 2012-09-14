@@ -12,7 +12,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.00
+ * @version    1.01
  * @date       2012-09-15
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Twitter : http://twitter.com/polygon_planet
@@ -35,10 +35,15 @@ Tombloo.Service.actions.register({
     type  : 'context',
     icon  : Tumblr.ICON,
     check : function(ctx) {
-        let url = (ctx.onLink && patterns.post.test(ctx.linkURL) && ctx.linkURL) ||
-                  Tombloo.Service.extractors['ReBlog - Tumblr'].check(ctx) ||
-                  Tombloo.Service.extractors['ReBlog - Dashboard'].check(ctx);
-        return (url.extract(patterns.post) || url.extract(patterns.iframe)) - 0;
+        let url;
+        try {
+            url = (ctx.onLink && patterns.post.test(ctx.linkURL) && ctx.linkURL) ||
+                    Tombloo.Service.extractors['ReBlog - Tumblr'].check(ctx) ||
+                    Tombloo.Service.extractors['ReBlog - Dashboard'].check(ctx);
+            return (url.extract(patterns.post) || url.extract(patterns.iframe)) - 0;
+        } catch (e) {
+            return false;
+        }
     },
     execute : function(ctx) {
         addTab('http://www.tumblr.com/dashboard/999/' + (this.check(ctx) + 1));
