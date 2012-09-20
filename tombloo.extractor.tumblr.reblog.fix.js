@@ -10,7 +10,7 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.01
+ * @version    1.02
  * @date       2012-09-21
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
@@ -28,7 +28,7 @@ var orgMethod = Tombloo.Service.extractors.ReBlog.getFrameUrl;
 update(Tombloo.Service.extractors.ReBlog, {
     getFrameUrl : function(doc) {
         return $x(
-            '//iframe[contains(@src, "tumblr.com") and contains(@src, "pid=")]/@src',
+            '//iframe[contains(@src, ".tumblr.com/iframe") and contains(@src, "pid=") and contains(@src, "rk=")]/@src',
             doc
         ) || orgMethod(doc);
     }
