@@ -31,8 +31,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.35
- * @date       2012-08-31
+ * @version    1.36
+ * @date       2012-10-18
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -262,10 +262,12 @@ var pixivProto = {
                     s.trim().replace(re.ast, '').replace(re.clean, '')
                 );
             };
-            xpath = 'id("tag_area")//*[@id="tags"]//text()';
+            xpath = '//*[contains(@class,"work-tags")]' +
+                    '//*[contains(@class,"tags-container")]' +
+                    '//ul[contains(@class,"tags")]//li//text()';
             text = $x(xpath, ctx.target, true);
             if (text) {
-                String(text.join ? text.join('') : text || '').
+                String(text.join ? text.join(' ') : (text || '')).
                   replace(re.fix, '$1$2').replace(re.trim, '').
                   split(re.space).forEach(function(tag) {
                     tag = tag.replace(re.trim, '');
