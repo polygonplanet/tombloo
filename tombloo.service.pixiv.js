@@ -31,8 +31,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.36
- * @date       2012-10-18
+ * @version    1.37
+ * @date       2013-02-19
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -1716,6 +1716,14 @@ update(pixivThumbsExpander, {
                 removeStyle(li, 'width');
                 if (self.isWrappedImagePage) {
                     self.fixWrappedPageLayoutAfter(li);
+                } else if (self.isStaccfeedPage) {
+                    if (li.parentNode && li.parentNode.className) {
+                        li.parentNode.className =
+                          li.parentNode.className.replace(/_(stacc_ref_thumb_left)_/, '$1');
+                    }
+                    css(nop, {
+                        position: ''
+                    });
                 }
             };
             params = [mimg, to, from, before, after];
@@ -1746,6 +1754,14 @@ update(pixivThumbsExpander, {
                 removeStyle(li, 'position');
                 if (self.isRankingPage) {
                     css(li, { width: 'auto' });
+                } else if (self.isStaccfeedPage) {
+                    if (li.parentNode && li.parentNode.className) {
+                        li.parentNode.className =
+                          li.parentNode.className.replace(/(stacc_ref_thumb_left)/, '_$1_');
+                    }
+                    css(nop, {
+                        position: 'relative'
+                    });
                 }
             };
             params = [simg, from, to, before, after];
@@ -2182,8 +2198,8 @@ update(pixivThumbsExpander, {
             this.setImageStyle(simg);
             this.setNopStyle(nop);
             //XXX: スクロール出すか出さないか
-            //css(li, {overflow : 'visible'});
-            show(li, 'inline-block');
+            css(li, {overflow : 'visible'});
+            show(li, this.isStaccfeedPage ? 'inline-block' : 'inline-table');
         }
     },
     // スタックフィードページ用レイアウト調整
