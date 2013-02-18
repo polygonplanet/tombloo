@@ -18,8 +18,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.23
- * @date     2012-08-09
+ * @version  1.24
+ * @date     2013-02-19
  * @author   polygon planet <polygon.planet.aqua@gmail.com>
  *            - Blog    : http://polygon-planet-log.blogspot.com/
  *            - Twitter : http://twitter.com/polygon_planet
@@ -334,6 +334,9 @@ update(FormPanel.prototype.types, {
             comvertToCandidates: function(tags) {
                 // 各タグサービスで使われてるデリミタを合成
                 const SEP = ' []'.slice(0, 2);
+                //FIXME: タグ数が多いとクラッシュする
+                tags.splice(2000);
+
                 let d, source = tags.join(SEP);
                 if (source.includesFullwidth()) {
                     d = Yahoo.getRomaReadings(source).addCallback(function(result) {

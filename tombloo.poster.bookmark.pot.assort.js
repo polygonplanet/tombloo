@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.86
- * @date       2012-09-11
+ * @version    1.87
+ * @date       2013-02-19
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -7106,7 +7106,7 @@ update(models.HatenaDiary, {
 // Update - Delicious
 //-----------------------------------------------------------------------------
 (function() {
-
+//TODO: 新delicious対応
 
 update(models.Delicious, {
     name: 'Delicious',
