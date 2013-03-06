@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.87
- * @date       2013-02-19
+ * @version    1.88
+ * @date       2013-03-07
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -215,7 +215,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.86',
+    VERSION: '1.88',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -6608,7 +6608,7 @@ update(models.GoogleBookmarks, {
 
 update(models.HatenaBookmark, {
     name: 'HatenaBookmark',
-    ICON: 'http://b.hatena.ne.jp/favicon.ico',
+    ICON: 'http://www.hatena.com/images/favicon/bookmark.png',
     POST_URL: 'http://b.hatena.ne.jp/add',
     check: function(ps) {
         return Pot.BookmarkUtil.check(ps);
@@ -7106,11 +7106,31 @@ update(models.HatenaDiary, {
 // Update - Delicious
 //-----------------------------------------------------------------------------
 (function() {
-//TODO: 新delicious対応
+
 
 update(models.Delicious, {
     name: 'Delicious',
-    ICON: 'http://www.delicious.com/favicon.ico',
+    // delicious.png via https://s3.amazonaws.com/avos-site-images/delicious-logo-rev1.zip
+    ICON: Pot.toDataURI([
+        'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJ',
+        'bWFnZVJlYWR5ccllPAAAA2hpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdp',
+        'bj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6',
+        'eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMy1jMDExIDY2LjE0',
+        'NTY2MSwgMjAxMi8wMi8wNi0xNDo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJo',
+        'dHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlw',
+        'dGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEu',
+        'MC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVz',
+        'b3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1N',
+        'Ok9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDpGNzdGMTE3NDA3MjA2ODExODIyQUIwMzE0MEVD',
+        'NzcyMSIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDo2RENDNTE3MDNCNTIxMUUyOThGQUE5MTc5',
+        'NTJEQTk3MyIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDo2RENDNTE2RjNCNTIxMUUyOThGQUE5',
+        'MTc5NTJEQTk3MyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ1M2IChNYWNpbnRv',
+        'c2gpIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6Rjc3RjEx',
+        'NzQwNzIwNjgxMTgyMkFCMDMxNDBFQzc3MjEiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6Rjc3',
+        'RjExNzQwNzIwNjgxMTgyMkFCMDMxNDBFQzc3MjEiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRm',
+        'OlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz4PIe7zAAAALElEQVR42mL8//8/',
+        'AzZgXHoJqzgTA4lgVAMxgJGJCbue27dvj4YS/TQABBgAZ2wHLa6NOq0AAAAASUVORK5CYII='
+    ].join(''), 'image/png', true),
     check: function(ps) {
         return Pot.BookmarkUtil.check(ps);
     },
@@ -7132,7 +7152,7 @@ update(models.Delicious, {
         },
         tags: {
             normalize: function(tags, resetOnly) {
-                let result = [];
+                var result = [];
                 //
                 // 増えたタグの解析を行うようにする
                 //
@@ -7153,43 +7173,45 @@ update(models.Delicious, {
         }
     },
     getAuthCookie : function() {
-        return getCookieString('www.delicious.com', 'deluser');
+        return getCookieString('.delicious.com', 'connect.sid');
     },
     getCurrentUser : function() {
-        let self = this;
+        var self = this;
         return this.getSessionValue('user', function() {
             return self.getInfo().addCallback(function(info) {
-                if (!info.is_logged_in || /not.*log.*in/i.test(info.error)) {
+                if (!info.is_logged_in || /not.*log.*in/i.test(info.error) || !info.logged_in_username) {
                     throw new Error(getMessage('error.notLoggedin'));
                 }
-                return info.logged_in_username ||
-                    decodeURIComponent(getCookieString('delicious.com', '_user')).extract(/user=(.*?)(?:\s|[+])/);
+                return info.logged_in_username;
             });
         });
     },
     getInfo : function() {
-        return request('http://delicious.com/save/quick', {method : 'POST'}).addCallback(function(res) {
-            return evalInSandbox('(' + res.responseText + ')', 'http://delicious.com/');
+        return request('http://previous.delicious.com/save/quick', {method : 'POST'}).addCallback(function(res) {
+            return evalInSandbox('(' + res.responseText + ')', 'http://previous.delicious.com/');
         });
     },
     getAPIAuth : function(basic, username) {
-        const BASE_HOST_URLS = [
+        var BASE_HOST_URLS = [
             'http://www.delicious.com',
+            'http://previous.delicious.com',
             'http://delicious.com',
             'www.delicious.com',
             '.www.delicious.com',
+            'previous.delicious.com',
+            '.previous.delicious.com',
             'delicious.com',
             '.delicious.com'
         ];
-        let self = this;
+        var self = this;
         // http://www.delicious.com/help/api
         // wait AT LEAST ONE SECOND between queries
         // 最低1秒は間隔をあける
         return wait(1.15).addCallback(function() {
             return (username ? succeed(username) : self.getCurrentUser()).addCallback(function(user) {
-                let result;
+                var result;
                 Pot.forEach(BASE_HOST_URLS, function(i, host) {
-                    let userInfo = getPasswords(host, user);
+                    var userInfo = getPasswords(host, user);
                     if (Pot.isArray(userInfo)) {
                         userInfo = userInfo.shift();
                     }
@@ -7216,8 +7238,8 @@ update(models.Delicious, {
      * @return {Array}
      */
     getUserTags : function(user) {
-        const TAGS_URL = 'http://delicious.com/save/confirm';
-        let self = this, d, username;
+        var TAGS_URL = 'http://delicious.com/save/confirm';
+        var self = this, d, username;
         
         if (Pot.BookmarkUtil.userTagsCache && !Pot.BookmarkUtil.doUpdateTags) {
             return succeed(Pot.BookmarkUtil.userTagsCache);
@@ -7235,7 +7257,7 @@ update(models.Delicious, {
                 // 同期でエラーが起きないようにする
                 return succeed().addCallback(function() {
                     return request(TAGS_URL).addCallback(function(res) {
-                        let doc = convertToHTMLDocument(res.responseText);
+                        var doc = convertToHTMLDocument(res.responseText);
                         return doc.getElementById('autocompleteTags').value.trim().split(/\s*,\s*/).map(function(tag) {
                             return {
                                 name      : tag,
@@ -7256,8 +7278,8 @@ update(models.Delicious, {
      */
     getUserTagsByAPI : function(user) {
         //FIXME: 全てのタグが取得できない(recentになっている) API 改善待ち
-        const API_URL = 'https://api.del.icio.us/v1/tags/get';
-        let self = this;
+        var API_URL = 'https://api.del.icio.us/v1/tags/get';
+        var self = this;
         
         if (Pot.BookmarkUtil.userTagsCache && !Pot.BookmarkUtil.doUpdateTags) {
             return succeed(Pot.BookmarkUtil.userTagsCache);
@@ -7273,16 +7295,17 @@ update(models.Delicious, {
                         'User-Agent'  : 'Mozilla/Firefox/Tombloo/BookmarkPatch/' + Pot.VERSION
                     }
                 }).addCallback(function(res) {
-                    let tags = [], xml = convertToXML(res.responseText);
-                    if (xml) {
-                        try {
-                            for each (let tag in xml..tag) {
-                                tags[tags.length] = {
-                                    name      : tag.@tag.toString(),
-                                    frequency : +(tag.@count)
-                                };
-                            }
-                        } catch (e) {}
+                    var tags = [], items, doc = convertToHTMLDocument(res.responseText);
+                    if (doc) {
+                        items = $x('//tag', doc, true);
+                        if (items) {
+                            items.forEach(function(item) {
+                                tags.push({
+                                    name      : item.getAttribute('tag'),
+                                    frequency : item.getAttribute('count') - 0
+                                });
+                            });
+                        }
                     }
                     return tags;
                 });
@@ -7294,8 +7317,8 @@ update(models.Delicious, {
         });
     },
     isBookmarked : function(url) {
-        const API_URL = 'https://api.del.icio.us/v1/posts/get';
-        let self = this;
+        var API_URL = 'https://api.del.icio.us/v1/posts/get';
+        var self = this;
         if (this.privateCache.bookmarked.has(url)) {
             return succeed(true);
         } else {
@@ -7311,15 +7334,14 @@ update(models.Delicious, {
                         url : url
                     }
                 }).addCallback(function(res) {
-                    let bookmarked = false, xml = convertToXML(res.responseText);
+                    var bookmarked = false, href, doc = convertToHTMLDocument(res.responseText);
                     try {
-                        if (xml.name().localName !== 'posts' || /no\s*bookmark/i.test(xml..@code.toString())) {
+                        if (/no\s*bookmark/i.test($x('//result/@code', doc))) {
                             bookmarked = false;
                         } else {
-                            let (href = xml..post.@href.toString()) {
-                                if (String(url).indexOf(href) === 0 || href.indexOf(url) === 0) {
-                                    bookmarked = true;
-                                }
+                            href = $x('//post/@href', doc);
+                            if (href.indexOf(url) === 0 || url.indexOf(href) === 0) {
+                                bookmarked = true;
                             }
                         }
                     } catch (e) {
@@ -7335,9 +7357,9 @@ update(models.Delicious, {
     },
     // from: Taberareloo
     getRecommendedTags : function(url) {
-        const FEEDS_URL = 'http://feeds.delicious.com/v2/json/urlinfo/' + Pot.StringUtil.stringify(url).md5();
+        var FEEDS_URL = 'http://feeds.delicious.com/v2/json/urlinfo/' + Pot.StringUtil.stringify(url).md5();
         return request(FEEDS_URL).addCallback(function(res) {
-            let tags, top_tags, result;
+            var tags, top_tags, result;
             try {
                 result = JSON.parse(res.responseText);
                 top_tags = Pot.isObject(result[0].top_tags) ? result[0].top_tags : {};
@@ -7359,9 +7381,9 @@ update(models.Delicious, {
      * @return {Object}
      */
     getSuggestions : function(url) {
-        const MAX_TAGS = 20;
-        const API_URL  = 'https://api.del.icio.us/v1/posts/get';
-        let self = this, suggests = {};
+        var MAX_TAGS = 20;
+        var API_URL  = 'https://api.del.icio.us/v1/posts/get';
+        var self = this, suggests = {};
         return this.getAPIAuth(true).addCallback(function(auth) {
             return wait(0).addCallback(function() {
                 return self.isBookmarked(url).addCallback(function(bookmarked) {
@@ -7404,16 +7426,13 @@ update(models.Delicious, {
                                 url : url
                             }
                         }).addBoth(function(res) {
-                            let result, xml, item, description, tags, allTags, isPrivate;
-                            xml = convertToXML(res.responseText);
-                            if (!xml) {
-                                return {};
-                            }
+                            var result, doc, item, description, tags, allTags, isPrivate;
+                            doc = convertToHTMLDocument(res.responseText);
                             try {
-                                item        = xml..post.@description.toString();
-                                description = xml..post.@extended.toString();
-                                tags        = Pot.ArrayUtil.emptyFilter(xml..post.@tag.toString().split(/[\s,]+/));
-                                isPrivate   = /^(?:1|yes|true|on)$/i.test(xml..post.@['private'].toString());
+                                item        = $x('//post/@description', doc);
+                                description = $x('//post/@extended', doc);
+                                tags        = Pot.ArrayUtil.emptyFilter($x('//post/@tag', doc).split(/[\s,]+/));
+                                isPrivate   = /^(?:1|yes|true|on)$/i.test($x('//post/@private', doc));
                             } catch (e) {}
                             if (Pot.getPref(POT_BOOKMARK_PRIVATE)) {
                                 isPrivate = true;
@@ -7549,7 +7568,7 @@ update(models.Delicious, {
      * フォームを使ってポスト
      */
     postByForm : function(ps) {
-        const SAVE_URL = 'http://www.delicious.com/save';
+        const SAVE_URL = 'http://previous.delicious.com/save';
         let tags, notes, title, isPrivate, username;
         let (tr = Pot.BookmarkUtil.truncateFields, name = this.name) {
             title = tr(name, 'title', ps.item);
@@ -7646,15 +7665,15 @@ update(models.Delicious, {
                                     tooltiptext : params.title,
                                     value       : params.count + ' users',
                                     class       : 'text-link',
-                                    style       : Pot.StringUtil.mtrim(<>
-                                        padding         : 0.1em;
-                                        color           : #4c6bc9;
-                                        font-size       : 11.2px;
-                                        font-weight     : bold;
-                                        cursor          : pointer !important;
-                                        outline         : 0;
-                                        -moz-user-focus : ignore;
-                                    </>)
+                                    style       : [
+                                        'padding         : 0.1em;',
+                                        'color           : #4c6bc9;',
+                                        'font-size       : 11.2px;',
+                                        'font-weight     : bold;',
+                                        'cursor          : pointer !important;',
+                                        'outline         : 0;',
+                                        '-moz-user-focus : ignore;'
+                                    ].join('')
                                 });
                                 if (onClick) {
                                     label.addEventListener('click', function() {
