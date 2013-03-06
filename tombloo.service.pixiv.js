@@ -31,8 +31,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.37
- * @date       2013-02-19
+ * @version    1.38
+ * @date       2013-03-06
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -967,7 +967,7 @@ var pixivBookmark = update({
     post: function(ps) {
         var result, doc, psc, addUrl;
         psc = update({}, ps);
-        doc = this.getDocument(ps),
+        doc = this.getDocument(ps);
         addUrl = this.BASE_URL + 'bookmark_add.php';
         if (doc) {
             if (this.isMangaPage(doc.URL) && doc.URL !== psc.pageUrl) {
