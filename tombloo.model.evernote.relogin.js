@@ -11,9 +11,9 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.02
- * @date       2011-07-29
- * @author     polygon planet <polygon.planet@gmail.com>
+ * @version    1.03
+ * @date       2013-03-06
+ * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
  *              - Tumblr  : http://polygonplanet.tumblr.com/
@@ -24,24 +24,24 @@
  */
 (function(undefined) {
 
-const BASE_URI  = 'https://www.evernote.com';
-const LOGIN_URI = 'https://www.evernote.com/Login.action';
+var BASE_URI  = 'https://www.evernote.com';
+var LOGIN_URI = 'https://www.evernote.com/Login.action';
 
 // POSTの実行直前にログインチェック(Relogin)
 addAround(Evernote, 'post', function(proceed, args, self) {
-    let d = new Deferred();
+    var d = new Deferred();
     d.addCallback(function() {
         return self.getAuthCookie() ? succeed() :
             request(LOGIN_URI).addCallback(function(res) 
         {
-            let expr, doc, form;
+            var expr, doc, form;
             doc = convertToHTMLDocument(res.responseText);
             expr = '//form[@id="login_form"]';
             form = $x(expr, doc);
             return form;
         });
     }).addCallback(function(form) {
-        let users, df, de;
+        var users, df, de;
         df = new Deferred();
         de = new Deferred();
         users = getPasswords(BASE_URI);
@@ -51,14 +51,26 @@ addAround(Evernote, 'post', function(proceed, args, self) {
         // ログインフォームが表示されてる場合 (セッション切れてる)
         if (form && users && users.user && users.password) {
             df.addCallback(function() {
-                return request(LOGIN_URI, {
-                    redirectionLimit: 0,
-                    sendContent: update(formContents(form) || {}, {
+                
+                var sendContent = update(formContents(form) || {}, {
                         username: users.user,
                         password: users.password
-                    })
+                    });
+                var url = BASE_URI + form.getAttribute('action');
+                
+                
+                debug(url);
+                debug(sendContent);
+                
+                return request(LOGIN_URI, {
+                    redirectionLimit: 0,
+                    sendContent: sendContent
                 }).addCallback(function(res) {
                     // ここに来たら再ログイン成功
+                    
+                    debug("OK");
+                    debug(res);
+                    
                     users = null;
                     return wait(0);
                 }).addBoth(function(err) {
@@ -80,5 +92,4 @@ addAround(Evernote, 'post', function(proceed, args, self) {
 });
 
 
-})();
-
+}());
