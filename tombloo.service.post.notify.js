@@ -10,10 +10,10 @@
  * ※通知はウザイ可能性があるのでその場合はパッチ削除
  *
  *
- * @version    1.07
- * @date       2012-02-18
- * @author     polygon planet <polygon.planet@gmail.com>
- *              - Blog    : http://polygon-planet.blogspot.com/
+ * @version    1.08
+ * @date       2013-03-07
+ * @author     polygon planet <polygon.planet.aqua@gmail.com>
+ *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
  *              - Tumblr  : http://polygonplanet.tumblr.com/
  * @license    Same as Tombloo
@@ -28,53 +28,37 @@
 var retryErrors = [
     {
         // 「xpconnect wrapped ns*」エラーの場合
-        pattern: toSimpleRegExp(<><![CDATA[
-            Tumblr: 
-              channel : [xpconnect wrapped (__NS__)]
-              responseText : 
-              message : 
-            ]]></>, 'i', function(s) {
-                return s.replace(/__NS__/, '(?: ns\\w* ,? )+');
+        pattern: toSimpleRegExp([
+            'Tumblr: ',
+              'channel : [xpconnect wrapped (__NS__)]',
+              'responseText : ',
+              'message : '
+            ].join('\n'), 'i', function(s) {
+                return s.replace(/__NS__/, '(?: \\w+ ,? )+');
             }),
         limit: 3,
         defaultLimit: 3
     },
     {
         // 「src is null」エラーの場合
-        pattern: toSimpleRegExp(<><![CDATA[
-                Tumblr: 
-                  message : src is null
-            ]]></>),
+        pattern: toSimpleRegExp([
+                'Tumblr: ',
+                  'message : src is null'
+            ].join('\n')),
         limit: 2,
         defaultLimit: 2
     },
     {
         // ソースコード変化で効かなくなるけど一応
-        pattern: toSimpleRegExp(<><![CDATA[
-                Tumblr: 
-                  message : 
-                  fileName : chrome://tombloo/content/eval.js?file=20_Tumblr.js
-                  lineNumber : 299
-            ]]></>),
+        pattern: toSimpleRegExp([
+                'Tumblr: ',
+                  'message : ',
+                  'fileName : chrome://tombloo/content/eval.js?file=20_Tumblr.js',
+                  'lineNumber : 299'
+            ].join('\n')),
         limit: 1,
         defaultLimit: 1
     }
-    /*
-    ,
-    {
-        //
-        // ↓のCDATAの中にエラーメッセージをコピペで追加できる。
-        //   ホワイトスペース(改行含む)は正規表現の \s* に置換される。
-        //   大文字小文字を区別しないので"あいまい検索"のような感じになる。
-        //
-        pattern: toSimpleRegExp(<><![CDATA[
-                  
-                  
-            ]]></>),
-        limit: 2, // リミットの初期値
-        defaultLimit: 2 // リミットのデフォルト値 (1 ～ 3回程度)
-    }
-    */
 ];
 
 
