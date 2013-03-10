@@ -15,10 +15,10 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.04
- * @date       2011-10-27
- * @author     polygon planet <polygon.planet@gmail.com>
- *              - Blog    : http://polygon-planet.blogspot.com/
+ * @version    1.05
+ * @date       2013-03-11
+ * @author     polygon planet <polygon.planet.aqua@gmail.com>
+ *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
  *              - Tumblr  : http://polygonplanet.tumblr.com/
  * @license    Same as Tombloo
@@ -29,8 +29,8 @@
 (function(undefined) {
 
 // Basic URLs
-const BASE_URL    = 'http://www.tinami.com/';
-const FAVICON_URL = 'http://www.tinami.com/favicon.ico';
+var BASE_URL    = 'http://www.tinami.com/';
+var FAVICON_URL = 'http://www.tinami.com/favicon.ico';
 
 
 // TINAMIを登録 (extractor)
@@ -38,7 +38,7 @@ Tombloo.Service.extractors.register({
     name  : 'Photo - TINAMI',
     ICON  : FAVICON_URL,
     check : function(ctx) {
-        let valid = false, expr;
+        var valid = false, expr;
         if (ctx && ctx.target && /^(?:\w+[.])*?tinami[.]com$/.test(ctx.host)) {
             expr = 'img[contains(@class,"capt") or contains(@rel,"capt")]';
             if ($x(expr, ctx.target)) {
@@ -56,7 +56,7 @@ Tombloo.Service.extractors.register({
     },
     // original属性がある場合それが画像URLかどうかチェックして適正なら返す
     getOriginalUrlByAttr : function(ctx) {
-        let url;
+        var url;
         try {
             url = ctx.target.getAttribute('original');
             if (!/^https?:.*[.](?:jpe?g|png|gif|ico|svg|bmp)$/.test(url)) {
@@ -69,7 +69,7 @@ Tombloo.Service.extractors.register({
     },
     // サムネイルからviewページURLを取得
     getViewLinkByThumbnail : function(ctx) {
-        let result, part, link;
+        var result, part, link, limit;
         if (ctx && ctx.target && ctx.onLink) {
             part = '/img.tinami.com/illust';
             if (~String(ctx.target.src).indexOf(part) ||
@@ -77,12 +77,11 @@ Tombloo.Service.extractors.register({
             ) {
                 link = ctx.target;
                 if (tagName(link) === 'img') {
-                    let (limit = 5) {
-                        while (--limit >= 0) {
-                            link = link.parentNode;
-                            if (tagName(link) === 'a') {
-                                break;
-                            }
+                    limit = 5;
+                    while (--limit >= 0) {
+                        link = link.parentNode;
+                        if (tagName(link) === 'a') {
+                            break;
                         }
                     }
                 }
@@ -99,9 +98,9 @@ Tombloo.Service.extractors.register({
     },
     // 画像キャッシュを生成
     createImageCache : function(ctx, src) {
-        const LOADING_TIMEOUT = 15;
-        const REMOVE_DELAY = 1;
-        let that = this, d, doc, img, remback, timer;
+        var LOADING_TIMEOUT = 15;
+        var REMOVE_DELAY = 1;
+        var that = this, d, doc, img, remback, timer;
         d = new Deferred();
         doc = getMostRecentWindow().content.document;
         img = doc.createElement('img');
@@ -122,14 +121,14 @@ Tombloo.Service.extractors.register({
             } catch (e) {}
             remback();
         }, true);
-        img.setAttribute('style', <>
-            width    : 1px;
-            height   : 1px;
-            display  : inline;
-            position : absolute;
-            left     : 0px;
-            top      : 0px;
-        </>.toString());
+        img.setAttribute('style', [
+            'width    : 1px;',
+            'height   : 1px;',
+            'display  : inline;',
+            'position : absolute;',
+            'left     : 0px;',
+            'top      : 0px;'
+        ].join('\n'));
         doc.body.appendChild(img);
         img.setAttribute('src', src);
         return d;
@@ -150,7 +149,7 @@ Tombloo.Service.extractors.register({
     },
     // 作品のコンテナを取得
     selectViewNode : function(ctx) {
-        let org, node, re;
+        var org, node, re;
         re = /\bviewbody\b/
         org = ctx.target || ctx.document;
         try {
@@ -173,7 +172,7 @@ Tombloo.Service.extractors.register({
     },
     // 作品に付けられたタグを抽出
     extractTags : function(ctx) {
-        let results = [], tags, exprs, patterns, context;
+        var results = [], tags, exprs, patterns, context;
         patterns = {
             ignore : /[\s\u3000,[\]]+/g,
             remove : /[\u0000-\u0020*\/-]+/g
@@ -205,14 +204,14 @@ Tombloo.Service.extractors.register({
     },
     // 漫画
     extractManga : function(ctx) {
-        let tags, src;
+        var tags, src;
         tags = this.extractTags(ctx);
         src  = this.getOriginalUrlByAttr(ctx);
         return this.download(ctx, src, tags);
     },
     // イラスト
     extractIllust : function(ctx) {
-        let that = this, src, url, form, sendContent, tags, exprs, context;
+        var that = this, src, url, form, sendContent, tags, exprs, context;
         exprs = [
             '.[@class="viewbody"]//img[@rel="caption"][@class="captify"]/@src',
             '.[contains(@class,"viewbody")]//img[@rel="caption"][contains(@class,"captify")]/@src',
@@ -235,11 +234,11 @@ Tombloo.Service.extractors.register({
         return this.download(ctx, src, tags);
     },
     extract : function(ctx) {
-        let that = this, d, url = this.getViewLinkByThumbnail(ctx);
+        var that = this, d, url = this.getViewLinkByThumbnail(ctx);
         if (url) {
             // サムネイルから
             d = request(url).addCallback(function(res) {
-                let img, doc = convertToHTMLDocument(res.responseText);
+                var img, doc = convertToHTMLDocument(res.responseText);
                 img = $x('//*[@class="viewbody"]//img', doc);
                 ctx.href = url;
                 ctx.title = doc.title || $x('//title/text()', doc) || ctx.title;
@@ -272,7 +271,7 @@ models.register({
     name  : 'TINAMI Bookmark Creator',
     ICON  : FAVICON_URL,
     check : function(ps) {
-        let valid = false, re = {
+        var valid = false, re = {
             type : /(?:regular|photo|quote|link|conversation|video|audio|bookmark)/,
             host : /^(?:https?:\/+|)(\w+[.])*?tinami[.]com/
         };
@@ -298,7 +297,7 @@ models.register({
         }
         if (ps && ps.pageUrl) {
             return request(ps.pageUrl).addCallback(function(res) {
-                let doc, href;
+                var doc, href;
                 doc = convertToHTMLDocument(res.responseText);
                 href = $x('//*[@class="prof"]//a/@href', doc);
                 return href && href.split('/').filter(function(a) {
@@ -310,7 +309,7 @@ models.register({
         }
     },
     updatePanel : function() {
-        let doc, panel;
+        var doc, panel;
         doc = getMostRecentWindow().content.document;
         panel = $x('//*[@class="prof"]//a[contains(@href,"/bookmark/add/")]', doc);
         if (panel) {
@@ -318,13 +317,13 @@ models.register({
         }
     },
     post : function(ps) {
-        const ADD_URL = BASE_URL + 'bookmark/add/';
-        let that = this;
+        var ADD_URL = BASE_URL + 'bookmark/add/';
+        var that = this;
         if (!this.getAuthCookie()) {
             throw new Error(getMessage('error.notLoggedin'));
         }
         return this.getToken(ps).addCallback(function(token) {
-            let url;
+            var url;
             if (!token) {
                 throw new Error('Cannot get token');
             }
@@ -344,12 +343,12 @@ models.register({
 models.register(update(update({}, models['TINAMI Bookmark Creator']), {
     name : 'TINAMI Add Collection',
     post : function(ps) {
-        const ADD_URL = BASE_URL;
+        var ADD_URL = BASE_URL;
         if (!this.getAuthCookie()) {
             throw new Error(getMessage('error.notLoggedin'));
         }
         return request(ps.pageUrl).addCallback(function(res) {
-            let doc, form, sendContent, folder;
+            var doc, form, sendContent, folder;
             doc = convertToHTMLDocument(res.responseText);
             folder = $x('//select[@id="collection_folder_dialog_select"]/option/@value', doc);
             form = doc.getElementById('collection_add');
