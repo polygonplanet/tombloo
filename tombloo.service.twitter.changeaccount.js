@@ -10,8 +10,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.00
- * @date       2012-06-28
+ * @version    1.01
+ * @date       2013-03-11
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -25,11 +25,11 @@
 
 update(Twitter, {
     login : function(user, password) {
-        const LOGIN_URL = this.URL + '/sessions';
-        let that = this;
+        var LOGIN_URL = this.URL + '/sessions';
+        var that = this;
         return (this.getCurrentUser() ? this.logout() : succeed()).addCallback(function() {
             return request(that.URL).addCallback(function(res) {
-                let doc = convertToHTMLDocument(res.responseText),
+                var doc = convertToHTMLDocument(res.responseText),
                     form = $x('//form[contains(@class,"signin")]', doc);
                 return request(LOGIN_URL, {
                     redirectionLimit : 0,
@@ -47,10 +47,10 @@ update(Twitter, {
         });
     },
     logout : function() {
-        const FORM_URL   = this.URL + '/settings/account';
-        const LOGOUT_URL = this.URL + '/logout';
+        var FORM_URL   = this.URL + '/settings/account';
+        var LOGOUT_URL = this.URL + '/logout';
         return request(FORM_URL).addCallback(function(res) {
-            let doc = convertToHTMLDocument(res.responseText),
+            var doc = convertToHTMLDocument(res.responseText),
                 form = $x('//form[@id="signout-form"]', doc);
             return request(LOGOUT_URL, {
                 sendContent : formContents(form)
@@ -62,10 +62,10 @@ update(Twitter, {
                getCookieString('.twitter.com', 'auth_token');
     },
     getUserLoginId : function() {
-        const URL = this.URL + '/settings/account';
-        let that = this;
+        var URL = this.URL + '/settings/account';
+        var that = this;
         return request(URL).addCallback(function(res) {
-            let user, doc = convertToHTMLDocument(res.responseText);
+            var user, doc = convertToHTMLDocument(res.responseText);
             user = $x('//input[@id="user_screen_name"]/@value', doc);
             if (!/[^\w]/.test(user)) {
                 that.user = user;
@@ -77,7 +77,7 @@ update(Twitter, {
         return this.getUserLoginId();
     },
     getPasswords : function() {
-        let results = [];
+        var results = [];
         [
             'http://twitter.com',
             'https://twitter.com',
@@ -86,7 +86,7 @@ update(Twitter, {
             'http://twitter.com/',
             'https://twitter.com/'
         ].forEach(function(url) {
-            let p = getPasswords(url);
+            var p = getPasswords(url);
             if (p && p.length) {
                 p.forEach(function(t) {
                     results.push(t);
