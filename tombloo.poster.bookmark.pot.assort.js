@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.88
- * @date       2013-03-07
+ * @version    1.89
+ * @date       2013-03-12
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -215,7 +215,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.88',
+    VERSION: '1.89',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -7173,7 +7173,8 @@ update(models.Delicious, {
         }
     },
     getAuthCookie : function() {
-        return getCookieString('.delicious.com', 'connect.sid');
+        // Cookieあったりなかったりなので廃止, ログイン判断はgetCurrentUser()で
+        return true; // getCookieString('.delicious.com', 'connect.sid');
     },
     getCurrentUser : function() {
         var self = this;
