@@ -12,10 +12,10 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.00
- * @date       2011-12-05
- * @author     polygon planet <polygon.planet@gmail.com>
- *              - Blog    : http://polygon-planet.blogspot.com/
+ * @version    1.01
+ * @date       2013-03-16
+ * @author     polygon planet <polygon.planet.aqua@gmail.com>
+ *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
  *              - Tumblr  : http://polygonplanet.tumblr.com/
  * @license    Same as Tombloo
@@ -26,16 +26,14 @@
 (function(undefined) {
 
 
-// Define language
-const LANG = (function(n) {
+var LANG = function(n) {
     return ((n && (n.language || n.userLanguage     ||
             n.browserLanguage || n.systemLanguage)) ||
             'en').split(/[^a-zA-Z0-9]+/).shift().toLowerCase();
-})(navigator);
+}(navigator);
 
 
-// UI labels
-const LABELS = {
+var LABELS = {
     translate : function(name) {
         return LABELS[name][LANG === 'en' && LANG || 'ja'];
     },
@@ -59,20 +57,20 @@ Tombloo.Service.actions.register({
     name : LABELS.translate('MENU_TOP'),
     type : 'context',
     // icon: magnifier.png : http://www.famfamfam.com/
-    icon : strip(<>
-        data:image/png;base64,
-        iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0
-        U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAH5SURBVDjLpZK/a5NhEMe/748kRqypmqQQ
-        gz/oUPUPECpCoEVwyNStIA6COFR33boIjg6mg4uL0k0EO1RFISKImkHQxlbQRAsx0dgKJm/e53nu
-        nnOwViR5leJnuZs+973jHBHB/+D/ah7X2LXWloilyMw5YgtD3CDiBWN4Zno8bQcJHBFBucauZfso
-        lZDCru0OfFcAAUISrLZDfPzSKxuiibOT+T6JCwDMtrQzYQvZHQ5Cw2h3GK0OI9AWBzJJZFOxgtJU
-        GpTABQAiLu5OOviuGIEWkBUwC7pasNZj7N2ThNJUjBQY4pznAoEWsBWwxU+JFXSVRTzmQWvKRR5R
-        G4KVGMgKrAVYflexAAugDCEygdbUCI2F7zobk7FZY76DIDQgrT9HCwwt1FsBhhIu4p4D3kiS8B0M
-        Jz28ftfGSPfl8MPLxbGBAqVpptbslJc+fEPMA7JDPrIpH3FX8LzaROdrE5O51jalgid3Lh4b6/sD
-        ALh6971riErGcFET58gwDPGndG9JT6ReHcwfPorGygu8rdxvGxMeP3XtzcofgigWZ0/EtQ7n0/sO
-        Te0/Mo7V5WeoVu61z1yvZzZX+BsnZx9opYLpevXp7eXKIrL5UWit0n0r/Isb50bjRGreiyWmgs76
-        lfM31y5tSQAAc6czHjONXLi13thygih+AEq4N6GqMsuhAAAAAElFTkSuQmCC
-    </>),
+    icon : strip([
+        'data:image/png;base64,',
+        'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0',
+        'U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAH5SURBVDjLpZK/a5NhEMe/748kRqypmqQQ',
+        'gz/oUPUPECpCoEVwyNStIA6COFR33boIjg6mg4uL0k0EO1RFISKImkHQxlbQRAsx0dgKJm/e53nu',
+        'nnOwViR5leJnuZs+973jHBHB/+D/ah7X2LXWloilyMw5YgtD3CDiBWN4Zno8bQcJHBFBucauZfso',
+        'lZDCru0OfFcAAUISrLZDfPzSKxuiibOT+T6JCwDMtrQzYQvZHQ5Cw2h3GK0OI9AWBzJJZFOxgtJU',
+        'GpTABQAiLu5OOviuGIEWkBUwC7pasNZj7N2ThNJUjBQY4pznAoEWsBWwxU+JFXSVRTzmQWvKRR5R',
+        'G4KVGMgKrAVYflexAAugDCEygdbUCI2F7zobk7FZY76DIDQgrT9HCwwt1FsBhhIu4p4D3kiS8B0M',
+        'Jz28ftfGSPfl8MPLxbGBAqVpptbslJc+fEPMA7JDPrIpH3FX8LzaROdrE5O51jalgid3Lh4b6/sD',
+        'ALh6971riErGcFET58gwDPGndG9JT6ReHcwfPorGygu8rdxvGxMeP3XtzcofgigWZ0/EtQ7n0/sO',
+        'Te0/Mo7V5WeoVu61z1yvZzZX+BsnZx9opYLpevXp7eXKIrL5UWit0n0r/Isb50bjRGreiyWmgs76',
+        'lfM31y5tSQAAc6czHjONXLi13thygih+AEq4N6GqMsuhAAAAAElFTkSuQmCC'
+    ].join('')),
     check    : function(ctx) {
         return validImageURL(ctx);
     },
@@ -85,8 +83,8 @@ Tombloo.Service.actions.register({
             return validImageURL(ctx);
         },
         execute : function(ctx) {
-            const SEARCH_URL = 'http://www.google.co.jp/searchbyimage';
-            let url = SEARCH_URL + '?' + queryString({
+            var SEARCH_URL = 'http://www.google.co.jp/searchbyimage';
+            var url = SEARCH_URL + '?' + queryString({
                 image_url : stringify(extractMediaURL(ctx))
             });
             addTab(url);
@@ -100,8 +98,8 @@ Tombloo.Service.actions.register({
             return validImageURL(ctx);
         },
         execute : function(ctx) {
-            const SEARCH_URL = 'http://www.ascii2d.net/imagesearch/search/';
-            let data = queryString({
+            var SEARCH_URL = 'http://www.ascii2d.net/imagesearch/search/';
+            var data = queryString({
                 uri : stringify(extractMediaURL(ctx))
             });
             addTabPost(SEARCH_URL, data);
@@ -171,7 +169,7 @@ function strip(s) {
 
 
 function addTabPost(url, data, background) {
-    let d, win, tabbrowser, tab, browser, referrer, postData, contents;
+    var d, win, tabbrowser, tab, browser, referrer, postData, contents;
     d = new Deferred();
     win = getMostRecentWindow();
     tabbrowser = win.getBrowser();
