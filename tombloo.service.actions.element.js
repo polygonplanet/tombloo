@@ -11,10 +11,10 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.01
- * @date       2011-11-16
- * @author     polygon planet <polygon.planet@gmail.com>
- *              - Blog    : http://polygon-planet.blogspot.com/
+ * @version    1.02
+ * @date       2013-03-24
+ * @author     polygon planet <polygon.planet.aqua@gmail.com>
+ *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
  *              - Tumblr  : http://polygonplanet.tumblr.com/
  * @license    Same as Tombloo
@@ -26,15 +26,15 @@
 
 
 // Define language
-const LANG = (function(n) {
+var LANG = function(n) {
     return ((n && (n.language || n.userLanguage     ||
             n.browserLanguage || n.systemLanguage)) ||
             'en').split(/[^a-zA-Z0-9]+/).shift().toLowerCase();
-})(navigator);
+}(navigator);
 
 
 // UI labels
-const LABELS = {
+var LABELS = {
     translate : function(name) {
         return LABELS[name][LANG === 'en' && LANG || 'ja'];
     },
@@ -66,16 +66,16 @@ Tombloo.Service.actions.register({
     name : LABELS.translate('MENU_TOP'),
     type : 'context',
     // icon: tag.png : http://www.famfamfam.com/
-    icon : strip(<>
-        data:image/png;base64,
-        iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0
-        U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAEXSURBVDjLY/j//z8DJZhhmBpg2POQn2wD
-        DDof8HvOe3osYtXzDzCxuM2vP3gvfn4MJIfXAP22e0Ies58eK9r2+r//3Kf3YOIhq17eK9v95j9I
-        Trv2jhBWA/Ra7kVEr375vXDrq/9+s57eUy+4IY0kJx2w6Nk9kFzE0uffgXIRKAboNtxlC1/+/GPl
-        jjdABc9+q+ZcM0Z3qmb5LWOQXOmml/8DZz7+qJB0hQ3FBerFNyNC5z/9nrXqxX+Pvgf35OMuSSPJ
-        SXtPfXQPJBc089F3oFwE1jBQTLkiZNtw51jq4qf/XVvuwsPAa9Kjexkrnv8HyclFXxTCGwsyERf4
-        LctvHvPuvAePBf8pDz/Y1N45BpIbKUmZFAwAR3nW32nUrY0AAAAASUVORK5CYII=
-    </>),
+    icon : strip([
+        'data:image/png;base64,',
+        'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0',
+        'U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAEXSURBVDjLY/j//z8DJZhhmBpg2POQn2wD',
+        'DDof8HvOe3osYtXzDzCxuM2vP3gvfn4MJIfXAP22e0Ies58eK9r2+r//3Kf3YOIhq17eK9v95j9I',
+        'Trv2jhBWA/Ra7kVEr375vXDrq/9+s57eUy+4IY0kJx2w6Nk9kFzE0uffgXIRKAboNtxlC1/+/GPl',
+        'jjdABc9+q+ZcM0Z3qmb5LWOQXOmml/8DZz7+qJB0hQ3FBerFNyNC5z/9nrXqxX+Pvgf35OMuSSPJ',
+        'SXtPfXQPJBc089F3oFwE1jBQTLkiZNtw51jq4qf/XVvuwsPAa9Kjexkrnv8HyclFXxTCGwsyERf4',
+        'LctvHvPuvAePBf8pDz/Y1N45BpIbKUmZFAwAR3nW32nUrY0AAAAASUVORK5CYII='
+    ].join('\n')),
     children : [{
         name  : LABELS.translate('MENU_REMOVE_THIS'),
         type  : 'context',
@@ -99,7 +99,7 @@ Tombloo.Service.actions.register({
         name  : LABELS.translate('MENU_REMOVE_SELECTION'),
         type  : 'context',
         check : function(ctx) {
-            let sel;
+            var sel;
             try {
                 sel = ctx.window.getSelection().toString();
             } catch (e) {}
@@ -136,7 +136,7 @@ Tombloo.Service.actions.register({
         },
         execute : function(ctx) {
             return selectElement(ctx.document).addCallback(function(elem) {
-                let pos, rect, mark, orgDisplay;
+                var pos, rect, mark, orgDisplay;
                 pos = getElementPosition(elem);
                 orgDisplay = elem.style.display;
                 elem.style.display = 'inline-block';
@@ -165,7 +165,7 @@ Tombloo.Service.actions.register({
         },
         execute : function(ctx) {
             return selectRegion(ctx.document).addCallback(function(region) {
-                let elems, styles = [], rect;
+                var elems, styles = [], rect;
                 rect = {
                     x : region.position.x,
                     y : region.position.y,
@@ -243,9 +243,9 @@ function strip(s) {
 
 
 function getElementsInRect(rect, doc) {
-    let results = [];
+    var results = [];
     Array.prototype.slice.call(doc.body.getElementsByTagName('*')).forEach(function(elem) {
-        let pos;
+        var pos;
         try {
             pos = getElementPosition(elem);
             if (!pos || pos.x == null) {
@@ -265,12 +265,12 @@ function getElementsInRect(rect, doc) {
 
 
 function highlightElement(elem) {
-    let cssText, style;
+    var cssText, style;
     style = elem.style;
     cssText = style.cssText;
-    style.border          = '2px solid #fece33';
-    style.MozBorderRadius = '3px';
-    style.MozBoxShadow    = '1px 1px 5px #333';
+    style.border       = '2px solid #fece33';
+    style.borderRadius = '3px';
+    style.boxShadow    = '1px 1px 5px #333';
     return {
         clear : function(delay) {
             callLater(delay || 0, function() {
@@ -284,24 +284,24 @@ function highlightElement(elem) {
 
 
 function showButton(doc, rect, remove, cancel, center) {
-    let buttons, button = doc.createElement('div');
-    button.setAttribute('style', <>
-        display            : inline-block;
-        position           : absolute;
-        left               : {Math.floor(rect.x + (rect.w * (center ? 0.492 : 0.875)))}px;
-        top                : {Math.floor(rect.y + rect.h + 22)}px;
-        z-index            : 99999998;
-        border             : 2px solid #555;
-        -moz-border-radius : 3px;
-        -moz-box-shadow    : 1px 1px 3px #333;
-        color              : #555;
-        font-size          : 12px;
-        font-family        : verdana, sans-serif;
-        padding            : 2px 4px;
-        cursor             : pointer;
-        background         : #f6f6ff;
-        -moz-user-select   : none;
-    </>.toString());
+    var buttons, button = doc.createElement('div');
+    button.setAttribute('style', [
+        'display            : inline-block;',
+        'position           : absolute;',
+        'left               : ' + Math.floor(rect.x + (rect.w * (center ? 0.492 : 0.875))) + 'px;',
+        'top                : ' + Math.floor(rect.y + rect.h + 22) + 'px;',
+        'z-index            : 99999998;',
+        'border             : 2px solid #555;',
+        'border-radius      : 3px;',
+        'box-shadow         : 1px 1px 3px #333;',
+        'color              : #555;',
+        'font-size          : 12px;',
+        'font-family        : verdana, sans-serif;',
+        'padding            : 2px 4px;',
+        'cursor             : pointer;',
+        'background         : #f6f6ff;',
+        'user-select        : none;'
+    ].join('\n'));
     buttons = {
         remove : button,
         cancel : button.cloneNode(false)
