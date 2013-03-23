@@ -12,8 +12,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.01
- * @date       2012-08-09
+ * @version    1.02
+ * @date       2013-03-24
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -27,15 +27,15 @@
 
 
 // Define language
-const LANG = (function(n) {
+var LANG = function(n) {
     return ((n && (n.language || n.userLanguage     ||
             n.browserLanguage || n.systemLanguage)) ||
             'en').split(/[^a-zA-Z0-9]+/).shift().toLowerCase();
-})(navigator);
+}(navigator);
 
 
 // UI labels
-const LABELS = {
+var LABELS = {
     translate : function(name) {
         return LABELS[name][LANG === 'en' && LANG || 'ja'];
     },
@@ -63,21 +63,21 @@ Tombloo.Service.actions.register({
     name : LABELS.translate('MENU_TOP'),
     type : 'context',
     // icon: page_copy.png : http://www.famfamfam.com/
-    icon : strip(<>
-        data:image/png;base64,
-        iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0
-        U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAIpSURBVDjLddM9aFRBFIbh98zM3WyybnYV
-        f4KSQjBJJVZBixhRixSaShtBMKUoWomgnaCxsJdgIQSstE4nEhNREgyoZYhpkogkuMa4/3fuHIu7
-        gpLd00wz52POMzMydu/Dy958dMwYioomIIgqDa+VnWrzebNUejY/NV6nQ8nlR4ufXt0fzm2WgxUg
-        qBInAWdhemGbpcWNN9/XN27PPb1QbRdgjEhPqap2ZUv5+iOwvJnweT1mT5djZKjI6Ej/udz+wt1O
-        JzAKYgWyDjJWyFghmzFsbtcY2gsTJwv09/Vc7RTgAEQgsqAKaoWsM8wu/z7a8B7vA8cHD3Fr+ktF
-        gspO3a+vrdVfNEulJ/NT4zWngCBYY1oqSghKI465fvYwW+VAatPX07IZmF7YfrC0uDE8emPmilOF
-        kHYiBKxAxhmSRPlZVVa2FGOU2Ad2ap4zg92MDBXJZczFmdflx05VEcAZMGIIClZASdesS2cU/dcm
-        4sTBArNzXTcNakiCb3/HLRsn4Fo2qyXh3WqDXzUlcgYnam3Dl4Hif82dbOiyiBGstSjg4majEpl8
-        rpCNUQUjgkia0M5GVAlBEBFUwflEv12b/Hig6SmA1iDtzhcsE6eP7LIxAchAtwNVxc1MnhprN/+l
-        h0txErxrPZVdFdRDEEzHT6LWpTbtq+HLSDDiOm2o1uqlyOT37bIhHdKaXoL6pqhq24Dzd96/tUYG
-        wPSBVv7atFglaFIu5KLuPxeX/xsp7aR6AAAAAElFTkSuQmCC
-    </>),
+    icon : strip([
+        'data:image/png;base64,',
+        'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0',
+        'U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAIpSURBVDjLddM9aFRBFIbh98zM3WyybnYV',
+        'f4KSQjBJJVZBixhRixSaShtBMKUoWomgnaCxsJdgIQSstE4nEhNREgyoZYhpkogkuMa4/3fuHIu7',
+        'gpLd00wz52POMzMydu/Dy958dMwYioomIIgqDa+VnWrzebNUejY/NV6nQ8nlR4ufXt0fzm2WgxUg',
+        'qBInAWdhemGbpcWNN9/XN27PPb1QbRdgjEhPqap2ZUv5+iOwvJnweT1mT5djZKjI6Ej/udz+wt1O',
+        'JzAKYgWyDjJWyFghmzFsbtcY2gsTJwv09/Vc7RTgAEQgsqAKaoWsM8wu/z7a8B7vA8cHD3Fr+ktF',
+        'gspO3a+vrdVfNEulJ/NT4zWngCBYY1oqSghKI465fvYwW+VAatPX07IZmF7YfrC0uDE8emPmilOF',
+        'kHYiBKxAxhmSRPlZVVa2FGOU2Ad2ap4zg92MDBXJZczFmdflx05VEcAZMGIIClZASdesS2cU/dcm',
+        '4sTBArNzXTcNakiCb3/HLRsn4Fo2qyXh3WqDXzUlcgYnam3Dl4Hif82dbOiyiBGstSjg4majEpl8',
+        'rpCNUQUjgkia0M5GVAlBEBFUwflEv12b/Hig6SmA1iDtzhcsE6eP7LIxAchAtwNVxc1MnhprN/+l',
+        'h0txErxrPZVdFdRDEEzHT6LWpTbtq+HLSDDiOm2o1uqlyOT37bIhHdKaXoL6pqhq24Dzd96/tUYG',
+        'wPSBVv7atFglaFIu5KLuPxeX/xsp7aR6AAAAAElFTkSuQmCC',
+    ].join('\n')),
     children : [{
         name  : LABELS.translate('MENU_COPY_TITLE'),
         type  : 'context',
@@ -103,7 +103,7 @@ Tombloo.Service.actions.register({
             return ctx && ctx.href && /(?:^|\b)amazon\b/i.test(ctx.host);
         },
         execute : function(ctx) {
-            let asin = function() {
+            var asin = function() {
                     return ctx.document.getElementById('ASIN') ||
                         ctx.document.getElementsByName('ASIN.0')[0] ||
                         {value : ''};
