@@ -12,10 +12,10 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.05
- * @date       2012-01-09
- * @author     polygon planet <polygon.planet@gmail.com>
- *              - Blog    : http://polygon-planet.blogspot.com/
+ * @version    1.06
+ * @date       2013-03-24
+ * @author     polygon planet <polygon.planet.aqua@gmail.com>
+ *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
  *              - Tumblr  : http://polygonplanet.tumblr.com/
  * @license    Same as Tombloo
@@ -26,26 +26,26 @@
 (function(undefined) {
 
 // デフォルトのダイアログの幅
-const MAX_WIDTH  = 600;
+var MAX_WIDTH  = 600;
 
 // デフォルトのダイアログの高さ
-const MAX_HEIGHT = 600;
+var MAX_HEIGHT = 600;
 
 // changeAcountをアップデート
 update(Tombloo.Service.actions[getMessage('label.action.changeAcount')], {
     execute: function() {
-        let win, resize, sort, getItems, usersList, modelSelect;
+        var win, resize, sort, getItems, usersList, modelSelect;
         getItems = function() {
-            let items = win.document.querySelectorAll('#users .listitem-iconic');
+            var items = win.document.querySelectorAll('#users .listitem-iconic');
             return Array.prototype.slice.call(items) || [];
         };
         resize = function() {
-            let d = new Deferred(), start, timeout, interval, resizeTo;
-            start    = +new Date;
+            var d = new Deferred(), start, timeout, interval, resizeTo;
+            start    = Date.now();
             timeout  = 15 * 1000;
             interval = 150;
             resizeTo = function() {
-                let elems, stop = false, size = {}, max;
+                var elems, stop = false, size = {}, max;
                 max = {
                     diff   : 0,
                     height : 0,
@@ -53,7 +53,7 @@ update(Tombloo.Service.actions[getMessage('label.action.changeAcount')], {
                 };
                 // リストアイテムすべての幅を調べる (読み込まれてる場合)
                 getItems().forEach(function(item) {
-                    let diff;
+                    var diff;
                     try {
                         diff = Math.floor((item.getAttribute('label').length * 6.128) - max.box);
                         max.height += item.scrollHeight || 0;
@@ -75,7 +75,7 @@ update(Tombloo.Service.actions[getMessage('label.action.changeAcount')], {
                     } catch (e) {}
                 }
                 // ロードが完了してない場合はタイムアウトまで再試行
-                if (!stop && (+new Date - start < timeout)) {
+                if (!stop && (Date.now() - start < timeout)) {
                     setTimeout(resizeTo, interval);
                 } else {
                     d.callback();
@@ -85,14 +85,14 @@ update(Tombloo.Service.actions[getMessage('label.action.changeAcount')], {
             return d;
         };
         sort = function() {
-            let sorted = false, elems, newItems = [], labels = [];
+            var sorted = false, elems, newItems = [], labels = [];
             elems = getItems();
             elems.forEach(function(item) {
                 labels.push(item.getAttribute('label'));
             });
             alphanumSort(labels);
             labels.forEach(function(label) {
-                let done = false;
+                var done = false;
                 elems.forEach(function(item) {
                     if (!done && item.getAttribute('label') === label) {
                         newItems.push(item);
@@ -123,13 +123,13 @@ update(Tombloo.Service.actions[getMessage('label.action.changeAcount')], {
         );
         win.addEventListener('load', function() {
             callLater(1, function() {
-                let doSort = function() {
-                    let timeout = 5 * 1000, start = +new Date;
+                var doSort = function() {
+                    var timeout = 5 * 1000, start = +new Date;
                     till(function() {
-                        let end = false;
+                        var end = false;
                         if (sort()) {
                             end = true;
-                        } else if (+new Date - start > timeout) {
+                        } else if (Date.now() - start > timeout) {
                             end = true;
                         }
                         return end;
@@ -172,9 +172,9 @@ update(Tombloo.Service.actions[getMessage('label.action.changeAcount')], {
  * @return {Array}            ソートされた配列 (引数そのもの)
  */
 function alphanumSort(array) {
-    let chunkify, alphanumCase;
+    var chunkify, alphanumCase;
     chunkify = function(t) {
-        let tz = [], x = 0, y = -1, n = 0, i, j, m;
+        var tz = [], x = 0, y = -1, n = 0, i, j, m;
         while (i = (j = t.charAt(x++)).charCodeAt(0)) {
             m = (i == 46 || (i >=48 && i <= 57));
             if (m !== n) {
@@ -186,7 +186,7 @@ function alphanumSort(array) {
         return tz;
     };
     alphanumCase = function(a, b) {
-        let aa, bb, c, d, x, 
+        var aa, bb, c, d, x, 
         aa = chunkify(a.toLowerCase());
         bb = chunkify(b.toLowerCase());
         for (x = 0; aa[x] && bb[x]; x++) {
