@@ -31,8 +31,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.38
- * @date       2013-03-06
+ * @version    1.39
+ * @date       2013-04-02
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -233,7 +233,7 @@ var pixivProto = {
     },
     parseFullSizePage: function(text) {
         var url, xpath;
-        xpath = '//a//img//@src';
+        xpath = '//img/@src';
         url = $x(xpath, convertToHTMLDocument(text));
         return url;
     },
