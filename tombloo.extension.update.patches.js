@@ -15,10 +15,10 @@
  * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.extension.update.patches.js
  *
  *
- * @version    1.03
- * @date       2011-08-17
- * @author     polygon planet <polygon.planet@gmail.com>
- *              - Blog    : http://polygon-planet.blogspot.com/
+ * @version    1.04
+ * @date       2013-04-03
+ * @author     polygon planet <polygon.planet.aqua@gmail.com>
+ *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
  *              - Tumblr  : http://polygonplanet.tumblr.com/
  * @license    Same as Tombloo
@@ -28,10 +28,10 @@
 (function(undefined) {
 
 // コメントエリアを取得する最大サイズ
-const SCRIPT_DOCCOMMENT_SIZE = 1024 * 5;
+var SCRIPT_DOCCOMMENT_SIZE = 1024 * 5;
 
 // アップデート用のメタ(updateURL)正規表現パターン (Scriptish準拠)
-const UPDATE_PATTERNS = {
+var UPDATE_PATTERNS = {
     uri     : /@(?:update(?:UR[IL]|)|ur[il])[\u0009\u0020]+(https?:\/+[-_.!~*'()a-z0-9;\/?:@&=+$,%#]+)/i,
     uris    : [
         /(?:@updateUR[IL]\b|\bupdateUR[IL][\u0009\u0020]*:)[\u0009\u0020]+(https?:\/+[-_.!~*'()a-z0-9;\/?:@&=+$,%#]+)/i,
@@ -41,7 +41,7 @@ const UPDATE_PATTERNS = {
 };
 
 // あらかじめ設定できそうなupdateURL (初期起動時のみ適応)
-const BASE_UPDATE_URLS = {
+var BASE_UPDATE_URLS = {
     'model.gplus.js'                              : 'https://github.com/YungSang/Scripts-for-Tombloo/raw/master/model.gplus.js',
     'tombloo.extension.twitter.enclose.js'        : 'https://github.com/polygonplanet/tombloo/raw/master/tombloo.extension.twitter.enclose.js',
     'tombloo.extension.update.patches.js'         : 'https://github.com/polygonplanet/tombloo/raw/master/tombloo.extension.update.patches.js',
@@ -55,7 +55,7 @@ const BASE_UPDATE_URLS = {
 };
 
 // 自分のファイル名など (ソート用)
-const MOVE_TO_ENDS = {
+var MOVE_TO_ENDS = {
     'tombloo.poster.bookmark.pot.assort.js' : -1,
     'tombloo.extension.update.patches.js'   :  0
 };
@@ -86,16 +86,16 @@ var SPECIAL_PATCHES = {
 
 
 // Define language
-const LANG = (function(n) {
+var LANG = (function(n) {
     return ((n && (n.language  || n.userLanguage || n.browserLanguage ||
             n.systemLanguage)) || 'en').split(/[^a-zA-Z0-9]+/).shift().toLowerCase();
 })(navigator);
 
 
 // 主なラベル
-const LABELS = {
+var LABELS = {
     translate: function(name) {
-        let r, o, p, args = Array.prototype.slice.call(arguments);
+        var r, o, p, args = Array.prototype.slice.call(arguments);
         p = args.shift();
         o = LABELS[p];
         while (o && args.length) {
@@ -115,7 +115,7 @@ const LABELS = {
 };
 
 // メニューラベル
-const MENU_LABEL = LABELS.translate('MENU_LABEL');
+var MENU_LABEL = LABELS.translate('MENU_LABEL');
 
 
 // コンテキストメニューに登録
@@ -123,30 +123,30 @@ Tombloo.Service.actions.register({
     name: MENU_LABEL,
     type: 'context,menu',
     // icon: http://www.famfamfam.com/
-    icon: strip(<>
-        data:image/png;base64,
-        iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0
-        U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAALtSURBVBgZTcFLaFxVAIDh/5577jwzj0wS
-        UmqMtKIiBltbbJ1FUCxVoQu3FrHGVRU3BVcKrkTcKOhCUOtOAyJ23WIQtFawpoooZWKJpnbsNJN5
-        PzP3PO5xArPo93nOOfasXCgfAz48mE8UhzpiqCN0FLFrog7QA+qABVpAA/gC+FYyERlz/NC+qeIb
-        T85xt4GKckMV5Voju6A09ELLzXqfi38PTgLnJBORMfPZmMeectsSeB7SA19CPBAsxgW+EAQ+PLaQ
-        ZH8uXTj/S+UDwYTVOitxmAh6yqOjoR1CZwSdETR2Yadv2fPm6i2KB9IszQZzkgkVmvnLZcuP21Ve
-        O1rgs+tdAu1YOZxlKiHw8fA9iADPdvn5nxa/3epUBGOH39sqjETu2UJG4oUwDB2RcmRSHuevdtjp
-        WgZhxEBH4KDaDflobbNrlVoRh97demHpgfTth+5J5ZpNw5kjWQxw6mCa7aYlk4bPr7X54XqfkfGI
-        HNjAYpQ6cOH1x9fEw/cnP13M+Ik7bc3ZYxniMR9PQCElObmYptox7E97XK0MscbhHJgwxKrQMiZ+
-        v9Y9u3knHBUCn08ut6m2DQJHe6C5WOqQl4KbVcXR2QSxwENbS38wNEapLmNi4/0Hv/r3zxvHN0p1
-        YnGP1e/r4ODr9TbZlKBTU7xSnKG4lCUZQKMfYkJVvfT2c44xyVjKr6lpEUI3g3UOPIE1lu6O5aUT
-        cyRjPjhISUGttYtVYYUJuXxudRZ4p/jIvZx+eoHvSopmz/Ly8jyJwBFIkD7EfMimYLM8xChVZUJa
-        pU4Ap34tbdHalfRDh7aOUHsoE2FsROQchVyOV5/Zx3ZjiFWqxoS0Wh95/qlHk2+9+AR3sw60dSgD
-        OPj4UoVUAL3+EKt1gwlptd7arnf4cq1EfipJPpsgn46TS8fJpGLEY4K4FJxenicuodbsYbX+jwkZ
-        GfPNlfWNhSvrG/cBM8AMMA1MA7lELAgSiYBsOkk+m+KPv8o3gJ+Y+B9yFXCQeyJWrQAAAABJRU5E
-        rkJggg==
-    </>),
+    icon: [
+        'data:image/png;base64',
+        'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0',
+        'U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAALtSURBVBgZTcFLaFxVAIDh/5577jwzj0wS',
+        'UmqMtKIiBltbbJ1FUCxVoQu3FrHGVRU3BVcKrkTcKOhCUOtOAyJ23WIQtFawpoooZWKJpnbsNJN5',
+        'PzP3PO5xArPo93nOOfasXCgfAz48mE8UhzpiqCN0FLFrog7QA+qABVpAA/gC+FYyERlz/NC+qeIb',
+        'T85xt4GKckMV5Voju6A09ELLzXqfi38PTgLnJBORMfPZmMeectsSeB7SA19CPBAsxgW+EAQ+PLaQ',
+        'ZH8uXTj/S+UDwYTVOitxmAh6yqOjoR1CZwSdETR2Yadv2fPm6i2KB9IszQZzkgkVmvnLZcuP21Ve',
+        'O1rgs+tdAu1YOZxlKiHw8fA9iADPdvn5nxa/3epUBGOH39sqjETu2UJG4oUwDB2RcmRSHuevdtjp',
+        'WgZhxEBH4KDaDflobbNrlVoRh97demHpgfTth+5J5ZpNw5kjWQxw6mCa7aYlk4bPr7X54XqfkfGI',
+        'HNjAYpQ6cOH1x9fEw/cnP13M+Ik7bc3ZYxniMR9PQCElObmYptox7E97XK0MscbhHJgwxKrQMiZ+',
+        'v9Y9u3knHBUCn08ut6m2DQJHe6C5WOqQl4KbVcXR2QSxwENbS38wNEapLmNi4/0Hv/r3zxvHN0p1',
+        'YnGP1e/r4ODr9TbZlKBTU7xSnKG4lCUZQKMfYkJVvfT2c44xyVjKr6lpEUI3g3UOPIE1lu6O5aUT',
+        'cyRjPjhISUGttYtVYYUJuXxudRZ4p/jIvZx+eoHvSopmz/Ly8jyJwBFIkD7EfMimYLM8xChVZUJa',
+        'pU4Ap34tbdHalfRDh7aOUHsoE2FsROQchVyOV5/Zx3ZjiFWqxoS0Wh95/qlHk2+9+AR3sw60dSgD',
+        'OPj4UoVUAL3+EKt1gwlptd7arnf4cq1EfipJPpsgn46TS8fJpGLEY4K4FJxenicuodbsYbX+jwkZ',
+        'GfPNlfWNhSvrG/cBM8AMMA1MA7lELAgSiYBsOkk+m+KPv8o3gJ+Y+B9yFXCQeyJWrQAAAABJRU5E',
+        'rkJggg=='
+    ].join(''),
     check: function(ctx) {
         return true;
     },
     execute: function(ctx) {
-        let params = {
+        var params = {
             SCRIPT_DOCCOMMENT_SIZE : SCRIPT_DOCCOMMENT_SIZE,
             UPDATE_PATTERNS        : UPDATE_PATTERNS,
             MOVE_TO_ENDS           : MOVE_TO_ENDS,
@@ -173,19 +173,19 @@ Tombloo.Service.actions.register({
     name: LABELS.translate('OPEN_SCRIPT_FOLDER'),
     type: 'context,menu',
     // icon: folder.png : http://www.famfamfam.com/
-    icon: strip(<>
-        data:image/png;base64,
-        iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0
-        U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAGrSURBVDjLxZO7ihRBFIa/6u0ZW7GHBUV0
-        UQQTZzd3QdhMQxOfwMRXEANBMNQX0MzAzFAwEzHwARbNFDdwEd31Mj3X7a6uOr9BtzNjYjKBJ6ni
-        cP7v3KqcJFaxhBVtZUAK8OHlld2st7Xl3DJPVONP+zEUV4HqL5UDYHr5xvuQAjgl/Qs7TzvOOVAj
-        xjlC+ePSwe6DfbVegLVuT4r14eTr6zvA8xSAoBLzx6pvj4l+DZIezuVkG9fY2H7YRQIMZIBwycmz
-        H1/s3F8AapfIPNF3kQk7+kw9PWBy+IZOdg5Ug3mkAATy/t0usovzGeCUWTjCz0B+Sj0ekfdvkZ3a
-        bBv+U4GaCtJ1iEm6ANQJ6fEzrG/engcKw/wXQvEKxSEKQxRGKE7Izt+DSiwBJMUSm71rguMYhQKr
-        BygOIRStf4TiFFRBvbRGKiQLWP29yRSHKBTtfdBmHs0BUpgvtgF4yRFR+NUKi0XZcYjCeCG2smkz
-        LAHkbRBmP0/Uk26O5YnUActBp1GsAI+S5nRJJJal5K1aAMrq0d6Tm9uI6zjyf75dAe6tx/SsWeD/
-        /o2/Ab6IH3/h25pOAAAAAElFTkSuQmCC
-    </>),
+    icon: [
+        'data:image/png;base64,',
+        'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0',
+        'U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAGrSURBVDjLxZO7ihRBFIa/6u0ZW7GHBUV0',
+        'UQQTZzd3QdhMQxOfwMRXEANBMNQX0MzAzFAwEzHwARbNFDdwEd31Mj3X7a6uOr9BtzNjYjKBJ6ni',
+        'cP7v3KqcJFaxhBVtZUAK8OHlld2st7Xl3DJPVONP+zEUV4HqL5UDYHr5xvuQAjgl/Qs7TzvOOVAj',
+        'xjlC+ePSwe6DfbVegLVuT4r14eTr6zvA8xSAoBLzx6pvj4l+DZIezuVkG9fY2H7YRQIMZIBwycmz',
+        'H1/s3F8AapfIPNF3kQk7+kw9PWBy+IZOdg5Ug3mkAATy/t0usovzGeCUWTjCz0B+Sj0ekfdvkZ3a',
+        'bBv+U4GaCtJ1iEm6ANQJ6fEzrG/engcKw/wXQvEKxSEKQxRGKE7Izt+DSiwBJMUSm71rguMYhQKr',
+        'BygOIRStf4TiFFRBvbRGKiQLWP29yRSHKBTtfdBmHs0BUpgvtgF4yRFR+NUKi0XZcYjCeCG2smkz',
+        'LAHkbRBmP0/Uk26O5YnUActBp1GsAI+S5nRJJJal5K1aAMrq0d6Tm9uI6zjyf75dAe6tx/SsWeD/',
+        '/o2/Ab6IH3/h25pOAAAAAElFTkSuQmCC'
+    ].join(''),
     check: function(ctx) {
         return true;
     },
@@ -201,7 +201,7 @@ Tombloo.Service.actions.register({
 
 // XULを動的生成 (キャッシュはしない)
 function generateXUL() {
-    let head, template, script, style, code, labels;
+    var head, template, script, style, code, labels;
     
     labels = {
         template : {
@@ -322,1109 +322,1110 @@ function generateXUL() {
         }
     };
     head = 'data:application/vnd.mozilla.xul+xml;charset=utf-8,';
-    style = ['data:text/css,', encodeURIComponent(trim(<><![CDATA[
-        window, dialog {
-            margin: 0.7em 0.5em;
-            max-height: 580px;
-        }
-        button {
-            cursor: pointer;
-            margin-top: 0.7em;
-            padding: 0.5em 0;
-        }
-        richlistitem {
-            border: 1px dotted #666;
-            border-width: 0 0 1px 0;
-            padding: 0.4em 0.6em;
-        }
-        richlistitem:last-child {
-            border-color: transparent;
-        }
-        .button-icon {
-            margin-right: 0.5em;
-        }
-        #submit-button {
-            font-weight: bold;
-            padding: 0.5em 0.7em 0.5em 0.4em;
-        }
-        .loading-image {
-            max-width: 16px;
-            max-height: 16px;
-        }
-        .open-in-editor, .view-in-editor,
-        .remove-script-patch, .search-by-google {
-            cursor: pointer;
-            max-width: 16px;
-            max-height: 16px;
-            margin-top: 0.2em;
-            margin-bottom: 0.2em;
-            opacity: 0.65;
-        }
-        .open-in-editor:hover, .view-in-editor:hover,
-        .remove-script-patch:hover, .search-by-google:hover {
-            opacity: 1;
-        }
-        .open-in-editor-box {
-            margin-left: 0.5em;
-            margin-right: 0.5em;
-        }
-        .search-by-google-box {
-            margin-right: 0.5em;
-        }
-        .url-input-box {
-            min-width: 300px;
-            min-height: 13px;
-        }
-        #scripts {
-            min-width: 400px;
-        }
-        .update-status {
-            font-weight: bold;
-            color: #669966;
-        }
-        .update-error {
-            color: #ff6688;
-        }
-        .update-success {
-            color: #8866ff;
-        }
-        #x-update-status {
-            display: none;
-        }
-        #update-finish-notes, #update-finish-button {
-            font-weight: bold;
-        }
-    ]]></>))].join('');
+    style = ['data:text/css,', encodeURIComponent([
+        'window, dialog {',
+            'margin: 0.7em 0.5em;',
+            'max-height: 580px;',
+        '}',
+        'button {',
+            'cursor: pointer;',
+            'margin-top: 0.7em;',
+            'padding: 0.5em 0;',
+        '}',
+        'richlistitem {',
+            'border: 1px dotted #666;',
+            'border-width: 0 0 1px 0;',
+            'padding: 0.4em 0.6em;',
+        '}',
+        'richlistitem:last-child {',
+            'border-color: transparent;',
+        '}',
+        '.button-icon {',
+            'margin-right: 0.5em;',
+        '}',
+        '#submit-button {',
+            'font-weight: bold;',
+            'padding: 0.5em 0.7em 0.5em 0.4em;',
+        '}',
+        '.loading-image {',
+            'max-width: 16px;',
+            'max-height: 16px;',
+        '}',
+        '.open-in-editor, .view-in-editor,',
+        '.remove-script-patch, .search-by-google {',
+            'cursor: pointer;',
+            'max-width: 16px;',
+            'max-height: 16px;',
+            'margin-top: 0.2em;',
+            'margin-bottom: 0.2em;',
+            'opacity: 0.65;',
+        '}',
+        '.open-in-editor:hover, .view-in-editor:hover,',
+        '.remove-script-patch:hover, .search-by-google:hover {',
+            'opacity: 1;',
+        '}',
+        '.open-in-editor-box {',
+            'margin-left: 0.5em;',
+            'margin-right: 0.5em;',
+        '}',
+        '.search-by-google-box {',
+            'margin-right: 0.5em;',
+        '}',
+        '.url-input-box {',
+            'min-width: 300px;',
+            'min-height: 13px;',
+        '}',
+        '#scripts {',
+            'min-width: 400px;',
+        '}',
+        '.update-status {',
+            'font-weight: bold;',
+            'color: #669966;',
+        '}',
+        '.update-error {',
+            'color: #ff6688;',
+        '}',
+        '.update-success {',
+            'color: #8866ff;',
+        '}',
+        '#x-update-status {',
+            'display: none;',
+        '}',
+        '#update-finish-notes, #update-finish-button {',
+            'font-weight: bold;',
+        '}'
+    ].join('\n'))].join('');
     
-    template = trim(<><![CDATA[
-        <?xml version="1.0" encoding="utf-8"?>
-        <?xml-stylesheet type="text/css" href="chrome://global/skin/"?>
-        <?xml-stylesheet type="text/css" href="{STYLE}"?>
-        <dialog id="update-patches-dialog" title="{TITLE}" buttons=","
-                xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
-                xmlns:html="http://www.w3.org/1999/xhtml">
-            <hbox flex="1">
-                <vbox flex="1">
-                    <label id="x-update-status" value="init" style="display: none;"/>
-                    <vbox id="richlist-box" flex="1">
-                        <label id="richlist-description" value="{DESCRIPTION}"/>
-                        <spacer height="5"/>
-                        <richlistbox id="scripts" seltype="single" rows="6" flex="1"/>
-                    </vbox>
-                    <vbox id="progress-box" flex="1" style="display: none;">
-                        <progressmeter id="progress-bar" mode="determined" value="0"/>
-                        <spacer height="5"/>
-                        <label id="progress-status" value="..."/>
-                    </vbox>
-                    <spacer height="5"/>
-                    <button id="update-button" label="{BUTTON_UPDATE_CONFIRM}" flex="1"
-                            tooltiptext="{TIP_BUTTON_UPDATE}"/>
-                    <box id="update-finish-box" flex="1" style="display: none;">
-                        <vbox flex="1">
-                            <spacer height="5"/>
-                            <hbox flex="1" align="start">
-                                <label id="update-finish-notes"/>
-                            </hbox>
-                            <hbox flex="1" align="end">
-                                <label id="update-finish-notes-sub"/>
-                            </hbox>
-                        </vbox>
-                        <vbox flex="1">
-                            <spacer height="5"/>
-                            <button id="update-finish-button"
-                                    label="{BUTTON_UPDATE_FINISH}" flex="1"
-                                    tooltiptext="{TIP_BUTTON_UPDATE_FINISH}"/>
-                        </vbox>
-                    </box>
-                    <box id="update-end-box" flex="1" style="display: none;">
-                        <vbox flex="1">
-                            <spacer height="5"/>
-                            <hbox flex="1" align="start">
-                                <label id="update-end-notes"/>
-                            </hbox>
-                            <hbox flex="1" align="end">
-                                <label id="update-end-notes-count"/>
-                            </hbox>
-                        </vbox>
-                        <vbox flex="1">
-                            <spacer height="5"/>
-                            <button id="update-end-button"
-                                    label="{BUTTON_UPDATE_END}" flex="1"
-                                    tooltiptext="{TIP_BUTTON_UPDATE_END}"/>
-                        </vbox>
-                    </box>
-                </vbox>
-            </hbox>
-            <script type="application/javascript;version=1.7">{SCRIPT}</script>
-        </dialog>
-    ]]></>.toString());
+    template = [
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<?xml-stylesheet type="text/css" href="chrome://global/skin/"?>',
+        '<?xml-stylesheet type="text/css" href="{STYLE}"?>',
+        '<dialog id="update-patches-dialog" title="{TITLE}" buttons=","',
+                'xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"',
+                'xmlns:html="http://www.w3.org/1999/xhtml">',
+            '<hbox flex="1">',
+                '<vbox flex="1">',
+                    '<label id="x-update-status" value="init" style="display: none;"/>',
+                    '<vbox id="richlist-box" flex="1">',
+                        '<label id="richlist-description" value="{DESCRIPTION}"/>',
+                        '<spacer height="5"/>',
+                        '<richlistbox id="scripts" seltype="single" rows="6" flex="1"/>',
+                    '</vbox>',
+                    '<vbox id="progress-box" flex="1" style="display: none;">',
+                        '<progressmeter id="progress-bar" mode="determined" value="0"/>',
+                        '<spacer height="5"/>',
+                        '<label id="progress-status" value="..."/>',
+                    '</vbox>',
+                    '<spacer height="5"/>',
+                    '<button id="update-button" label="{BUTTON_UPDATE_CONFIRM}" flex="1"',
+                            'tooltiptext="{TIP_BUTTON_UPDATE}"/>',
+                    '<box id="update-finish-box" flex="1" style="display: none;">',
+                        '<vbox flex="1">',
+                            '<spacer height="5"/>',
+                            '<hbox flex="1" align="start">',
+                                '<label id="update-finish-notes"/>',
+                            '</hbox>',
+                            '<hbox flex="1" align="end">',
+                                '<label id="update-finish-notes-sub"/>',
+                            '</hbox>',
+                        '</vbox>',
+                        '<vbox flex="1">',
+                            '<spacer height="5"/>',
+                            '<button id="update-finish-button"',
+                                    'label="{BUTTON_UPDATE_FINISH}" flex="1"',
+                                    'tooltiptext="{TIP_BUTTON_UPDATE_FINISH}"/>',
+                        '</vbox>',
+                    '</box>',
+                    '<box id="update-end-box" flex="1" style="display: none;">',
+                        '<vbox flex="1">',
+                            '<spacer height="5"/>',
+                            '<hbox flex="1" align="start">',
+                                '<label id="update-end-notes"/>',
+                            '</hbox>',
+                            '<hbox flex="1" align="end">',
+                                '<label id="update-end-notes-count"/>',
+                            '</hbox>',
+                        '</vbox>',
+                        '<vbox flex="1">',
+                            '<spacer height="5"/>',
+                            '<button id="update-end-button"',
+                                    'label="{BUTTON_UPDATE_END}" flex="1"',
+                                    'tooltiptext="{TIP_BUTTON_UPDATE_END}"/>',
+                        '</vbox>',
+                    '</box>',
+                '</vbox>',
+            '</hbox>',
+            '<script type="application/javascript;version=1.7">{SCRIPT}</script>',
+        '</dialog>'
+    ].join('\n');
     
-    script = <><![CDATA[
-        let env, args, updateUrls, patches, listScripts, icons, updateItems = [];
-        args = arguments[0];
-        env = Components.classes['@brasil.to/tombloo-service;1'].getService().wrappedJSObject;
-        env.extend(this, env, false);
-        'checkbox label textbox image richlistitem box hbox vbox'.split(' ').forEach(function(tag) {
-            this[tag.toUpperCase()] = bind(E, null, tag);
-        });
-        (function() {
-            try {
-                updateUrls = JSON.parse(args.potUpdatePatchUtil.getPref('urls'));
-            } catch (e) {
-                updateUrls = {};
-            }
-            args.extendUpdateURL(updateUrls);
-        })();
-        patches = (function() {
-            const ENDS = args.MOVE_TO_ENDS;
-            let r = [], b = [], p, pts = getScriptFiles(getPatchDir()), i, len = pts.length;
-            for (i = 0; i < len; i++) {
-                p = pts[i];
-                if (p && p.leafName) {
-                    if (p.leafName in ENDS) {
-                        b.push(p);
-                    } else {
-                        r.push(p);
-                    }
-                }
-            }
-            if (b && b.length) {
-                b.sort(function(x, o) {
-                    return  ENDS[x] > ENDS[o] ? -1 :
-                            ENDS[x] < ENDS[o] ?  1 : 0;
-                });
-                r = r.concat(b);
-            }
-            return r;
-        })();
-        icons = {
-            loading : '{ICON_LOADING}',
-            edit    : '{ICON_EDIT}',
-            view    : '{ICON_VIEW}',
-            remove  : '{ICON_REMOVE}',
-            search  : '{ICON_SEARCH}',
-            empty   : 'chrome://tombloo/skin/empty.png',
-            pass    : 'chrome://tombloo/skin/enabled.png',
-            checked : 'chrome://tombloo/skin/default.png',
-            failed  : 'chrome://tombloo/skin/cross.png'
-        };
-        window.addEventListener('load', init, true);
-        window.addEventListener('beforeunload', save, true);
-        
-        function init() {
-            // パッチ一覧となるリストアイテムを作成
-            listScripts = byId('scripts');
-            withDocument(document, function() {
-                patches.forEach(function(patch) {
-                    let item, check, icon, name, vbox1, vbox2, vbox3, vbox4, vbox5;
-                    let edit, view, remove, search, url, hbox1, hbox2, hbox3, hbox4, input;
-                    let trappers = {
-                        dblclick: function(event) {
-                            let triggers;
-                            if (byId('x-update-status').value !== 'init') {
-                                return;
-                            }
-                            triggers = {
-                                blur: function() {
-                                    url.value = input.value;
-                                    url.style.display = '';
-                                    input.parentNode.removeChild(input);
-                                    input = null;
-                                    view.style.display = url.value ? '' : 'none';
-                                },
-                                keypress: function(ev) {
-                                    if (ev.keyCode == KeyEvent.DOM_VK_RETURN) {
-                                        cancel(ev);
-                                        triggers.blur();
-                                    }
-                                }
-                            };
-                            withDocument(document, function() {
-                                input = TEXTBOX({
-                                    flex      : 1,
-                                    class     : 'url-input-box',
-                                    value     : url.value,
-                                    multiline : false,
-                                    style     : ['width: ', 'px'].join(parseInt(
-                                        listScripts.boxObject && listScripts.boxObject.width ||
-                                        listScripts.clientWidth || 500) - 140
-                                    )
-                                });
-                                url.parentNode.insertBefore(input, url);
-                                url.style.display = 'none';
-                                view.style.display = 'none';
-                                input.addEventListener('blur', triggers.blur, true);
-                                input.addEventListener('keypress', triggers.keypress, true);
-                                input.focus();
-                            });
-                        }
-                    };
-                    item = RICHLISTITEM({
-                        value : patch.path
-                    });
-                    check = CHECKBOX({
-                        class   : 'update-check',
-                        checked : false
-                    });
-                    icon = IMAGE({
-                        src    : icons.empty,
-                        class  : 'loading-image',
-                        pack   : 'center',
-                        align  : 'center'
-                    });
-                    edit = IMAGE({
-                        src         : icons.edit,
-                        tooltiptext : '{TIP_OPEN_IN_EDITOR}',
-                        class       : 'open-in-editor',
-                        pack        : 'center',
-                        align       : 'center'
-                    });
-                    view = IMAGE({
-                        src         : icons.view,
-                        tooltiptext : '{TIP_VIEW_IN_EDITOR}',
-                        class       : 'view-in-editor',
-                        pack        : 'center',
-                        align       : 'center'
-                    });
-                    remove = IMAGE({
-                        src         : icons.remove,
-                        tooltiptext : '{TIP_REMOVE_SCRIPT}',
-                        class       : 'remove-script-patch',
-                        pack        : 'center',
-                        align       : 'center'
-                    });
-                    search = IMAGE({
-                        src         : icons.search,
-                        tooltiptext : '{TIP_SEARCH_GOOGLE}',
-                        class       : 'search-by-google',
-                        pack        : 'center',
-                        align       : 'center'
-                    });
-                    edit.addEventListener('click', function(event) {
-                        openInEditor(item.value);
-                    }, true);
-                    view.addEventListener('click', function(event) {
-                        if (url && url.value) {
-                            openRemoteFileInEditor(url.value, listScripts);
-                        }
-                    }, true);
-                    remove.addEventListener('click', function(event) {
-                        let scriptName = patch.leafName;
-                        if (confirm([scriptName, '{REMOVE_SCRIPT_CONFIRM}'].join(' '))) {
-                            if (!manipulateScript(scriptName, 'remove')) {
-                                alert('{REMOVE_SCRIPT_FAILURE}');
-                            } else {
-                                reload();
-                                callLater(0.15, function() {
-                                    removeElement(item);
-                                });
-                            }
-                        }
-                    }, true);
-                    search.addEventListener('click', function(event) {
-                        addTab([
-                            'http://www.google.co.jp/search?q=',
-                            '&ie=utf-8&oe=utf-8&aq=t&rls=firefox.tombloo&hl=ja'
-                        ].join(encodeURIComponent(name.value)));
-                    }, true);
-                    name = LABEL({
-                        value : patch.leafName
-                    });
-                    url = LABEL({
-                        class : 'update-url-static',
-                        value : getUpdateURL(patch.path)
-                    });
-                    status = LABEL({
-                        class : 'update-status',
-                        style : 'display: none'
-                    });
-                    hbox1 = HBOX({});
-                    hbox2 = HBOX({});
-                    hbox3 = HBOX({});
-                    hbox4 = HBOX({
-                        class : 'update-status-box',
-                        style : 'display: none'
-                    });
-                    vbox1 = VBOX({
-                        pack  : 'center',
-                        align : 'center',
-                        class : 'update-check-box',
-                        style : 'display: none'
-                    });
-                    vbox2 = VBOX({
-                        pack  : 'center',
-                        align : 'center'
-                    });
-                    vbox3 = VBOX({
-                        pack  : 'center',
-                        align : 'center',
-                        class : 'open-in-editor-box'
-                    });
-                    vbox4 = VBOX({
-                        pack  : 'center',
-                        align : 'center',
-                        class : 'search-by-google-box'
-                    });
-                    vbox5 = VBOX({
-                        flex : 1
-                    });
-                    [[vbox1, check  ], [ hbox1, vbox1  ], [ vbox2, icon   ],
-                    [ hbox1, vbox2  ], [ vbox3, edit   ], [ vbox3, view   ],
-                    [ hbox1, vbox3  ], [ vbox4, remove ], [ vbox4, search ],
-                    [ hbox1, vbox4  ], [ hbox2, name   ], [ hbox3, url    ],
-                    [ hbox4, status ], [ vbox5, hbox2  ], [ vbox5, hbox3  ],
-                    [ vbox5, hbox4  ], [ hbox1, vbox5  ], [ item,  hbox1  ]].forEach(function(a) {
-                        a[0].appendChild(a[1]);
-                    });
-                    item.addEventListener('dblclick', trappers.dblclick, true);
-                    listScripts.appendChild(item);
-                    callLater(0.5, function() {
-                        let scps, scriptName = patch.leafName;
-                        view.style.display = url.value ? '' : 'none';
-                        if (scriptName in args.SPECIAL_PATCHES) {
-                            scps = args.SPECIAL_PATCHES[scriptName];
-                            if (!scps.canRemove || !scps.canRemove()) {
-                                remove.style.display = 'none';
-                            }
-                        }
-                    });
-                });
-            });
-            // F2, Enter で編集できるようにする
-            listScripts.addEventListener('keypress', function(event) {
-                let target = event.target;
-                if (byId('x-update-status').value === 'init' && tagName(target) === 'richlistbox') {
-                    switch (event.keyCode) {
-                        case KeyEvent.DOM_VK_F2:
-                        case KeyEvent.DOM_VK_RETURN:
-                        case KeyEvent.DOM_VK_BACK_SPACE:
-                            if (!target.querySelector('.url-input-box')) {
-                                cancel(event);
-                                fireMouseEvent(target.selectedItem, 'dblclick');
-                            }
-                            break;
-                        default:
-                            break;
-                    }
-                }
-            }, true);
-            
-            ['update-button', 'update-finish-button'].forEach(function(id) {
-                byId(id).addEventListener('click', function() {
-                    callLater(0, function() { updateScripts(); });
-                }, true);
-            });
-            
-            byId('update-end-button').addEventListener('click', function() {
-                saveAndClose();
-            }, true);
-        }
-        
-        function updateScripts() {
-            let result;
-            switch (byId('x-update-status').value) {
-                case 'init':
-                    result = updateScriptsAll();
-                    break;
-                case 'finish':
-                    result = updateScriptsAllFinish();
-                    break;
-                case 'close':
-                    saveAndClose();
-                    break;
-                default:
-                    break;
-            }
-            return result;
-        }
-        
-        function updateScriptsAll() {
-            let d, expr, isURI, updateCount = 0;
-            if (byId('x-update-status').value !== 'init') {
-                return;
-            }
-            expr = 'richlistitem[value]';
-            isURI = /^https?:\/+[-_.!~*'()a-z0-9;\/?:@&=+$,%#]+$/i;
-            updateItems = [];
-            d = new Deferred();
-            d.addCallback(function() {
-                byId('update-button').style.display = 'none';
-                byId('richlist-description').style.display = 'none';
-            });
-            toArray(listScripts.querySelectorAll(expr)).forEach(function(item, index) {
-                let icon, org, updateUrl, status, statusBox, setStatus;
-                try {
-                    updateUrl = item.querySelector('.update-url-static').value ||
-                                item.querySelector('.url-input-box').value;
-                } catch (e) {}
-                icon = item.querySelector('.loading-image');
-                org = {
-                    path    : item.value,
-                    source  : getContents(item.value),
-                    version : getCurrentVersion(item.value)
-                };
-                setStatus = function(msg) {
-                    icon.src = icons.pass;
-                    if (msg) {
-                        status.value = msg;
-                    }
-                };
-                update(setStatus, {
-                    error: function(msg) {
-                        icon.src = icons.failed;
-                        if (msg) {
-                            status.value = msg;
-                        }
-                        if (!/\bupdate-error\b/.test(status.className)) {
-                            status.className = [
-                                String(status.className || '').trim(),
-                                'update-error'
-                            ].join(' ').trim();
-                        }
-                    },
-                    success: function(msg, version) {
-                        let check;
-                        updateCount++;
-                        updateItems.push({
-                            index : index,
-                            item  : item,
-                            org: {
-                                uri     : org.path,
-                                version : org.version
-                            },
-                            cur: {
-                                uri     : updateUrl,
-                                version : version
-                            }
-                        });
-                        icon.src = icons.checked;
-                        check = item.querySelector('.update-check');
-                        check.style.display = '';
-                        check.className = [
-                            String(check.className || '').trim(),
-                            'x-check-' + index
-                        ].join(' ').trim();
-                        check.setAttribute('checked', false);
-                        if (msg) {
-                            status.value = msg;
-                        }
-                        if (!/\bupdate-success\b/.test(status.className)) {
-                            status.className = [
-                                String(status.className || '').trim(),
-                                'update-success'
-                            ].join(' ').trim();
-                        }
-                    },
-                    isSuccess: function() {
-                        return /\bupdate-success\b/.test(status.className);
-                    }
-                });
-                statusBox = item.querySelector('.update-status-box');
-                status = item.querySelector('.update-status');
-                d.addCallback(function() {
-                    icon.src = icons.loading;
-                    statusBox.style.display = '';
-                    status.style.display = '';
-                    return wait(0.15);
-                }).addCallback(function() {
-                    let dd, fileName;
-                    if (!isURI.test(updateUrl)) {
-                        setStatus('{UPDATE_PROCESS_SKIP}');
-                        dd = succeed();
-                    } else {
-                        fileName = String(updateUrl).replace(/[#?].*$/g, '');
-                        if (fileName.split('.').pop().toLowerCase() === 'js' ||
-                            String(createURI(updateUrl).fileExtension).toLowerCase() === 'js'
-                        ) {
-                            dd = request(updateUrl).addCallbacks(function(res) {
-                                let version, text, type, head, ok = false;
-                                try {
-                                    text = String(res.responseText || '');
-                                    type = String(res.channel && res.channel.contentType || '');
-                                    try {
-                                        text = text.convertToUnicode();
-                                    } catch (er) {}
-                                    if (!text) {
-                                        throw text;
-                                    }
-                                    if (type && /script|plain/i.test(type) || !/^\s*<[^>]*>/.test(text)) {
-                                        ok = true;
-                                    }
-                                } catch (e) {
-                                    ok = false;
-                                }
-                                if (ok) {
-                                    head = text.slice(0, args.SCRIPT_DOCCOMMENT_SIZE);
-                                    if (org.version && args.UPDATE_PATTERNS.version.test(head) &&
-                                        (version = head.match(args.UPDATE_PATTERNS.version)[1]) &&
-                                        compareVersions(version, org.version) > 0
-                                    ) {
-                                        setStatus.success('{UPDATE_PROCESS_SUCCESS}', version);
-                                    } else if (org.source !== text) {
-                                        if (org.source.length < text.length ||
-                                            countChars(org.source) < countChars(text)
-                                        ) {
-                                            // ファイルサイズ/使われてる文字のByteコード数で比較
-                                            //XXX: Last-Modified, Date, Expires などのヘッダを信頼するかどうか
-                                            setStatus.success('{UPDATE_PROCESS_SUCCESS_MAYBE}', version);
-                                        } else {
-                                            // あいまいでバージョン不明だけど中身が違う
-                                            setStatus.success('{UPDATE_PROCESS_SUCCESS_SHOULD_CHECK}', version);
-                                        }
-                                    } else {
-                                        setStatus('{UPDATE_PROCESS_SKIP_LATEST}');
-                                    }
-                                } else {
-                                    setStatus.error('{UPDATE_PROCESS_ERROR_SOURCE}');
-                                }
-                            }, function(err) {
-                                setStatus.error([
-                                    '{UPDATE_PROCESS_ERROR_UNKNOWN}',
-                                    String(extractErrorMessage(err))
-                                ].join('/'));
-                            });
-                        } else {
-                            setStatus.error('{UPDATE_PROCESS_ERROR_EXTENSION}');
-                            dd = succeed();
-                        }
-                    }
-                    return maybeDeferred(dd);
-                }).addCallback(function() {
-                    org = null;
-                    if (setStatus.isSuccess()) {
-                        item.querySelector('.update-check-box').style.display = '';
-                    }
-                    return wait(0);
-                });
-            });
-            d.addErrback(function(err) {
-                error(err);
-                alert('Error! ' + extractErrorMessage(err));
-                throw (err instanceof Error) ? err : new Error(err);
-            }).addCallback(function() {
-                let notes, sub, upBtn, curStatus;
-                notes = byId('update-finish-notes'),
-                sub = byId('update-finish-notes-sub');
-                upBtn = byId('update-finish-button');
-                curStatus = byId('x-update-status');
-                if (updateCount) {
-                    curStatus.value = 'finish';
-                    notes.value = [updateCount, '{NOTES_UPDATES_FOUND}'].join(' ');
-                    sub.value = '{NOTES_UPDATES_FOUND_SUB}';
-                } else {
-                    curStatus.value = 'close';
-                    notes.value = '{NOTES_UPDATE_NOT_FOUND}';
-                    sub.value = '';
-                    upBtn.label = '{EXTRA_UPDATE_END}';
-                    upBtn.setAttribute('tooltiptext', '{EXTRA_UPDATE_END}');
-                }
-                byId('update-button').style.display = 'none';
-                byId('update-finish-box').style.display = '';
-            });
-            callLater(0, function() { d.callback(); });
-        }
-        
-        function updateScriptsAllFinish() {
-            let d, updateCount, progressBar, progressStatus, updateProgress, updateStatus, max;
-            if (byId('x-update-status').value !== 'finish' || !updateItems || !updateItems.length) {
-                return;
-            }
-            updateCount = 0;
-            max = updateItems.length;
-            updateProgress = function(v) {
-                progressBar.value = Math.max(0, Math.min(100, Math.floor(Number(v) / max * 100)));
-            };
-            updateStatus = function(v) {
-                progressStatus.value = v;
-            };
-            progressBar = byId('progress-bar');
-            progressStatus = byId('progress-status');
-            byId('progress-box').style.display = '';
-            byId('richlist-box').style.display = 'none';
-            d = new Deferred();
-            d.addCallback(function() {
-                let dd = new Deferred(), width, height;
-                width  = 460;
-                height = 184;
-                dd.addCallback(function() {
-                    updateProgress(0);
-                    updateStatus('');
-                    byId('update-finish-button').style.display = 'none';
-                    byId('update-finish-box').style.display = 'none';
-                }).addCallback(function() {
-                    window.resizeTo(width, height);
-                    return wait(0);
-                }).addCallback(function() {
-                    try {
-                        byId('update-patches-dialog').centerWindowOnScreen();
-                    } catch (e) {}
-                    return wait(0);
-                }).addCallback(function() {
-                    window.resizeTo(width, height);
-                    return wait(0);
-                }).addCallback(function() {
-                    window.resizeTo(width - 5, height - 5);
-                    return wait(0);
-                }).addCallback(function() {
-                    window.resizeTo(width, height);
-                    return wait(0);
-                }).addCallback(function() {
-                    window.resizeTo(width + 5, height + 5);
-                    return wait(0);
-                }).addCallback(function() {
-                    window.resizeTo(width, height);
-                    return wait(0);
-                });
-                dd.callback();
-                return dd;
-            });
-            
-            let (specials = [], newItems = [], item, name) {
-                while (updateItems && updateItems.length) {
-                    item = updateItems.shift();
-                    if (item) {
-                        name = getFileName(item.org && item.org.uri);
-                        if (name) {
-                            if (name in args.SPECIAL_PATCHES) {
-                                specials.push(item);
-                            } else {
-                                newItems.push(item);
-                            }
-                        }
-                    }
-                }
-                updateItems = [].concat(newItems).concat(specials);
-            }
-            
-            // ソート済みが条件
-            updateItems.forEach(function(item, index) {
-                let className, check, name, updateUrl, icon;
-                name = getFileName(item.org && item.org.uri);
-                updateUrl = item.cur && item.cur.uri;
-                icon = item.item && item.item.querySelector('.loading-image') || {};
-                className = 'x-check-' + item.index;
-                check = listScripts.querySelector('.' + className);
-                if (check && check.checked && updateUrl) {
-                    if (name in args.SPECIAL_PATCHES) {
-                        // インストールが特殊なパッチ
-                        d.addCallback(function() {
-                            return wait(1.5);
-                        }).addCallback(function() {
-                            let result, special, timeout, startTime;
-                            updateStatus('Updating... ' + name);
-                            try {
-                                timeout = 5 * 60 * 1000;
-                                startTime = (new Date()).getTime();
-                                special = args.SPECIAL_PATCHES[name];
-                                try {
-                                    window.blur();
-                                } catch (er) {}
-                                result = special.update(item);
-                                if (result instanceof Error) {
-                                    throw result;
-                                }
-                                if (special.completed) {
-                                    till(function() {
-                                        let end = false;
-                                        if (special.completed()) {
-                                            updateCount++;
-                                            end = true;
-                                        } else if (special.canceled()) {
-                                            end = true;
-                                        } else if (startTime - (new Date()).getTime() > timeout) {
-                                            end = true;
-                                        }
-                                        return end;
-                                    });
-                                }
-                                try {
-                                    byId('update-patches-dialog').centerWindowOnScreen();
-                                    window.focus();
-                                } catch (er) {}
-                            } catch (e) {
-                                throw e;
-                            }
-                            return wait(0.1);
-                        }).addErrback(function(err) {
-                            try {
-                                byId('update-patches-dialog').centerWindowOnScreen();
-                                window.focus();
-                            } catch (er) {}
-                            icon.src = icons.failed;
-                            alert('Error! ' + extractErrorMessage(err));
-                            throw (err instanceof Error) ? err : new Error(err);
-                        }).addCallback(function() {
-                            icon.src = icons.checked;
-                            return wait(0.525);
-                        }).addBoth(function(err) {
-                            updateProgress(index + 1);
-                            if (err instanceof Error) {
-                                updateStatus('Failed: ' + name);
-                                throw err;
-                            } else {
-                                updateStatus('Updated: ' + name);
-                            }
-                            return wait(1.25);
-                        });
-                    } else {
-                        d.addCallback(function() {
-                            updateStatus('Updating... ' + name);
-                            return wait(2.275);
-                        }).addCallback(function() {
-                            return download(updateUrl, getPatchDir()).addCallback(function(file) {
-                                reload();
-                                updateCount++;
-                                notify(
-                                    name,
-                                    getMessage('message.install.success'),
-                                    notify.ICON_INFO
-                                );
-                            });
-                        }).addErrback(function(err) {
-                            icon.src = icons.failed;
-                            alert('Error! ' + extractErrorMessage(err));
-                            throw (err instanceof Error) ? err : new Error(err);
-                        }).addCallback(function() {
-                            icon.src = icons.checked;
-                            return wait(0.525);
-                        }).addBoth(function(err) {
-                            updateProgress(index + 1);
-                            if (err instanceof Error) {
-                                updateStatus('Failed: ' + name);
-                                throw err;
-                            } else {
-                                updateStatus('Updated: ' + name);
-                            }
-                            return wait(1.25);
-                        });
-                    }
-                }
-            });
-            d.addErrback(function(err) {
-                error(err);
-                alert('Error! ' + extractErrorMessage(err));
-                throw (err instanceof Error) ? err : new Error(err);
-            }).addBoth(function(err) {
-                updateProgress(100);
-                updateStatus('');
-                byId('update-end-box').style.display = '';
-                byId('update-end-notes').value = '{NOTES_UPDATE_FINISH}';
-                byId('update-end-notes-count').value = [updateCount, '{NOTES_UPDATED COUNT}'].join(' ');
-                if (err instanceof Error) {
-                    throw err;
-                }
-            });
-            callLater(0, function() { d.callback(); });
-        }
-        
-        function save(event) {
-            let urls = updateUrls || {}, expr = 'richlistitem[value]';
-            toArray(listScripts.querySelectorAll(expr)).forEach(function(item) {
-                let uri, updateUrl, name;
-                uri = createURI(item.value);
-                try {
-                    updateUrl = item.querySelector('label.update-url-static').value ||
-                                item.querySelector('.url-input-box').value;
-                } catch (e) {}
-                name = getFileName(uri);
-                urls[name] = updateUrl || '';
-            });
-            args.potUpdatePatchUtil.setPref('urls', JSON.stringify(urls || {}));
-        }
-        
-        function saveAndClose() {
-            callLater(0, function() { save(); });
-            window.close();
-        }
-        
-        function fireMouseEvent(element, type) {
-            var event = element.ownerDocument.createEvent('MouseEvents');
-            event.initMouseEvent(
-                type || 'click', true, true,
-                element.ownerDocument.defaultView,
-                1, 0, 0, 0, 0,
-                false, false, false, false,
-                0, element
-            );
-            element.dispatchEvent(event);
-        }
-        
-        function byId(id) {
-            return document.getElementById(id);
-        }
-        
-        function getFileName(path) {
-            let uri = createURI(path);
-            return uri.fileName || uri.leafName || (uri.file && uri.file.leafName);
-        }
-        
-        function toArray(o) {
-            return Array.prototype.slice.call(o);
-        }
-        
-        function findUpdateURI(source) {
-            let result = '', head, found = false;
-            head = String(source || '').trim().slice(0, args.SCRIPT_DOCCOMMENT_SIZE);
-            args.UPDATE_PATTERNS.uris.forEach(function(re) {
-                if (!found && re.test(head)) {
-                    result = head.match(re)[1];
-                    found = true;
-                }
-            });
-            if (!found && args.UPDATE_PATTERNS.uri.test(head)) {
-                result = head.match(args.UPDATE_PATTERNS.uri)[1];
-            }
-            return result || '';
-        }
-        
-        function getUpdateURL(path) {
-            let result = '', source, fileName, head;
-            fileName = path && path.path || path;
-            source = getContents(fileName);
-            if (source) {
-                result = findUpdateURI(source);
-            }
-            if (!result) {
-                result = updateUrls[getFileName(path)] || '';
-            }
-            return result;
-        }
-        
-        function getCurrentVersion(path) {
-            let result = '', source, fileName, head;
-            fileName = path && path.path || path;
-            source = getContents(fileName);
-            if (source) {
-                head = source.trim().slice(0, args.SCRIPT_DOCCOMMENT_SIZE);
-                if (args.UPDATE_PATTERNS.version.test(head)) {
-                    result = head.match(args.UPDATE_PATTERNS.version)[1];
-                }
-            }
-            return result;
-        }
-        
-        function compareVersions(a, b) {
-            let result;
-            try {
-                result = Components.classes['@mozilla.org/xpcom/version-comparator;1']
-                        .getService(Components.interfaces.nsIVersionComparator)
-                        .compare(a, b);
-            } catch (e) {
-                result = a == b ? 0 :
-                        a  >  b ? 1 : -1;
-            }
-            return result;
-        }
-        
-        function manipulateScript(name, action) {
-            let result = false, file;
-            (getScriptFiles(getPatchDir()) || []).forEach(function(script) {
-                if (!file && script && script.leafName === name) {
-                    file = script;
-                }
-            });
-            if (file) {
-                try {
-                    switch (action) {
-                        case 'remove':
-                        case 'delete':
-                            if (!file.exists()) {
-                                result = true;
-                            } else {
-                                file.permissions = 0666;
-                                file.remove(false);
-                                if (!file.exists()) {
-                                    result = true;
-                                }
-                            }
-                            break;
-                        case 'exist':
-                        case 'exists':
-                            result = file.exists();
-                            break;
-                        case 'size':
-                            result = file.fileSize;
-                            break;
-                        default:
-                            break;
-                    }
-                } catch (e) {
-                    alert('Error! ' + (e && e.message || e));
-                    error(e);
-                    result = false;
-                }
-            }
-            return result;
-        }
-        
-        function countChars(src) {
-            let chars = {}, len = 0, pre = '.';
-            String(src || '').split('').forEach(function(c) {
-                if (!((pre + c) in chars)) {
-                    chars[pre + c] = true;
-                    len++;
-                }
-            });
-            return len;
-        }
-        
-        function openRemoteFileInEditor(uri, context) {
-            let d;
-            if (context && context.style) {
-                // コンテキストがあればカーソルをwaitにする
-                context.style.cursor = 'wait';
-            }
-            d = download(uri, getTempDir()).addCallbacks(function(file) {
-                callLater(0, function() {
-                    openInEditor(file);
-                });
-            }, function(err) {
-                error(err);
-                alert('Error! ' + extractErrorMessage(err));
-                return err;
-            }).addBoth(function(err) {
-                if (context && context.style) {
-                    context.style.cursor = '';
-                }
-                try {
-                    // テンポラリファイルを削除
-                    file.remove(false);
-                } catch (e) {}
-                if (err instanceof Error) {
-                    throw err;
-                }
-                return err;
-            });
-            return d;
-        }
-        
-        function extractErrorMessage(err) {
-            return (err && (err.message && err.message.message || err.message)) || err;
-        }
-        
-        // -- from: tombloo.js --
-        function getScriptFiles(dir) {
-            var scripts = [];
-            simpleIterator(dir.directoryEntries, ILocalFile, function(file) {
-                if (file.leafName.match(/\.js$/)) {
-                    scripts.push(file);
-                }
-            });
-            return scripts;
-        }
-        
-        function simpleIterator(e, ifc, func) {
-            var value;
-            if (typeof ifc === 'string') {
-                ifc = Components.interfaces[ifc];
-            }
-            try {
-                while (e.hasMoreElements()) {
-                    value = e.getNext();
-                    func(ifc ? value.QueryInterface(ifc) : value);
-                }
-            } catch (e if e == StopIteration) {}
-        }
-    ]]></>.toString();
+    script = [
+        "var env, args, updateUrls, patches, listScripts, icons, updateItems = [];",
+        "args = arguments[0];",
+        "env = Components.classes['@brasil.to/tombloo-service;1'].getService().wrappedJSObject;",
+        "env.extend(this, env, false);",
+        "'checkbox label textbox image richlistitem box hbox vbox'.split(' ').forEach(function(tag) {",
+            "this[tag.toUpperCase()] = bind(E, null, tag);",
+        "});",
+        "(function() {",
+            "try {",
+                "updateUrls = JSON.parse(args.potUpdatePatchUtil.getPref('urls'));",
+            "} catch (e) {",
+                "updateUrls = {};",
+            "}",
+            "args.extendUpdateURL(updateUrls);",
+        "})();",
+        "patches = (function() {",
+            "var ENDS = args.MOVE_TO_ENDS;",
+            "var r = [], b = [], p, pts = getScriptFiles(getPatchDir()), i, len = pts.length;",
+            "for (i = 0; i < len; i++) {",
+                "p = pts[i];",
+                "if (p && p.leafName) {",
+                    "if (p.leafName in ENDS) {",
+                        "b.push(p);",
+                    "} else {",
+                        "r.push(p);",
+                    "}",
+                "}",
+            "}",
+            "if (b && b.length) {",
+                "b.sort(function(x, o) {",
+                    "return  ENDS[x] > ENDS[o] ? -1 :",
+                            "ENDS[x] < ENDS[o] ?  1 : 0;",
+                "});",
+                "r = r.concat(b);",
+            "}",
+            "return r;",
+        "})();",
+        "icons = {",
+            "loading : '{ICON_LOADING}',",
+            "edit    : '{ICON_EDIT}',",
+            "view    : '{ICON_VIEW}',",
+            "remove  : '{ICON_REMOVE}',",
+            "search  : '{ICON_SEARCH}',",
+            "empty   : 'chrome://tombloo/skin/empty.png',",
+            "pass    : 'chrome://tombloo/skin/enabled.png',",
+            "checked : 'chrome://tombloo/skin/default.png',",
+            "failed  : 'chrome://tombloo/skin/cross.png'",
+        "};",
+        "window.addEventListener('load', init, true);",
+        "window.addEventListener('beforeunload', save, true);",
+        "",
+        "function init() {",
+            "// パッチ一覧となるリストアイテムを作成",
+            "listScripts = byId('scripts');",
+            "withDocument(document, function() {",
+                "patches.forEach(function(patch) {",
+                    "var item, check, icon, name, vbox1, vbox2, vbox3, vbox4, vbox5;",
+                    "var edit, view, remove, search, url, hbox1, hbox2, hbox3, hbox4, input;",
+                    "var trappers = {",
+                        "dblclick: function(event) {",
+                            "var triggers;",
+                            "if (byId('x-update-status').value !== 'init') {",
+                                "return;",
+                            "}",
+                            "triggers = {",
+                                "blur: function() {",
+                                    "url.value = input.value;",
+                                    "url.style.display = '';",
+                                    "input.parentNode.removeChild(input);",
+                                    "input = null;",
+                                    "view.style.display = url.value ? '' : 'none';",
+                                "},",
+                                "keypress: function(ev) {",
+                                    "if (ev.keyCode == KeyEvent.DOM_VK_RETURN) {",
+                                        "cancel(ev);",
+                                        "triggers.blur();",
+                                    "}",
+                                "}",
+                            "};",
+                            "withDocument(document, function() {",
+                                "input = TEXTBOX({",
+                                    "flex      : 1,",
+                                    "class     : 'url-input-box',",
+                                    "value     : url.value,",
+                                    "multiline : false,",
+                                    "style     : ['width: ', 'px'].join(parseInt(",
+                                        "listScripts.boxObject && listScripts.boxObject.width ||",
+                                        "listScripts.clientWidth || 500) - 140",
+                                    ")",
+                                "});",
+                                "url.parentNode.insertBefore(input, url);",
+                                "url.style.display = 'none';",
+                                "view.style.display = 'none';",
+                                "input.addEventListener('blur', triggers.blur, true);",
+                                "input.addEventListener('keypress', triggers.keypress, true);",
+                                "input.focus();",
+                            "});",
+                        "}",
+                    "};",
+                    "item = RICHLISTITEM({",
+                        "value : patch.path",
+                    "});",
+                    "check = CHECKBOX({",
+                        "class   : 'update-check',",
+                        "checked : false",
+                    "});",
+                    "icon = IMAGE({",
+                        "src    : icons.empty,",
+                        "class  : 'loading-image',",
+                        "pack   : 'center',",
+                        "align  : 'center'",
+                    "});",
+                    "edit = IMAGE({",
+                        "src         : icons.edit,",
+                        "tooltiptext : '{TIP_OPEN_IN_EDITOR}',",
+                        "class       : 'open-in-editor',",
+                        "pack        : 'center',",
+                        "align       : 'center'",
+                    "});",
+                    "view = IMAGE({",
+                        "src         : icons.view,",
+                        "tooltiptext : '{TIP_VIEW_IN_EDITOR}',",
+                        "class       : 'view-in-editor',",
+                        "pack        : 'center',",
+                        "align       : 'center'",
+                    "});",
+                    "remove = IMAGE({",
+                        "src         : icons.remove,",
+                        "tooltiptext : '{TIP_REMOVE_SCRIPT}',",
+                        "class       : 'remove-script-patch',",
+                        "pack        : 'center',",
+                        "align       : 'center'",
+                    "});",
+                    "search = IMAGE({",
+                        "src         : icons.search,",
+                        "tooltiptext : '{TIP_SEARCH_GOOGLE}',",
+                        "class       : 'search-by-google',",
+                        "pack        : 'center',",
+                        "align       : 'center'",
+                    "});",
+                    "edit.addEventListener('click', function(event) {",
+                        "openInEditor(item.value);",
+                    "}, true);",
+                    "view.addEventListener('click', function(event) {",
+                        "if (url && url.value) {",
+                            "openRemoteFileInEditor(url.value, listScripts);",
+                        "}",
+                    "}, true);",
+                    "remove.addEventListener('click', function(event) {",
+                        "var scriptName = patch.leafName;",
+                        "if (confirm([scriptName, '{REMOVE_SCRIPT_CONFIRM}'].join(' '))) {",
+                            "if (!manipulateScript(scriptName, 'remove')) {",
+                                "alert('{REMOVE_SCRIPT_FAILURE}');",
+                            "} else {",
+                                "reload();",
+                                "callLater(0.15, function() {",
+                                    "removeElement(item);",
+                                "});",
+                            "}",
+                        "}",
+                    "}, true);",
+                    "search.addEventListener('click', function(event) {",
+                        "addTab([",
+                            "'http://www.google.co.jp/search?q=',",
+                            "'&ie=utf-8&oe=utf-8&aq=t&rls=firefox.tombloo&hl=ja'",
+                        "].join(encodeURIComponent(name.value)));",
+                    "}, true);",
+                    "name = LABEL({",
+                        "value : patch.leafName",
+                    "});",
+                    "url = LABEL({",
+                        "class : 'update-url-static',",
+                        "value : getUpdateURL(patch.path)",
+                    "});",
+                    "status = LABEL({",
+                        "class : 'update-status',",
+                        "style : 'display: none'",
+                    "});",
+                    "hbox1 = HBOX({});",
+                    "hbox2 = HBOX({});",
+                    "hbox3 = HBOX({});",
+                    "hbox4 = HBOX({",
+                        "class : 'update-status-box',",
+                        "style : 'display: none'",
+                    "});",
+                    "vbox1 = VBOX({",
+                        "pack  : 'center',",
+                        "align : 'center',",
+                        "class : 'update-check-box',",
+                        "style : 'display: none'",
+                    "});",
+                    "vbox2 = VBOX({",
+                        "pack  : 'center',",
+                        "align : 'center'",
+                    "});",
+                    "vbox3 = VBOX({",
+                        "pack  : 'center',",
+                        "align : 'center',",
+                        "class : 'open-in-editor-box'",
+                    "});",
+                    "vbox4 = VBOX({",
+                        "pack  : 'center',",
+                        "align : 'center',",
+                        "class : 'search-by-google-box'",
+                    "});",
+                    "vbox5 = VBOX({",
+                        "flex : 1",
+                    "});",
+                    "[[vbox1, check  ], [ hbox1, vbox1  ], [ vbox2, icon   ],",
+                    "[ hbox1, vbox2  ], [ vbox3, edit   ], [ vbox3, view   ],",
+                    "[ hbox1, vbox3  ], [ vbox4, remove ], [ vbox4, search ],",
+                    "[ hbox1, vbox4  ], [ hbox2, name   ], [ hbox3, url    ],",
+                    "[ hbox4, status ], [ vbox5, hbox2  ], [ vbox5, hbox3  ],",
+                    "[ vbox5, hbox4  ], [ hbox1, vbox5  ], [ item,  hbox1  ]].forEach(function(a) {",
+                        "a[0].appendChild(a[1]);",
+                    "});",
+                    "item.addEventListener('dblclick', trappers.dblclick, true);",
+                    "listScripts.appendChild(item);",
+                    "callLater(0.5, function() {",
+                        "var scps, scriptName = patch.leafName;",
+                        "view.style.display = url.value ? '' : 'none';",
+                        "if (scriptName in args.SPECIAL_PATCHES) {",
+                            "scps = args.SPECIAL_PATCHES[scriptName];",
+                            "if (!scps.canRemove || !scps.canRemove()) {",
+                                "remove.style.display = 'none';",
+                            "}",
+                        "}",
+                    "});",
+                "});",
+            "});",
+            "// F2, Enter で編集できるようにする",
+            "listScripts.addEventListener('keypress', function(event) {",
+                "var target = event.target;",
+                "if (byId('x-update-status').value === 'init' && tagName(target) === 'richlistbox') {",
+                    "switch (event.keyCode) {",
+                        "case KeyEvent.DOM_VK_F2:",
+                        "case KeyEvent.DOM_VK_RETURN:",
+                        "case KeyEvent.DOM_VK_BACK_SPACE:",
+                            "if (!target.querySelector('.url-input-box')) {",
+                                "cancel(event);",
+                                "fireMouseEvent(target.selectedItem, 'dblclick');",
+                            "}",
+                            "break;",
+                        "default:",
+                            "break;",
+                    "}",
+                "}",
+            "}, true);",
+            "",
+            "['update-button', 'update-finish-button'].forEach(function(id) {",
+                "byId(id).addEventListener('click', function() {",
+                    "callLater(0, function() { updateScripts(); });",
+                "}, true);",
+            "});",
+            "",
+            "byId('update-end-button').addEventListener('click', function() {",
+                "saveAndClose();",
+            "}, true);",
+        "}",
+        "",
+        "function updateScripts() {",
+            "var result;",
+            "switch (byId('x-update-status').value) {",
+                "case 'init':",
+                    "result = updateScriptsAll();",
+                    "break;",
+                "case 'finish':",
+                    "result = updateScriptsAllFinish();",
+                    "break;",
+                "case 'close':",
+                    "saveAndClose();",
+                    "break;",
+                "default:",
+                    "break;",
+            "}",
+            "return result;",
+        "}",
+        "",
+        "function updateScriptsAll() {",
+            "var d, expr, isURI, updateCount = 0;",
+            "if (byId('x-update-status').value !== 'init') {",
+                "return;",
+            "}",
+            "expr = 'richlistitem[value]';",
+            "isURI = /^https?:\\/+[-_.!~*'()a-z0-9;\\/?:@&=+$,%#]+$/i;",
+            "updateItems = [];",
+            "d = new Deferred();",
+            "d.addCallback(function() {",
+                "byId('update-button').style.display = 'none';",
+                "byId('richlist-description').style.display = 'none';",
+            "});",
+            "toArray(listScripts.querySelectorAll(expr)).forEach(function(item, index) {",
+                "var icon, org, updateUrl, status, statusBox, setStatus;",
+                "try {",
+                    "updateUrl = item.querySelector('.update-url-static').value ||",
+                                "item.querySelector('.url-input-box').value;",
+                "} catch (e) {}",
+                "icon = item.querySelector('.loading-image');",
+                "org = {",
+                    "path    : item.value,",
+                    "source  : getContents(item.value),",
+                    "version : getCurrentVersion(item.value)",
+                "};",
+                "setStatus = function(msg) {",
+                    "icon.src = icons.pass;",
+                    "if (msg) {",
+                        "status.value = msg;",
+                    "}",
+                "};",
+                "update(setStatus, {",
+                    "error: function(msg) {",
+                        "icon.src = icons.failed;",
+                        "if (msg) {",
+                            "status.value = msg;",
+                        "}",
+                        "if (!/\\bupdate-error\\b/.test(status.className)) {",
+                            "status.className = [",
+                                "String(status.className || '').trim(),",
+                                "'update-error'",
+                            "].join(' ').trim();",
+                        "}",
+                    "},",
+                    "success: function(msg, version) {",
+                        "var check;",
+                        "updateCount++;",
+                        "updateItems.push({",
+                            "index : index,",
+                            "item  : item,",
+                            "org: {",
+                                "uri     : org.path,",
+                                "version : org.version",
+                            "},",
+                            "cur: {",
+                                "uri     : updateUrl,",
+                                "version : version",
+                            "}",
+                        "});",
+                        "icon.src = icons.checked;",
+                        "check = item.querySelector('.update-check');",
+                        "check.style.display = '';",
+                        "check.className = [",
+                            "String(check.className || '').trim(),",
+                            "'x-check-' + index",
+                        "].join(' ').trim();",
+                        "check.setAttribute('checked', false);",
+                        "if (msg) {",
+                            "status.value = msg;",
+                        "}",
+                        "if (!/\\bupdate-success\\b/.test(status.className)) {",
+                            "status.className = [",
+                                "String(status.className || '').trim(),",
+                                "'update-success'",
+                            "].join(' ').trim();",
+                        "}",
+                    "},",
+                    "isSuccess: function() {",
+                        "return /\\bupdate-success\\b/.test(status.className);",
+                    "}",
+                "});",
+                "statusBox = item.querySelector('.update-status-box');",
+                "status = item.querySelector('.update-status');",
+                "d.addCallback(function() {",
+                    "icon.src = icons.loading;",
+                    "statusBox.style.display = '';",
+                    "status.style.display = '';",
+                    "return wait(0.15);",
+                "}).addCallback(function() {",
+                    "var dd, fileName;",
+                    "if (!isURI.test(updateUrl)) {",
+                        "setStatus('{UPDATE_PROCESS_SKIP}');",
+                        "dd = succeed();",
+                    "} else {",
+                        "fileName = String(updateUrl).replace(/[#?].*$/g, '');",
+                        "if (fileName.split('.').pop().toLowerCase() === 'js' ||",
+                            "String(createURI(updateUrl).fileExtension).toLowerCase() === 'js'",
+                        ") {",
+                            "dd = request(updateUrl).addCallbacks(function(res) {",
+                                "var version, text, type, head, ok = false;",
+                                "try {",
+                                    "text = String(res.responseText || '');",
+                                    "type = String(res.channel && res.channel.contentType || '');",
+                                    "try {",
+                                        "text = text.convertToUnicode();",
+                                    "} catch (er) {}",
+                                    "if (!text) {",
+                                        "throw text;",
+                                    "}",
+                                    "if (type && /script|plain/i.test(type) || !/^\\s*<[^>]*>/.test(text)) {",
+                                        "ok = true;",
+                                    "}",
+                                "} catch (e) {",
+                                    "ok = false;",
+                                "}",
+                                "if (ok) {",
+                                    "head = text.slice(0, args.SCRIPT_DOCCOMMENT_SIZE);",
+                                    "if (org.version && args.UPDATE_PATTERNS.version.test(head) &&",
+                                        "(version = head.match(args.UPDATE_PATTERNS.version)[1]) &&",
+                                        "compareVersions(version, org.version) > 0",
+                                    ") {",
+                                        "setStatus.success('{UPDATE_PROCESS_SUCCESS}', version);",
+                                    "} else if (org.source !== text) {",
+                                        "if (org.source.length < text.length ||",
+                                            "countChars(org.source) < countChars(text)",
+                                        ") {",
+                                            "// ファイルサイズ/使われてる文字のByteコード数で比較",
+                                            "//XXX: Last-Modified, Date, Expires などのヘッダを信頼するかどうか",
+                                            "setStatus.success('{UPDATE_PROCESS_SUCCESS_MAYBE}', version);",
+                                        "} else {",
+                                            "// あいまいでバージョン不明だけど中身が違う",
+                                            "setStatus.success('{UPDATE_PROCESS_SUCCESS_SHOULD_CHECK}', version);",
+                                        "}",
+                                    "} else {",
+                                        "setStatus('{UPDATE_PROCESS_SKIP_LATEST}');",
+                                    "}",
+                                "} else {",
+                                    "setStatus.error('{UPDATE_PROCESS_ERROR_SOURCE}');",
+                                "}",
+                            "}, function(err) {",
+                                "setStatus.error([",
+                                    "'{UPDATE_PROCESS_ERROR_UNKNOWN}',",
+                                    "String(extractErrorMessage(err))",
+                                "].join('/'));",
+                            "});",
+                        "} else {",
+                            "setStatus.error('{UPDATE_PROCESS_ERROR_EXTENSION}');",
+                            "dd = succeed();",
+                        "}",
+                    "}",
+                    "return maybeDeferred(dd);",
+                "}).addCallback(function() {",
+                    "org = null;",
+                    "if (setStatus.isSuccess()) {",
+                        "item.querySelector('.update-check-box').style.display = '';",
+                    "}",
+                    "return wait(0);",
+                "});",
+            "});",
+            "d.addErrback(function(err) {",
+                "error(err);",
+                "alert('Error! ' + extractErrorMessage(err));",
+                "throw (err instanceof Error) ? err : new Error(err);",
+            "}).addCallback(function() {",
+                "var notes, sub, upBtn, curStatus;",
+                "notes = byId('update-finish-notes'),",
+                "sub = byId('update-finish-notes-sub');",
+                "upBtn = byId('update-finish-button');",
+                "curStatus = byId('x-update-status');",
+                "if (updateCount) {",
+                    "curStatus.value = 'finish';",
+                    "notes.value = [updateCount, '{NOTES_UPDATES_FOUND}'].join(' ');",
+                    "sub.value = '{NOTES_UPDATES_FOUND_SUB}';",
+                "} else {",
+                    "curStatus.value = 'close';",
+                    "notes.value = '{NOTES_UPDATE_NOT_FOUND}';",
+                    "sub.value = '';",
+                    "upBtn.label = '{EXTRA_UPDATE_END}';",
+                    "upBtn.setAttribute('tooltiptext', '{EXTRA_UPDATE_END}');",
+                "}",
+                "byId('update-button').style.display = 'none';",
+                "byId('update-finish-box').style.display = '';",
+            "});",
+            "callLater(0, function() { d.callback(); });",
+        "}",
+        "",
+        "function updateScriptsAllFinish() {",
+            "var d, updateCount, progressBar, progressStatus, updateProgress, updateStatus, max;",
+            "if (byId('x-update-status').value !== 'finish' || !updateItems || !updateItems.length) {",
+                "return;",
+            "}",
+            "updateCount = 0;",
+            "max = updateItems.length;",
+            "updateProgress = function(v) {",
+                "progressBar.value = Math.max(0, Math.min(100, Math.floor(Number(v) / max * 100)));",
+            "};",
+            "updateStatus = function(v) {",
+                "progressStatus.value = v;",
+            "};",
+            "progressBar = byId('progress-bar');",
+            "progressStatus = byId('progress-status');",
+            "byId('progress-box').style.display = '';",
+            "byId('richlist-box').style.display = 'none';",
+            "d = new Deferred();",
+            "d.addCallback(function() {",
+                "var dd = new Deferred(), width, height;",
+                "width  = 460;",
+                "height = 184;",
+                "dd.addCallback(function() {",
+                    "updateProgress(0);",
+                    "updateStatus('');",
+                    "byId('update-finish-button').style.display = 'none';",
+                    "byId('update-finish-box').style.display = 'none';",
+                "}).addCallback(function() {",
+                    "window.resizeTo(width, height);",
+                    "return wait(0);",
+                "}).addCallback(function() {",
+                    "try {",
+                        "byId('update-patches-dialog').centerWindowOnScreen();",
+                    "} catch (e) {}",
+                    "return wait(0);",
+                "}).addCallback(function() {",
+                    "window.resizeTo(width, height);",
+                    "return wait(0);",
+                "}).addCallback(function() {",
+                    "window.resizeTo(width - 5, height - 5);",
+                    "return wait(0);",
+                "}).addCallback(function() {",
+                    "window.resizeTo(width, height);",
+                    "return wait(0);",
+                "}).addCallback(function() {",
+                    "window.resizeTo(width + 5, height + 5);",
+                    "return wait(0);",
+                "}).addCallback(function() {",
+                    "window.resizeTo(width, height);",
+                    "return wait(0);",
+                "});",
+                "dd.callback();",
+                "return dd;",
+            "});",
+            "",
+            "var specials = [], newItems = [], item, name;",
+            "while (updateItems && updateItems.length) {",
+                "item = updateItems.shift();",
+                "if (item) {",
+                    "name = getFileName(item.org && item.org.uri);",
+                    "if (name) {",
+                        "if (name in args.SPECIAL_PATCHES) {",
+                            "specials.push(item);",
+                        "} else {",
+                            "newItems.push(item);",
+                        "}",
+                    "}",
+                "}",
+            "}",
+            "updateItems = [].concat(newItems).concat(specials);",
+            "",
+            "// ソート済みが条件",
+            "updateItems.forEach(function(item, index) {",
+                "var className, check, name, updateUrl, icon;",
+                "name = getFileName(item.org && item.org.uri);",
+                "updateUrl = item.cur && item.cur.uri;",
+                "icon = item.item && item.item.querySelector('.loading-image') || {};",
+                "className = 'x-check-' + item.index;",
+                "check = listScripts.querySelector('.' + className);",
+                "if (check && check.checked && updateUrl) {",
+                    "if (name in args.SPECIAL_PATCHES) {",
+                        "// インストールが特殊なパッチ",
+                        "d.addCallback(function() {",
+                            "return wait(1.5);",
+                        "}).addCallback(function() {",
+                            "var result, special, timeout, startTime;",
+                            "updateStatus('Updating... ' + name);",
+                            "try {",
+                                "timeout = 5 * 60 * 1000;",
+                                "startTime = (new Date()).getTime();",
+                                "special = args.SPECIAL_PATCHES[name];",
+                                "try {",
+                                    "window.blur();",
+                                "} catch (er) {}",
+                                "result = special.update(item);",
+                                "if (result instanceof Error) {",
+                                    "throw result;",
+                                "}",
+                                "if (special.completed) {",
+                                    "till(function() {",
+                                        "var end = false;",
+                                        "if (special.completed()) {",
+                                            "updateCount++;",
+                                            "end = true;",
+                                        "} else if (special.canceled()) {",
+                                            "end = true;",
+                                        "} else if (startTime - (new Date()).getTime() > timeout) {",
+                                            "end = true;",
+                                        "}",
+                                        "return end;",
+                                    "});",
+                                "}",
+                                "try {",
+                                    "byId('update-patches-dialog').centerWindowOnScreen();",
+                                    "window.focus();",
+                                "} catch (er) {}",
+                            "} catch (e) {",
+                                "throw e;",
+                            "}",
+                            "return wait(0.1);",
+                        "}).addErrback(function(err) {",
+                            "try {",
+                                "byId('update-patches-dialog').centerWindowOnScreen();",
+                                "window.focus();",
+                            "} catch (er) {}",
+                            "icon.src = icons.failed;",
+                            "alert('Error! ' + extractErrorMessage(err));",
+                            "throw (err instanceof Error) ? err : new Error(err);",
+                        "}).addCallback(function() {",
+                            "icon.src = icons.checked;",
+                            "return wait(0.525);",
+                        "}).addBoth(function(err) {",
+                            "updateProgress(index + 1);",
+                            "if (err instanceof Error) {",
+                                "updateStatus('Failed: ' + name);",
+                                "throw err;",
+                            "} else {",
+                                "updateStatus('Updated: ' + name);",
+                            "}",
+                            "return wait(1.25);",
+                        "});",
+                    "} else {",
+                        "d.addCallback(function() {",
+                            "updateStatus('Updating... ' + name);",
+                            "return wait(2.275);",
+                        "}).addCallback(function() {",
+                            "return download(updateUrl, getPatchDir()).addCallback(function(file) {",
+                                "reload();",
+                                "updateCount++;",
+                                "notify(",
+                                    "name,",
+                                    "getMessage('message.install.success'),",
+                                    "notify.ICON_INFO",
+                                ");",
+                            "});",
+                        "}).addErrback(function(err) {",
+                            "icon.src = icons.failed;",
+                            "alert('Error! ' + extractErrorMessage(err));",
+                            "throw (err instanceof Error) ? err : new Error(err);",
+                        "}).addCallback(function() {",
+                            "icon.src = icons.checked;",
+                            "return wait(0.525);",
+                        "}).addBoth(function(err) {",
+                            "updateProgress(index + 1);",
+                            "if (err instanceof Error) {",
+                                "updateStatus('Failed: ' + name);",
+                                "throw err;",
+                            "} else {",
+                                "updateStatus('Updated: ' + name);",
+                            "}",
+                            "return wait(1.25);",
+                        "});",
+                    "}",
+                "}",
+            "});",
+            "d.addErrback(function(err) {",
+                "error(err);",
+                "alert('Error! ' + extractErrorMessage(err));",
+                "throw (err instanceof Error) ? err : new Error(err);",
+            "}).addBoth(function(err) {",
+                "updateProgress(100);",
+                "updateStatus('');",
+                "byId('update-end-box').style.display = '';",
+                "byId('update-end-notes').value = '{NOTES_UPDATE_FINISH}';",
+                "byId('update-end-notes-count').value = [updateCount, '{NOTES_UPDATED COUNT}'].join(' ');",
+                "if (err instanceof Error) {",
+                    "throw err;",
+                "}",
+            "});",
+            "callLater(0, function() { d.callback(); });",
+        "}",
+        "",
+        "function save(event) {",
+            "var urls = updateUrls || {}, expr = 'richlistitem[value]';",
+            "toArray(listScripts.querySelectorAll(expr)).forEach(function(item) {",
+                "var uri, updateUrl, name;",
+                "uri = createURI(item.value);",
+                "try {",
+                    "updateUrl = item.querySelector('label.update-url-static').value ||",
+                                "item.querySelector('.url-input-box').value;",
+                "} catch (e) {}",
+                "name = getFileName(uri);",
+                "urls[name] = updateUrl || '';",
+            "});",
+            "args.potUpdatePatchUtil.setPref('urls', JSON.stringify(urls || {}));",
+        "}",
+        "",
+        "function saveAndClose() {",
+            "callLater(0, function() { save(); });",
+            "window.close();",
+        "}",
+        "",
+        "function fireMouseEvent(element, type) {",
+            "var event = element.ownerDocument.createEvent('MouseEvents');",
+            "event.initMouseEvent(",
+                "type || 'click', true, true,",
+                "element.ownerDocument.defaultView,",
+                "1, 0, 0, 0, 0,",
+                "false, false, false, false,",
+                "0, element",
+            ");",
+            "element.dispatchEvent(event);",
+        "}",
+        "",
+        "function byId(id) {",
+            "return document.getElementById(id);",
+        "}",
+        "",
+        "function getFileName(path) {",
+            "var uri = createURI(path);",
+            "return uri.fileName || uri.leafName || (uri.file && uri.file.leafName);",
+        "}",
+        "",
+        "function toArray(o) {",
+            "return Array.prototype.slice.call(o);",
+        "}",
+        "",
+        "function findUpdateURI(source) {",
+            "var result = '', head, found = false;",
+            "head = String(source || '').trim().slice(0, args.SCRIPT_DOCCOMMENT_SIZE);",
+            "args.UPDATE_PATTERNS.uris.forEach(function(re) {",
+                "if (!found && re.test(head)) {",
+                    "result = head.match(re)[1];",
+                    "found = true;",
+                "}",
+            "});",
+            "if (!found && args.UPDATE_PATTERNS.uri.test(head)) {",
+                "result = head.match(args.UPDATE_PATTERNS.uri)[1];",
+            "}",
+            "return result || '';",
+        "}",
+        "",
+        "function getUpdateURL(path) {",
+            "var result = '', source, fileName, head;",
+            "fileName = path && path.path || path;",
+            "source = getContents(fileName);",
+            "if (source) {",
+                "result = findUpdateURI(source);",
+            "}",
+            "if (!result) {",
+                "result = updateUrls[getFileName(path)] || '';",
+            "}",
+            "return result;",
+        "}",
+        "",
+        "function getCurrentVersion(path) {",
+            "var result = '', source, fileName, head;",
+            "fileName = path && path.path || path;",
+            "source = getContents(fileName);",
+            "if (source) {",
+                "head = source.trim().slice(0, args.SCRIPT_DOCCOMMENT_SIZE);",
+                "if (args.UPDATE_PATTERNS.version.test(head)) {",
+                    "result = head.match(args.UPDATE_PATTERNS.version)[1];",
+                "}",
+            "}",
+            "return result;",
+        "}",
+        "",
+        "function compareVersions(a, b) {",
+            "var result;",
+            "try {",
+                "result = Components.classes['@mozilla.org/xpcom/version-comparator;1']",
+                        ".getService(Components.interfaces.nsIVersionComparator)",
+                        ".compare(a, b);",
+            "} catch (e) {",
+                "result = a == b ? 0 :",
+                        "a  >  b ? 1 : -1;",
+            "}",
+            "return result;",
+        "}",
+        "",
+        "function manipulateScript(name, action) {",
+            "var result = false, file;",
+            "(getScriptFiles(getPatchDir()) || []).forEach(function(script) {",
+                "if (!file && script && script.leafName === name) {",
+                    "file = script;",
+                "}",
+            "});",
+            "if (file) {",
+                "try {",
+                    "switch (action) {",
+                        "case 'remove':",
+                        "case 'delete':",
+                            "if (!file.exists()) {",
+                                "result = true;",
+                            "} else {",
+                                "file.permissions = 0666;",
+                                "file.remove(false);",
+                                "if (!file.exists()) {",
+                                    "result = true;",
+                                "}",
+                            "}",
+                            "break;",
+                        "case 'exist':",
+                        "case 'exists':",
+                            "result = file.exists();",
+                            "break;",
+                        "case 'size':",
+                            "result = file.fileSize;",
+                            "break;",
+                        "default:",
+                            "break;",
+                    "}",
+                "} catch (e) {",
+                    "alert('Error! ' + (e && e.message || e));",
+                    "error(e);",
+                    "result = false;",
+                "}",
+            "}",
+            "return result;",
+        "}",
+        "",
+        "function countChars(src) {",
+            "var chars = {}, len = 0, pre = '.';",
+            "String(src || '').split('').forEach(function(c) {",
+                "if (!((pre + c) in chars)) {",
+                    "chars[pre + c] = true;",
+                    "len++;",
+                "}",
+            "});",
+            "return len;",
+        "}",
+        "",
+        "function openRemoteFileInEditor(uri, context) {",
+            "var d;",
+            "if (context && context.style) {",
+                "// コンテキストがあればカーソルをwaitにする",
+                "context.style.cursor = 'wait';",
+            "}",
+            "d = download(uri, getTempDir()).addCallbacks(function(file) {",
+                "callLater(0, function() {",
+                    "openInEditor(file);",
+                "});",
+            "}, function(err) {",
+                "error(err);",
+                "alert('Error! ' + extractErrorMessage(err));",
+                "return err;",
+            "}).addBoth(function(err) {",
+                "if (context && context.style) {",
+                    "context.style.cursor = '';",
+                "}",
+                "try {",
+                    "// テンポラリファイルを削除",
+                    "file.remove(false);",
+                "} catch (e) {}",
+                "if (err instanceof Error) {",
+                    "throw err;",
+                "}",
+                "return err;",
+            "});",
+            "return d;",
+        "}",
+        "",
+        "function extractErrorMessage(err) {",
+            "return (err && (err.message && err.message.message || err.message)) || err;",
+        "}",
+        "",
+        "// -- from: tombloo.js --",
+        "function getScriptFiles(dir) {",
+            "var scripts = [];",
+            "simpleIterator(dir.directoryEntries, ILocalFile, function(file) {",
+                "if (file.leafName.match(/[.]js$/)) {",
+                    "scripts.push(file);",
+                "}",
+            "});",
+            "return scripts;",
+        "}",
+        "",
+        "function simpleIterator(e, ifc, func) {",
+            "var value;",
+            "if (typeof ifc === 'string') {",
+                "ifc = Components.interfaces[ifc];",
+            "}",
+            "try {",
+                "while (e.hasMoreElements()) {",
+                    "value = e.getNext();",
+                    "func(ifc ? value.QueryInterface(ifc) : value);",
+                "}",
+            "} catch (e if e == StopIteration) {}",
+        "}"
+    ].join('\n');
     
-    let (lang = LANG === 'ja' && LANG || 'en') {
+    (function() {
+        var lang = LANG === 'ja' && LANG || 'en';
         forEach(labels.template, function([key, vals]) {
             template = template.split(key).join(vals[lang]);
         });
         forEach(labels.script, function([key, vals]) {
             script = script.split(key).join(vals[lang]);
         });
-    }
+    }());
+    
     forEach({
-        '{ICON_LOADING}' : strip(<>
-            data:image/gif;base64,
-            R0lGODlhEAAQAPQAAP///z8+Pvn5+WloaKKhoUNCQltaWt/f3728vE9OTpeXl4uLi+rq6rGwsNPT
-            03V0dH9/fwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH/C05F
-            VFNDQVBFMi4wAwEAAAAh/hpDcmVhdGVkIHdpdGggYWpheGxvYWQuaW5mbwAh+QQJCgAAACwAAAAA
-            EAAQAAAFUCAgjmRpnqUwFGwhKoRgqq2YFMaRGjWA8AbZiIBbjQQ8AmmFUJEQhQGJhaKOrCksgEla
-            +KIkYvC6SJKQOISoNSYdeIk1ayA8ExTyeR3F749CACH5BAkKAAAALAAAAAAQABAAAAVoICCKR9KM
-            aCoaxeCoqEAkRX3AwMHWxQIIjJSAZWgUEgzBwCBAEQpMwIDwY1FHgwJCtOW2UDWYIDyqNVVkUbYr
-            6CK+o2eUMKgWrqKhj0FrEM8jQQALPFA3MAc8CQSAMA5ZBjgqDQmHIyEAIfkECQoAAAAsAAAAABAA
-            EAAABWAgII4j85Ao2hRIKgrEUBQJLaSHMe8zgQo6Q8sxS7RIhILhBkgumCTZsXkACBC+0cwF2GoL
-            LoFXREDcDlkAojBICRaFLDCOQtQKjmsQSubtDFU/NXcDBHwkaw1cKQ8MiyEAIfkECQoAAAAsAAAA
-            ABAAEAAABVIgII5kaZ6AIJQCMRTFQKiDQx4GrBfGa4uCnAEhQuRgPwCBtwK+kCNFgjh6QlFYgGO7
-            baJ2CxIioSDpwqNggWCGDVVGphly3BkOpXDrKfNm/4AhACH5BAkKAAAALAAAAAAQABAAAAVgICCO
-            ZGmeqEAMRTEQwskYbV0Yx7kYSIzQhtgoBxCKBDQCIOcoLBimRiFhSABYU5gIgW01pLUBYkRItAYA
-            qrlhYiwKjiWAcDMWY8QjsCf4DewiBzQ2N1AmKlgvgCiMjSQhACH5BAkKAAAALAAAAAAQABAAAAVf
-            ICCOZGmeqEgUxUAIpkA0AMKyxkEiSZEIsJqhYAg+boUFSTAkiBiNHks3sg1ILAfBiS10gyqCg0Ua
-            FBCkwy3RYKiIYMAC+RAxiQgYsJdAjw5DN2gILzEEZgVcKYuMJiEAOwAAAAAAAAAAAA==
-        </>),
+        '{ICON_LOADING}' : [
+            "data:image/gif;base64,",
+            "R0lGODlhEAAQAPQAAP///z8+Pvn5+WloaKKhoUNCQltaWt/f3728vE9OTpeXl4uLi+rq6rGwsNPT",
+            "03V0dH9/fwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH/C05F",
+            "VFNDQVBFMi4wAwEAAAAh/hpDcmVhdGVkIHdpdGggYWpheGxvYWQuaW5mbwAh+QQJCgAAACwAAAAA",
+            "EAAQAAAFUCAgjmRpnqUwFGwhKoRgqq2YFMaRGjWA8AbZiIBbjQQ8AmmFUJEQhQGJhaKOrCksgEla",
+            "+KIkYvC6SJKQOISoNSYdeIk1ayA8ExTyeR3F749CACH5BAkKAAAALAAAAAAQABAAAAVoICCKR9KM",
+            "aCoaxeCoqEAkRX3AwMHWxQIIjJSAZWgUEgzBwCBAEQpMwIDwY1FHgwJCtOW2UDWYIDyqNVVkUbYr",
+            "6CK+o2eUMKgWrqKhj0FrEM8jQQALPFA3MAc8CQSAMA5ZBjgqDQmHIyEAIfkECQoAAAAsAAAAABAA",
+            "EAAABWAgII4j85Ao2hRIKgrEUBQJLaSHMe8zgQo6Q8sxS7RIhILhBkgumCTZsXkACBC+0cwF2GoL",
+            "LoFXREDcDlkAojBICRaFLDCOQtQKjmsQSubtDFU/NXcDBHwkaw1cKQ8MiyEAIfkECQoAAAAsAAAA",
+            "ABAAEAAABVIgII5kaZ6AIJQCMRTFQKiDQx4GrBfGa4uCnAEhQuRgPwCBtwK+kCNFgjh6QlFYgGO7",
+            "baJ2CxIioSDpwqNggWCGDVVGphly3BkOpXDrKfNm/4AhACH5BAkKAAAALAAAAAAQABAAAAVgICCO",
+            "ZGmeqEAMRTEQwskYbV0Yx7kYSIzQhtgoBxCKBDQCIOcoLBimRiFhSABYU5gIgW01pLUBYkRItAYA",
+            "qrlhYiwKjiWAcDMWY8QjsCf4DewiBzQ2N1AmKlgvgCiMjSQhACH5BAkKAAAALAAAAAAQABAAAAVf",
+            "ICCOZGmeqEgUxUAIpkA0AMKyxkEiSZEIsJqhYAg+boUFSTAkiBiNHks3sg1ILAfBiS10gyqCg0Ua",
+            "FBCkwy3RYKiIYMAC+RAxiQgYsJdAjw5DN2gILzEEZgVcKYuMJiEAOwAAAAAAAAAAAA=="
+        ].join(''),
         // icon: http://www.famfamfam.com/
-        '{ICON_EDIT}' : strip(<>
-            data:image/png;base64,
-            iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0
-            U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAMCSURBVDjLTdBNaFxVGMbx/zn33plOZjIT
-            8zmGOnFM1VoNJYFWYi2CtVSMdKUbK+LKhSAGXYhd2m6FQkEXLbiwETcWiq3WpiiSBLRqTa122pEm
-            MZPmw8lkMt93zrnnXhdJbB54l++Ph0cEQQDAm1/l9gOnHmnbMVzXPnXto32fhueXgAqwChigCBSA
-            z4ErNpvxPe/pvcnY8PvPdbE9NeUn6spPFF2zU2moNA1zq1W+vVs7DIxuB3riIQFAbt3gCIEtwLIh
-            7EhSYYklJY4Fgzsj9Cai7WeuLX4stwCjdTxqg+dDRQlKGtabUHI3rtCAf6sGgA/H5hlOR3mq0+my
-            twHtrSFJrQk11yClwAYsC6QFFgJLgA8IU+anmSLX50uL9wGlehIRi1LDo94MkDLAkiCNwJJgEbCj
-            /AN/j3/G250D1CZ/5BWdHPsf8JTq64k7lNwADyAAywhksLF9vPI17WvXiAy8TiI9yPrs4zSunH1j
-            W4NmXzIRJrNiEBIkG88SaKlcJuX8SezRA6zdzRASitZ4klhHKmEDvHjicsS2ZCjsSJQxSAIgIADC
-            tSnS9i8k0kdoLn1JqEXwz/RttKsKbqP6jATwmqorLEBujkQAAohUJtglrpLofwl38QzCKeLEWtHV
-            RV+Xl17Y9875rNys32LjY0uwpAAhMfOXSJmrJHYdxb33KdLRqPLDrEzc4PTC4dtD741PA8iDo2Od
-            nlIn9u9OsVwOmFsxlLKXSOqf6X5yBLV8FisU0Cz3kZ/8ndzAR2Sq3TNb29lGqUPAyG+ZWYoNG2fh
-            G14dyOP5vSzdPM0D3SHctYfITd1CHvqEhZyLUSq/BUij9dDLB56IfHF8hJOvPcYeLrLn2bcI5ybJ
-            Xphi+rs17nx/g4n2D4i09VKp1jFaF+430Hp2ebXEufEMbbEI2Zk86q+LpPcepJQvcO/mDM8fv8CD
-            oX7CNuTXKhitF7YAMXjsVCcwCvQBHf25k0eG0l1i3+60mFPR4HxuSLhOB/FohLZ4C3/cyWWBY9fP
-            vfsrwH+7HFmMUqkOrwAAAABJRU5ErkJggg==
-        </>),
-        '{ICON_VIEW}' : strip(<>
-            data:image/png;base64,
-            iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0
-            U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAL+SURBVBgZBcFNaJtlAMDx//ORjzZbs7TJ
-            kmowbJcdZqr1oNavCiIIMraBh0IY7uZx8+OiVw9SQZgXp3gR3A5OtIigcxMcylyqVPADh0WNpO2b
-            pk2bvm3e5P163sffT1hrATj/2drDwKXjR7JzwyhhGCVEScIoTlzgAOgBBugDO8DHwA0NAJDE8SMP
-            VA7NvTpfAgAAwAuT/DBM8n3fVMMIDgLDf70BX//jPQtc1AAASRyXJ9ICgLU9Q0oItAClIZOS3JeR
-            KClJKZitjnFPPjf54U/OOxIAwETRRE5DnMBBKHAj2AvA9cH1YWcEWwMDwOtX28wdy3F/MVXSAAAm
-            iiYPpyVeAJ5vkFKgAaVAKlAIlIAEEGaf5r99fmm7jgYAMGFYzo8p3FHMMLBIaVESpBEoCQqLUoBV
-            dPcD3r359z5wXgMAxGFYK0+kcH1LDGBBGYG0gAGFRVtJYsGkDHEYH/vi5cd3JQCACYNaJZ/BCy1C
-            ghICCUhAAADCgrUQBwEmDAyABnjuzetjWsl0JiUJjUFiAYsFDAIAAUgJkTEMvGEM7ANogDgIS7lc
-            FinAD3xav/2Iu/4npakCTneHk0+d4dDhSW5f/4jfiwUek1uy67Rfm59/6z0NYMJgXOfSWBOxfONT
-            8tLjxXMNPM9jfX2dZvMrVCrL2dOn0FrR6XTkysrK2+12uySeuHClCFw+Mz/7wvHsFs3vv2WhscDV
-            T77kr1/vMF2pUK/X6XQ69Ho9OpubpI9Ut155qXF0aWnJ1SYMnwGeX7nb4k77Z2aq4wD0y6cYDG+x
-            sLBAoVBgMBiwvb3N5fc/YHf8wW+Ac/l8PqNNFD10+umZsTcaj3Ltmkez2QSgtvs5a9KyuLhILpcD
-            wPM8bJIwtXv7STjJxsaGr00UtTZ7Lldu3iXU0/TdAT98d4v6zAz1ep1ut8vq6iqZTIZarUa5XMYP
-            o6PLy8t7juNsitnGpSJwEahhk6KK9qpToz9O3Fsp6kw6LYSA1qhEdnyCaVpYm9go8H3Hcbqe5539
-            H/YvZvvl5HpaAAAAAElFTkSuQmCC
-        </>),
-        '{ICON_REMOVE}' : strip(<>
-            data:image/png;base64,
-            iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0
-            U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAK9SURBVBgZBcFLiFVlAADg7//PuXdmGp3x
-            MeIokk1USG8jKmlRYJJU1K6NRILQopXVImoVFBGBpLteu2gVLYyiUALFRSVk0aKC0nyE5uA43pm5
-            98495/zn7/tCzhns//LSQzh867rxXYO6NahbddsaNm0Py7iGhEUs4DMcKwHapnn4vtk1u157bBMA
-            6Fft9KBqpxdX07aqZnmUnL+24tuz/T04WAK0TbN5qhvApRtJJwRloCgZ60Q3j0VFjDoFO7dN2Do9
-            ueGT05cPRYBU11OTJU3LchX0am6M6K3SW2VhyPxKAm98ftGuuUl3z3Q2lQCprjes7Ub9Ef3VJMag
-            RFEQCwpBEWgR0pIfzy06c7F3uQRIVbV5eqLQGzYGoyzGrIjEFBSRQlYUyIWrSyNHjv+9hP0lQFNV
-            2zdPdfRWswYyRQpiRqKQlTlqM6mTNFUzd/SVR69HgFSNts9Oj+lXWYgUIYiICICQyZlmNJKqUYIS
-            9r793URZxO5YJ6pSEmVkGUkAATFSp2SlP2iwBCU0o2rT5OS4GGghEwJRkDMh4ORHhic/9MO/f3lp
-            fF1YU11/nea9ElI1uqmc7CojRQxSG8hZixBw4mNTf37hjucPGJu7y/C3Y8Xvp46/c/yJTr/4/sbt
-            M21Kh3Y/uOPOua0zfjnfSG2WBUXMioLRpy+6/9kXTJw9IZz6QGd4XnfDlnjl3IUdZaqq3Xj65z/+
-            sTgsrYyyOmWjOqiaVpNaB65eMD47x1OvAijf2qJowy1lqusHnnv83ok39z0CAFKmTlnVcOanrQa/
-            fmPyq5eNhv8ZYHmpkAqXi9l79t62fnrymYXl2sX5vvmlVUuDWt1kRYy6naAbWv+cOip2grro6y1k
-            567ElBrvh537Ds/gILZjIzZiPdZjerzb6YyPd+xJp+248rW1/QVVGeeL3Bx58ljz7v/pCEpK8wRG
-            cAAAAABJRU5ErkJggg==
-        </>),
-        '{ICON_SEARCH}' : strip(<>
-            data:image/png;base64,
-            iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0
-            U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAH5SURBVDjLpZK/a5NhEMe/748kRqypmqQQ
-            gz/oUPUPECpCoEVwyNStIA6COFR33boIjg6mg4uL0k0EO1RFISKImkHQxlbQRAsx0dgKJm/e53nu
-            nnOwViR5leJnuZs+973jHBHB/+D/ah7X2LXWloilyMw5YgtD3CDiBWN4Zno8bQcJHBFBucauZfso
-            lZDCru0OfFcAAUISrLZDfPzSKxuiibOT+T6JCwDMtrQzYQvZHQ5Cw2h3GK0OI9AWBzJJZFOxgtJU
-            GpTABQAiLu5OOviuGIEWkBUwC7pasNZj7N2ThNJUjBQY4pznAoEWsBWwxU+JFXSVRTzmQWvKRR5R
-            G4KVGMgKrAVYflexAAugDCEygdbUCI2F7zobk7FZY76DIDQgrT9HCwwt1FsBhhIu4p4D3kiS8B0M
-            Jz28ftfGSPfl8MPLxbGBAqVpptbslJc+fEPMA7JDPrIpH3FX8LzaROdrE5O51jalgid3Lh4b6/sD
-            ALh6971riErGcFET58gwDPGndG9JT6ReHcwfPorGygu8rdxvGxMeP3XtzcofgigWZ0/EtQ7n0/sO
-            Te0/Mo7V5WeoVu61z1yvZzZX+BsnZx9opYLpevXp7eXKIrL5UWit0n0r/Isb50bjRGreiyWmgs76
-            lfM31y5tSQAAc6czHjONXLi13thygih+AEq4N6GqMsuhAAAAAElFTkSuQmCC
-        </>)
+        '{ICON_EDIT}' : [
+            "data:image/png;base64,",
+            "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0",
+            "U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAMCSURBVDjLTdBNaFxVGMbx/zn33plOZjIT",
+            "8zmGOnFM1VoNJYFWYi2CtVSMdKUbK+LKhSAGXYhd2m6FQkEXLbiwETcWiq3WpiiSBLRqTa122pEm",
+            "MZPmw8lkMt93zrnnXhdJbB54l++Ph0cEQQDAm1/l9gOnHmnbMVzXPnXto32fhueXgAqwChigCBSA",
+            "z4ErNpvxPe/pvcnY8PvPdbE9NeUn6spPFF2zU2moNA1zq1W+vVs7DIxuB3riIQFAbt3gCIEtwLIh",
+            "7EhSYYklJY4Fgzsj9Cai7WeuLX4stwCjdTxqg+dDRQlKGtabUHI3rtCAf6sGgA/H5hlOR3mq0+my",
+            "twHtrSFJrQk11yClwAYsC6QFFgJLgA8IU+anmSLX50uL9wGlehIRi1LDo94MkDLAkiCNwJJgEbCj",
+            "/AN/j3/G250D1CZ/5BWdHPsf8JTq64k7lNwADyAAywhksLF9vPI17WvXiAy8TiI9yPrs4zSunH1j",
+            "W4NmXzIRJrNiEBIkG88SaKlcJuX8SezRA6zdzRASitZ4klhHKmEDvHjicsS2ZCjsSJQxSAIgIADC",
+            "tSnS9i8k0kdoLn1JqEXwz/RttKsKbqP6jATwmqorLEBujkQAAohUJtglrpLofwl38QzCKeLEWtHV",
+            "RV+Xl17Y9875rNys32LjY0uwpAAhMfOXSJmrJHYdxb33KdLRqPLDrEzc4PTC4dtD741PA8iDo2Od",
+            "nlIn9u9OsVwOmFsxlLKXSOqf6X5yBLV8FisU0Cz3kZ/8ndzAR2Sq3TNb29lGqUPAyG+ZWYoNG2fh",
+            "G14dyOP5vSzdPM0D3SHctYfITd1CHvqEhZyLUSq/BUij9dDLB56IfHF8hJOvPcYeLrLn2bcI5ybJ",
+            "Xphi+rs17nx/g4n2D4i09VKp1jFaF+430Hp2ebXEufEMbbEI2Zk86q+LpPcepJQvcO/mDM8fv8CD",
+            "oX7CNuTXKhitF7YAMXjsVCcwCvQBHf25k0eG0l1i3+60mFPR4HxuSLhOB/FohLZ4C3/cyWWBY9fP",
+            "vfsrwH+7HFmMUqkOrwAAAABJRU5ErkJggg=="
+        ].join(''),
+        '{ICON_VIEW}' : [
+            "data:image/png;base64,",
+            "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0",
+            "U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAL+SURBVBgZBcFNaJtlAMDx//ORjzZbs7TJ",
+            "kmowbJcdZqr1oNavCiIIMraBh0IY7uZx8+OiVw9SQZgXp3gR3A5OtIigcxMcylyqVPADh0WNpO2b",
+            "pk2bvm3e5P163sffT1hrATj/2drDwKXjR7JzwyhhGCVEScIoTlzgAOgBBugDO8DHwA0NAJDE8SMP",
+            "VA7NvTpfAgAAwAuT/DBM8n3fVMMIDgLDf70BX//jPQtc1AAASRyXJ9ICgLU9Q0oItAClIZOS3JeR",
+            "KClJKZitjnFPPjf54U/OOxIAwETRRE5DnMBBKHAj2AvA9cH1YWcEWwMDwOtX28wdy3F/MVXSAAAm",
+            "iiYPpyVeAJ5vkFKgAaVAKlAIlIAEEGaf5r99fmm7jgYAMGFYzo8p3FHMMLBIaVESpBEoCQqLUoBV",
+            "dPcD3r359z5wXgMAxGFYK0+kcH1LDGBBGYG0gAGFRVtJYsGkDHEYH/vi5cd3JQCACYNaJZ/BCy1C",
+            "ghICCUhAAADCgrUQBwEmDAyABnjuzetjWsl0JiUJjUFiAYsFDAIAAUgJkTEMvGEM7ANogDgIS7lc",
+            "FinAD3xav/2Iu/4npakCTneHk0+d4dDhSW5f/4jfiwUek1uy67Rfm59/6z0NYMJgXOfSWBOxfONT",
+            "8tLjxXMNPM9jfX2dZvMrVCrL2dOn0FrR6XTkysrK2+12uySeuHClCFw+Mz/7wvHsFs3vv2WhscDV",
+            "T77kr1/vMF2pUK/X6XQ69Ho9OpubpI9Ut155qXF0aWnJ1SYMnwGeX7nb4k77Z2aq4wD0y6cYDG+x",
+            "sLBAoVBgMBiwvb3N5fc/YHf8wW+Ac/l8PqNNFD10+umZsTcaj3Ltmkez2QSgtvs5a9KyuLhILpcD",
+            "wPM8bJIwtXv7STjJxsaGr00UtTZ7Lldu3iXU0/TdAT98d4v6zAz1ep1ut8vq6iqZTIZarUa5XMYP",
+            "o6PLy8t7juNsitnGpSJwEahhk6KK9qpToz9O3Fsp6kw6LYSA1qhEdnyCaVpYm9go8H3Hcbqe5539",
+            "H/YvZvvl5HpaAAAAAElFTkSuQmCC"
+        ].join(''),
+        '{ICON_REMOVE}' : [
+            "data:image/png;base64,",
+            "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0",
+            "U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAK9SURBVBgZBcFLiFVlAADg7//PuXdmGp3x",
+            "MeIokk1USG8jKmlRYJJU1K6NRILQopXVImoVFBGBpLteu2gVLYyiUALFRSVk0aKC0nyE5uA43pm5",
+            "98495/zn7/tCzhns//LSQzh867rxXYO6NahbddsaNm0Py7iGhEUs4DMcKwHapnn4vtk1u157bBMA",
+            "6Fft9KBqpxdX07aqZnmUnL+24tuz/T04WAK0TbN5qhvApRtJJwRloCgZ60Q3j0VFjDoFO7dN2Do9",
+            "ueGT05cPRYBU11OTJU3LchX0am6M6K3SW2VhyPxKAm98ftGuuUl3z3Q2lQCprjes7Ub9Ef3VJMag",
+            "RFEQCwpBEWgR0pIfzy06c7F3uQRIVbV5eqLQGzYGoyzGrIjEFBSRQlYUyIWrSyNHjv+9hP0lQFNV",
+            "2zdPdfRWswYyRQpiRqKQlTlqM6mTNFUzd/SVR69HgFSNts9Oj+lXWYgUIYiICICQyZlmNJKqUYIS",
+            "9r793URZxO5YJ6pSEmVkGUkAATFSp2SlP2iwBCU0o2rT5OS4GGghEwJRkDMh4ORHhic/9MO/f3lp",
+            "fF1YU11/nea9ElI1uqmc7CojRQxSG8hZixBw4mNTf37hjucPGJu7y/C3Y8Xvp46/c/yJTr/4/sbt",
+            "M21Kh3Y/uOPOua0zfjnfSG2WBUXMioLRpy+6/9kXTJw9IZz6QGd4XnfDlnjl3IUdZaqq3Xj65z/+",
+            "sTgsrYyyOmWjOqiaVpNaB65eMD47x1OvAijf2qJowy1lqusHnnv83ok39z0CAFKmTlnVcOanrQa/",
+            "fmPyq5eNhv8ZYHmpkAqXi9l79t62fnrymYXl2sX5vvmlVUuDWt1kRYy6naAbWv+cOip2grro6y1k",
+            "567ElBrvh537Ds/gILZjIzZiPdZjerzb6YyPd+xJp+248rW1/QVVGeeL3Bx58ljz7v/pCEpK8wRG",
+            "cAAAAABJRU5ErkJggg=="
+        ].join(''),
+        '{ICON_SEARCH}' : [
+            "data:image/png;base64,",
+            "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0",
+            "U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAH5SURBVDjLpZK/a5NhEMe/748kRqypmqQQ",
+            "gz/oUPUPECpCoEVwyNStIA6COFR33boIjg6mg4uL0k0EO1RFISKImkHQxlbQRAsx0dgKJm/e53nu",
+            "nnOwViR5leJnuZs+973jHBHB/+D/ah7X2LXWloilyMw5YgtD3CDiBWN4Zno8bQcJHBFBucauZfso",
+            "lZDCru0OfFcAAUISrLZDfPzSKxuiibOT+T6JCwDMtrQzYQvZHQ5Cw2h3GK0OI9AWBzJJZFOxgtJU",
+            "GpTABQAiLu5OOviuGIEWkBUwC7pasNZj7N2ThNJUjBQY4pznAoEWsBWwxU+JFXSVRTzmQWvKRR5R",
+            "G4KVGMgKrAVYflexAAugDCEygdbUCI2F7zobk7FZY76DIDQgrT9HCwwt1FsBhhIu4p4D3kiS8B0M",
+            "Jz28ftfGSPfl8MPLxbGBAqVpptbslJc+fEPMA7JDPrIpH3FX8LzaROdrE5O51jalgid3Lh4b6/sD",
+            "ALh6971riErGcFET58gwDPGndG9JT6ReHcwfPorGygu8rdxvGxMeP3XtzcofgigWZ0/EtQ7n0/sO",
+            "Te0/Mo7V5WeoVu61z1yvZzZX+BsnZx9opYLpevXp7eXKIrL5UWit0n0r/Isb50bjRGreiyWmgs76",
+            "lfM31y5tSQAAc6czHjONXLi13thygih+AEq4N6GqMsuhAAAAAElFTkSuQmCC"
+        ].join('')
     }, function([key, val]) {
         script = script.split(key).join(val);
     });
@@ -1454,7 +1455,7 @@ function strip(s) {
  * @return {String}      文字列としての値
  */
 function stringify(x) {
-    let result = '', c;
+    var result = '', c;
     if (x !== null) {
         switch (typeof x) {
             case 'string':
@@ -1509,10 +1510,10 @@ function definePotUpdatePatchUtil() {
      *
      * @const  {String}  PREF_PREFIX
      */
-    const PREF_PREFIX = 'patches.polygonplanet.extension.update.patches.';
+    var PREF_PREFIX = 'patches.polygonplanet.extension.update.patches.';
     var potUpdatePatchUtil = {
         getPref: function(key, def) {
-            let value = getPref(PREF_PREFIX + key);
+            var value = getPref(PREF_PREFIX + key);
             if (value === undefined) {
                 value = def;
             }
