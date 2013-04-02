@@ -31,8 +31,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.39
- * @date       2013-04-02
+ * @version    1.40
+ * @date       2013-04-03
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -45,11 +45,11 @@
 //-----------------------------------------------------------------------------
 (function(undefined) {
 //-----------------------------------------------------------------------------
-const LANG = (function(n) {
+var LANG = function(n) {
     return ((n && (n.language || n.userLanguage     ||
             n.browserLanguage || n.systemLanguage)) ||
             'en').split(/[^a-zA-Z0-9]+/).shift().toLowerCase();
-})(navigator);
+}(navigator);
 
 /**
  * pixiv Extractor
@@ -70,9 +70,7 @@ var pixivProto = {
     MANGA_PAGE_REGEXP  : /\b(?:mode=manga)\b/,
     PIXIV_HOST_REGEXP  : /^(?:[\w-]+\.)*?pixiv\.net(?:\b|$)/,
     
-    XPATH_NEXT_PAGE_HREF: pack(<><![CDATA[
-        //*[contains(@class,"works_display")]//a/@href
-    ]]></>),
+    XPATH_NEXT_PAGE_HREF: '//*[contains(@class,"works_display")]//a/@href',
     
     pixivDocKey: 0,
     pixivDocuments: {},
@@ -336,17 +334,17 @@ var pixivProto = {
             } catch (e) {}
         }, true);
         img.setAttribute('src', src);
-        img.setAttribute('style', pack(<><![CDATA[
-            width    : 1px;
-            height   : 1px;
-            border   : 0 none;
-            padding  : 0;
-            margin   : 0;
-            display  : inline;
-            position : absolute;
-            left     : 0px;
-            top      : 0px;
-        ]]></>));
+        img.setAttribute('style', [
+            'width    : 1px;',
+            'height   : 1px;',
+            'border   : 0 none;',
+            'padding  : 0;',
+            'margin   : 0;',
+            'display  : inline;',
+            'position : absolute;',
+            'left     : 0px;',
+            'top      : 0px;'
+        ].join('\n'));
         doc.body.appendChild(img);
         return img;
     },
@@ -369,7 +367,7 @@ var pixivProto = {
     },
     // ログインチェック
     resolveLogin: function(res) {
-        let expr, doc;
+        var expr, doc;
         doc = convertToHTMLDocument(res.responseText);
         expr = '//form[@name="loginForm"]';
         if ($x(expr, doc)) {
@@ -623,34 +621,25 @@ var pixivBookmark = update({
     ILLUST_ID_REGEXP   : /\b(?:illust_?id)=(\d+)/i,
     USER_ID_REGEXP     : /(?:(?=\buser_?).*|\b)id=(\d+)/i,
     
-    XPATH_BOOKMARK: pack(<><![CDATA[
-        (
-        //*[contains(@class, "works_illusticonsBlock")]
-        //div[last()]/span/a[last() = 1][contains(@href, "bookmark_add")]
-        )
-            or
-        (
-        //*[@id = "contents"]//*[contains(@class, "works_illusticonsBlock")]
-        //a[contains(@href, "bookmark_add")]
-        )
-            or
-        (
-        //*[@id = "bookmark"]//form[contains(@action, "bookmark_add")]
-        )
-    ]]></>),
-    XPATH_BOOKMARK_ILLUST_ID: pack(<><![CDATA[
-        //*[@name="illust_id" or @id="illust_id"]/@value
-    ]]></>),
-    XPATH_BOOKMARK_ILLUST_ID_BY_FORM: pack(<><![CDATA[
-        //input[@name = "illust_id"]/@value
-    ]]></>),
-    XPATH_BOOKMARK_USER: pack(<><![CDATA[
-        //*[@id="favorite-preference"]//form[contains(@action, "bookmark_add")]
-    ]]></>),
-    XPATH_BOOKMARK_USER_ID: pack(<><![CDATA[
-        //*[@id="favorite-preference"]
-        //input[@type="hidden"][@name="user_id"]/@value
-    ]]></>),
+    XPATH_BOOKMARK: [
+        '(',
+        '//*[contains(@class, "works_illusticonsBlock")]',
+        '//div[last()]/span/a[last() = 1][contains(@href, "bookmark_add")]',
+        ')',
+            'or',
+        '(',
+        '//*[@id = "contents"]//*[contains(@class, "works_illusticonsBlock")]',
+        '//a[contains(@href, "bookmark_add")]',
+        ')',
+            'or',
+        '(',
+        '//*[@id = "bookmark"]//form[contains(@action, "bookmark_add")]',
+        ')'
+    ].join(''),
+    XPATH_BOOKMARK_ILLUST_ID: '//*[@name="illust_id" or @id="illust_id"]/@value',
+    XPATH_BOOKMARK_ILLUST_ID_BY_FORM: '//input[@name = "illust_id"]/@value',
+    XPATH_BOOKMARK_USER: '//*[@id="favorite-preference"]//form[contains(@action, "bookmark_add")]',
+    XPATH_BOOKMARK_USER_ID: '//*[@id="favorite-preference"]//input[@type="hidden"][@name="user_id"]/@value',
     check: function(ps) {
         var result = false, isPrefs = false, re;
         try {
@@ -773,7 +762,7 @@ var pixivBookmark = update({
             case 'changed':
                 url = this.BASE_URL + 'bookmark.php?type=user';
                 result = request(url).addCallback(function(res) {
-                    let expr, doc = convertToHTMLDocument(res.responseText);
+                    var expr, doc = convertToHTMLDocument(res.responseText);
                     if ($x('//form[@name="login-form"]', doc)) {
                         throw new Error(getMessage('error.notLoggedin'));
                     }
@@ -1329,7 +1318,7 @@ update(pixivThumbsExpander, {
             
             // タブが閉じられるとき各プロパティを開放
             target.addEventListener('beforeunload', function() {
-                let lee = arguments.callee;
+                var lee = arguments.callee;
                 target.removeEventListener('beforeunload', lee, true);
                 self.clearProps(true);
             }, true);
@@ -1523,7 +1512,7 @@ update(pixivThumbsExpander, {
         };
     },
     getResizeSize: function(orgWidth, orgHeight, maxWidth, maxHeight) {
-        let result, percent, ratioX, ratioY, orgw, orgh, maxw, maxh;
+        var result, percent, ratioX, ratioY, orgw, orgh, maxw, maxh;
         orgw = orgWidth  - 0;
         orgh = orgHeight - 0;
         maxw = maxWidth  - 0;
@@ -1629,23 +1618,22 @@ update(pixivThumbsExpander, {
             css(li, { width: 'auto' });
         }
         
-        let (limit = 2000) {
-            // lazyloadが使われてる場合は表示が完了するまで待つ
-            till(function() {
-                let stop, sz;
-                if (--limit <= 0) {
-                    stop = true;
+        var limit = 2000;
+        // lazyloadが使われてる場合は表示が完了するまで待つ
+        till(function() {
+            var stop, sz;
+            if (--limit <= 0) {
+                stop = true;
+            } else {
+                sz = self.getSizePos(mimg);
+                if (sz.width === 0 && sz.width === 0) {
+                    stop = false;
                 } else {
-                    sz = self.getSizePos(mimg);
-                    if (sz.width === 0 && sz.width === 0) {
-                        stop = false;
-                    } else {
-                        stop = true;
-                    }
+                    stop = true;
                 }
-                return stop;
-            });
-        }
+            }
+            return stop;
+        });
         opts.orgSize = size = {
             s: this.getSizePos(simg),
             m: this.getSizePos(mimg)
@@ -1660,17 +1648,16 @@ update(pixivThumbsExpander, {
         };
         if (to.width < from.width || to.height < from.height) {
             // 遅延読み込みの影響で正確に計れない時がある
-            let (resize = this.getResizeSize(
+            var resize = this.getResizeSize(
                 mimg.naturalWidth,
                 mimg.naturalHeight,
                 this.viewSize.m.width,
                 this.viewSize.m.height
-            )) {
-                to.width  = resize.width;
-                to.height = resize.height;
-                opts.orgSize.m.width  = size.m.width  = to.width;
-                opts.orgSize.m.height = size.m.height = to.height;
-            }
+            );
+            to.width  = resize.width;
+            to.height = resize.height;
+            opts.orgSize.m.width  = size.m.width  = to.width;
+            opts.orgSize.m.height = size.m.height = to.height;
         }
         before = function() {
             css(li, {
@@ -2204,7 +2191,7 @@ update(pixivThumbsExpander, {
     },
     // スタックフィードページ用レイアウト調整
     fixStaccfeedPageLayoutBefore: function(first) {
-        let self = this, actions;
+        var self = this, actions;
         if (!this.expanding) {
             return;
         }
@@ -2218,7 +2205,7 @@ update(pixivThumbsExpander, {
             }
         }];
         actions.forEach(function(methods) {
-            let node, target;
+            var node, target;
             try {
                 node = first;
                 while (node) {
@@ -2237,7 +2224,7 @@ update(pixivThumbsExpander, {
     // ランキングページ用
     // 拡大表示すると崩れるので調節
     fixRankingPageLayoutBefore: function(first) {
-        let self = this, actions;
+        var self = this, actions;
         if (!this.expanding) {
             return;
         }
@@ -2254,7 +2241,7 @@ update(pixivThumbsExpander, {
         {
             selector: '.' + this.nopId,
             action: function(elem) {
-                let a;
+                var a;
                 css(elem, {
                     float: 'left',
                     position: 'static'
@@ -2284,7 +2271,7 @@ update(pixivThumbsExpander, {
             }
         }];
         actions.forEach(function(methods) {
-            let node, target;
+            var node, target;
             try {
                 node = first;
                 while (node) {
@@ -2418,7 +2405,7 @@ update(pixivThumbsExpander, {
 // コンテキストメニューに登録
 (function() {
 
-const PIXIV_MENU_LABEL = ({
+var PIXIV_MENU_LABEL = ({
     ja: 'pixivサムネイルの拡大表示',
     en: 'Expand pixiv thumbnail image'
 })[LANG === 'ja' && LANG || 'en'];
