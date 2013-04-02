@@ -17,10 +17,10 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.24
- * @date       2011-09-29
- * @author     polygon planet <polygon.planet@gmail.com>
- *              - Blog    : http://polygon-planet.blogspot.com/
+ * @version    1.25
+ * @date       2013-04-03
+ * @author     polygon planet <polygon.planet.aqua@gmail.com>
+ *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
  *              - Tumblr  : http://polygonplanet.tumblr.com/
  * @license    Same as Tombloo
@@ -34,14 +34,12 @@
 //-----------------------------------------------------------------------------
 (function(undefined) {
 
-// Define language
-const LANG = (function(n) {
+var LANG = function(n) {
     return ((n && (n.language || n.userLanguage || n.browserLanguage ||
            n.systemLanguage)) || 'en').split(/[^a-zA-Z0-9]+/).shift().toLowerCase();
-})(navigator);
+}(navigator);
 
-// メニューのラベル
-const MENU_LABEL = ({
+var MENU_LABEL = ({
     ja : 'Twitter括弧で囲うパッチの設定',
     en : 'Twitter enclosure settings'
 })[LANG === 'ja' && LANG || 'en'];
@@ -49,7 +47,7 @@ const MENU_LABEL = ({
 
 // 短縮URL対応の処理
 //FIXME: t.co
-const SAMPLE_SHORT_URL = 'http://bit.ly/-*-*-*';
+var SAMPLE_SHORT_URL = 'http://bit.ly/-*-*-*';
 
 
 // Util object
@@ -58,7 +56,7 @@ var potTwitterEncUtil = definePotTwitterEncUtil();
 
 // Fixed extractor (暫定)
 addAround(Tombloo.Service.extractors['Quote - Twitter'], 'extract', function(proceed, args) {
-    let ctx = update({}, args[0] || {}), re;
+    var ctx = update({}, args[0] || {}), re;
     re = /(?:status|statuses)\/(\d+)/;
     if (re.test(ctx.hash) && !re.test(ctx.href)) {
         // hash = '#!/user/status/xxxxxxxxxx'
@@ -102,7 +100,7 @@ addAround(Tombloo.Service.extractors['Quote - Twitter'], 'extract', function(pro
 
 // Twitter.post アップデート
 addAround(Twitter, 'post', function(proceed, args, that) {
-    let ps = args[0], org = update({}, ps), ops = {}, name, prefs = {
+    var ps = args[0], org = update({}, ps), ops = {}, name, prefs = {
         enclose   : true,
         prefix    : '',
         separator : '',
@@ -137,14 +135,12 @@ addAround(Twitter, 'post', function(proceed, args, that) {
 (function(globals) {
 
 if (QuickPostForm.extended) {
-    let (qe = QuickPostForm.extended) {
-        qe.addProcedure(procedure);
-    }
+    QuickPostForm.extended.addProcedure(procedure);
 } else {
     addAround(QuickPostForm, 'show', function(proceed, args) {
-        const QUICKPOSTFORM_XUL_PATH = 'chrome://tombloo/content/quickPostForm.xul';
-        let [ps, position, message] = args;
-        let win, result, orgOpenDialog;
+        var QUICKPOSTFORM_XUL_PATH = 'chrome://tombloo/content/quickPostForm.xul';
+        var ps = args[0], position = args[1], message = args[2];
+        var win, result, orgOpenDialog;
         orgOpenDialog = globals.openDialog;
         update(ps || {}, {
             twitterSuffix : stringify(potTwitterEncUtil.getPref('suffix'))
@@ -178,13 +174,13 @@ if (QuickPostForm.extended) {
                         args         : [win, ps],
                         procedures   : [],
                         addProcedure : function(procedure) {
-                            let pcs = this.procedures;
+                            var pcs = this.procedures;
                             pcs = pcs || [];
                             pcs.push(procedure);
                             return this;
                         },
                         callProcedure : function() {
-                            let args = this.args;
+                            var args = this.args;
                             (this.procedures || []).forEach(function(p) {
                                 p && p.apply(null, args);
                             });
@@ -204,7 +200,7 @@ function isDisplayFields() {
 
 function procedure(win, ps) {
     win.addEventListener('load', function() {
-        let doc, elmForm, formPanel, suffixBox, wrapper, make;
+        var doc, elmForm, formPanel, suffixBox, wrapper, make;
         if (!models.Twitter.check(ps)) {
             return;
         }
@@ -237,71 +233,68 @@ function procedure(win, ps) {
                 wrapper.style.display = 'none';
             }
             formPanel.fields.twitterSuffix = suffixBox;
-            {
-                let toggleFields = function(resize) {
-                    let posters, prev, curr;
-                    if (isDisplayFields()) {
-                        posters = formPanel.postersPanel.checked.filter(function(poster) {
-                            return poster && poster.name === Twitter.name;
-                        });
-                        prev = wrapper.style.display == 'none'  ? 'none' : '';
-                        curr = (posters && posters.length) ? '' : 'none';
-                        if (prev !== curr) {
-                            wrapper.style.display = curr;
-                            if (resize) {
-                                try {
-                                    formPanel.dialogPanel.sizeToContent();
-                                } catch (er) {}
-                            }
+
+            var toggleFields = function(resize) {
+                var posters, prev, curr;
+                if (isDisplayFields()) {
+                    posters = formPanel.postersPanel.checked.filter(function(poster) {
+                        return poster && poster.name === Twitter.name;
+                    });
+                    prev = wrapper.style.display == 'none'  ? 'none' : '';
+                    curr = (posters && posters.length) ? '' : 'none';
+                    if (prev !== curr) {
+                        wrapper.style.display = curr;
+                        if (resize) {
+                            try {
+                                formPanel.dialogPanel.sizeToContent();
+                            } catch (er) {}
                         }
                     }
-                };
-                update(toggleFields, {
-                    delay : function(resize, time) {
-                        callLater(time === 0 ? 0 : (time || 0.3), function() {
-                            toggleFields(!!resize);
-                        });
-                    }
-                });
-                toggleFields();
-                
-                // アイコンがONの時のみ表示する
-                callLater(0.275, function() {
-                    if (formPanel.postersPanel.setDisabled.extended) {
-                        let (fpse = formPanel.postersPanel.setDisabled.extended) {
-                            fpse.addProcedure(function() {
-                                toggleFields.delay(true);
+                }
+            };
+            update(toggleFields, {
+                delay : function(resize, time) {
+                    callLater(time === 0 ? 0 : (time || 0.3), function() {
+                        toggleFields(!!resize);
+                    });
+                }
+            });
+            toggleFields();
+            // アイコンがONの時のみ表示する
+            callLater(0.275, function() {
+                if (formPanel.postersPanel.setDisabled.extended) {
+                    var fpse = formPanel.postersPanel.setDisabled.extended;
+                    fpse.addProcedure(function() {
+                        toggleFields.delay(true);
+                    });
+                } else {
+                    addAround(formPanel.postersPanel, 'setDisabled', function(func, params) {
+                        var res = func(params);
+                        // サイズが変わることで他のPosterもONになってしまうためディレイを設定
+                        toggleFields.delay(true);
+                        if (!formPanel.postersPanel.setDisabled.extended) {
+                            update(formPanel.postersPanel.setDisabled, {
+                                extended : {
+                                    procedures   : [],
+                                    addProcedure : function(p) {
+                                        this.procedures.push(p);
+                                    },
+                                    callProcedure : function() {
+                                        this.procedures.forEach(function(p) {
+                                            p && p();
+                                        });
+                                    }
+                                }
                             });
                         }
-                    } else {
-                        addAround(formPanel.postersPanel, 'setDisabled', function(func, params) {
-                            let res = func(params);
-                            // サイズが変わることで他のPosterもONになってしまうためディレイを設定
-                            toggleFields.delay(true);
-                            if (!formPanel.postersPanel.setDisabled.extended) {
-                                update(formPanel.postersPanel.setDisabled, {
-                                    extended : {
-                                        procedures   : [],
-                                        addProcedure : function(p) {
-                                            this.procedures.push(p);
-                                        },
-                                        callProcedure : function() {
-                                            this.procedures.forEach(function(p) {
-                                                p && p();
-                                            });
-                                        }
-                                    }
-                                });
-                            }
-                            formPanel.postersPanel.setDisabled.extended.callProcedure();
-                            return res;
-                        });
-                    }
-                    toggleFields(true);
-                });
-                // フォームのサイズを調整
-                toggleFields.delay(true, 0.5);
-            }
+                        formPanel.postersPanel.setDisabled.extended.callProcedure();
+                        return res;
+                    });
+                }
+                toggleFields(true);
+            });
+            // フォームのサイズを調整
+            toggleFields.delay(true, 0.5);
         });
     }, true);
 }
@@ -318,7 +311,7 @@ Tombloo.Service.actions.register({
         return true;
     },
     execute : function(ctx) {
-        let params = {
+        var params = {
             enclose     : !!potTwitterEncUtil.getPref('enclose', true),
             prefix      : stringify(potTwitterEncUtil.getPref('prefix')),
             separator   : stringify(potTwitterEncUtil.getPref('separator')),
@@ -364,8 +357,8 @@ Tombloo.Service.actions.register({
  *                           - suffix    : 末尾に付けるテキスト
  */
 function beforeFilter(ps, ops) {
-    const MAX_LENGTH = ops.enclose ? 138 : 140;
-    let brackets, contents, re, make, psd;
+    var MAX_LENGTH = ops.enclose ? 138 : 140;
+    var brackets, contents, re, make, psd;
     brackets = [
         // 括弧の中でタイトル文字列に使用されていないものを使う
         '「」', '“”', '『』', '‘’', '≪≫', '＜＞',
@@ -391,7 +384,7 @@ function beforeFilter(ps, ops) {
     };
     update(make, {
         desc : function(o) {
-            let desc = trim(o.desc), sep = rtrim(spacize(o.sep));
+            var desc = trim(o.desc), sep = rtrim(spacize(o.sep));
             // 記号以外の文字で終わってたらセパレータを付加
             if (desc && sep &&
                 re.word.test(desc.slice(-1)) && desc.slice(-1) !== sep.charAt(0)
@@ -425,7 +418,7 @@ function beforeFilter(ps, ops) {
         },
         // 140文字以上ならそれ以上付加しない。可能なかぎり切り詰める
         truncate : function(o, key) {
-            let maked = make(o);
+            var maked = make(o);
             while (o[key] && o[key].length > 1 && maked.length > MAX_LENGTH) {
                 o[key] = spacize(o[key]).slice(0, -2) + '…';
                 if (o[key].length === 1) {
@@ -477,7 +470,7 @@ function beforeFilter(ps, ops) {
 
 // XULを動的生成 (設定メニューのためキャッシュはしない)
 function generateXUL() {
-    let head, template, script, style, code, labels;
+    var head, template, script, style, code, labels;
     labels = {
         '{TITLE}': {
             ja : MENU_LABEL,
@@ -517,156 +510,156 @@ function generateXUL() {
         }
     };
     head = 'data:application/vnd.mozilla.xul+xml;charset=utf-8,';
-    style = ['data:text/css,', encodeURIComponent(trim(<><![CDATA[
-        window {
-            margin: 0.7em 0.5em;
-        }
-        button {
-            cursor: pointer;
-            margin-top: 0.7em;
-            padding: 0.5em 0;
-        }
-        textbox {
-            margin: 0 0.5em 0.5em 0.7em;
-        }
-        .button-icon {
-            margin-right: 0.5em;
-        }
-        #length {
-            opacity: 0.75;
-        }
-        #submit-button {
-            font-weight: bold;
-            padding: 0.5em 0.7em 0.5em 0.4em;
-        }
-    ]]></>))].join('');
+    style = ['data:text/css,', encodeURIComponent([
+        'window {',
+            'margin: 0.7em 0.5em;',
+        '}',
+        'button {',
+            'cursor: pointer;',
+            'margin-top: 0.7em;',
+            'padding: 0.5em 0;',
+        '}',
+        'textbox {',
+            'margin: 0 0.5em 0.5em 0.7em;',
+        '}',
+        '.button-icon {',
+            'margin-right: 0.5em;',
+        '}',
+        '#length {',
+            'opacity: 0.75;',
+        '}',
+        '#submit-button {',
+            'font-weight: bold;',
+            'padding: 0.5em 0.7em 0.5em 0.4em;',
+        '}'
+    ].join('\n'))].join('');
     
-    template = trim(<><![CDATA[
-        <?xml version="1.0" encoding="utf-8"?>
-        <?xml-stylesheet type="text/css" href="chrome://global/skin/"?>
-        <?xml-stylesheet type="text/css" href="{STYLE}"?>
-        <dialog title="{TITLE}" buttons="accept"
-                xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
-                xmlns:html="http://www.w3.org/1999/xhtml">
-            <hbox flex="1">
-                <vbox flex="1">
-                    <checkbox id="enclose" label="{ENCLOSE}" checked="true"/>
-                    <spacer height="5"/>
-                    <label value="{PREFIX}"/>
-                    <textbox id="prefix" rows="1" multiline="false" flex="1"
-                             maxlength="140" value=""/>
-                    <spacer height="5"/>
-                    <label value="{SEPARATOR}"/>
-                    <label value="{SEPARATOR_NOTE}"
-                           style="margin: 0.5em; font-size: small;"/>
-                    <textbox id="separator" rows="1" multiline="false" flex="1"
-                             maxlength="140" value=""/>
-                    <spacer height="5"/>
-                    <label value="{SUFFIX}"/>
-                    <label value="{SUFFIX_NOTE}"
-                           style="margin: 0.5em; font-size: small;"/>
-                    <textbox id="suffix" rows="1" multiline="false" flex="1"
-                             maxlength="140" value=""/>
-                    <spacer height="5"/>
-                    <checkbox id="displayForm" checked="true"
-                              label="{SUFFIX_DISPLAY_FORM_CHECK}"/>
-                    <spacer height="15"/>
-                    <label value="Preview"/>
-                    <spacer height="2"/>
-                    <textbox id="preview" rows="5" multiline="true" flex="1"
-                             readonly="true" value=""/>
-                    <spacer height="5"/>
-                    <hbox align="right">
-                        <label id="length" value=""/>
-                    </hbox>
-                    <spacer height="5"/>
-                    <button id="submit-button" dlgtype="accept" label="OK" flex="1"
-                            tooltiptext="{SUBMIT_TIP}"
-                            image="chrome://tombloo/skin/accept.png"/>
-                </vbox>
-            </hbox>
-            <script>{SCRIPT}</script>
-        </dialog>
-    ]]></>.toString());
+    template = [
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<?xml-stylesheet type="text/css" href="chrome://global/skin/"?>',
+        '<?xml-stylesheet type="text/css" href="{STYLE}"?>',
+        '<dialog title="{TITLE}" buttons="accept"',
+                'xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"',
+                'xmlns:html="http://www.w3.org/1999/xhtml">',
+            '<hbox flex="1">',
+                '<vbox flex="1">',
+                    '<checkbox id="enclose" label="{ENCLOSE}" checked="true"/>',
+                    '<spacer height="5"/>',
+                    '<label value="{PREFIX}"/>',
+                    '<textbox id="prefix" rows="1" multiline="false" flex="1"',
+                             'maxlength="140" value=""/>',
+                    '<spacer height="5"/>',
+                    '<label value="{SEPARATOR}"/>',
+                    '<label value="{SEPARATOR_NOTE}"',
+                           'style="margin: 0.5em; font-size: small;"/>',
+                    '<textbox id="separator" rows="1" multiline="false" flex="1"',
+                             'maxlength="140" value=""/>',
+                    '<spacer height="5"/>',
+                    '<label value="{SUFFIX}"/>',
+                    '<label value="{SUFFIX_NOTE}"',
+                           'style="margin: 0.5em; font-size: small;"/>',
+                    '<textbox id="suffix" rows="1" multiline="false" flex="1"',
+                             'maxlength="140" value=""/>',
+                    '<spacer height="5"/>',
+                    '<checkbox id="displayForm" checked="true"',
+                              'label="{SUFFIX_DISPLAY_FORM_CHECK}"/>',
+                    '<spacer height="15"/>',
+                    '<label value="Preview"/>',
+                    '<spacer height="2"/>',
+                    '<textbox id="preview" rows="5" multiline="true" flex="1"',
+                             'readonly="true" value=""/>',
+                    '<spacer height="5"/>',
+                    '<hbox align="right">',
+                        '<label id="length" value=""/>',
+                    '</hbox>',
+                    '<spacer height="5"/>',
+                    '<button id="submit-button" dlgtype="accept" label="OK" flex="1"',
+                            'tooltiptext="{SUBMIT_TIP}"',
+                            'image="chrome://tombloo/skin/accept.png"/>',
+                '</vbox>',
+            '</hbox>',
+            '<script>{SCRIPT}</script>',
+        '</dialog>'
+    ].join('\n');
     
     forEach(labels, function([key, vals]) {
         template = template.replace(key, vals[LANG === 'ja' && LANG || 'en']);
     });
     
-    script = <><![CDATA[
-        var args = arguments, params = args[0], env;
-        var encloseCheck, prefixBox, separatorBox, suffixBox, displayFormCheck, previewBox, previewLength;
-        
-        env = Components.classes['@brasil.to/tombloo-service;1'].getService().wrappedJSObject;
-        
-        window.addEventListener('load', init, true);
-        window.addEventListener('dialogaccept', save, true);
-        
-        function init() {
-            encloseCheck     = byId('enclose');
-            prefixBox        = byId('prefix');
-            separatorBox     = byId('separator');
-            suffixBox        = byId('suffix');
-            displayFormCheck = byId('displayForm');
-            previewBox       = byId('preview');
-            previewLength    = byId('length');
-            encloseCheck.checked     = !!params.potTwitterEncUtil.getPref('enclose', true);
-            prefixBox.value          = params.stringify(params.potTwitterEncUtil.getPref('prefix'));
-            separatorBox.value       = params.stringify(params.potTwitterEncUtil.getPref('separator'));
-            suffixBox.value          = params.stringify(params.potTwitterEncUtil.getPref('suffix'));
-            displayFormCheck.checked = !!params.potTwitterEncUtil.getPref('displayForm', true);
-            encloseCheck.addEventListener('command', build, true);
-            prefixBox.addEventListener('input', build, true);
-            separatorBox.addEventListener('input', build, true);
-            suffixBox.addEventListener('input', build, true);
-            displayFormCheck.addEventListener('command', build, true);
-            build();
-        }
-        
-        function save() {
-            params.enclose     = !!byId('enclose').checked;
-            params.prefix      = params.stringify(byId('prefix').value);
-            params.separator   = params.stringify(byId('separator').value);
-            params.suffix      = params.stringify(byId('suffix').value);
-            params.displayForm = !!byId('displayForm').checked;
-            params.potTwitterEncUtil.setPref('enclose', params.enclose);
-            params.potTwitterEncUtil.setPref('prefix', params.prefix);
-            params.potTwitterEncUtil.setPref('separator', params.separator);
-            params.potTwitterEncUtil.setPref('suffix', params.suffix);
-            params.potTwitterEncUtil.setPref('displayForm', params.displayForm);
-        }
-        
-        function build() {
-            var psc = env.update({}, params.ps), status, q = '"';
-            params.beforeFilter(psc, {
-                enclose   : !!encloseCheck.checked,
-                prefix    : params.stringify(prefixBox.value),
-                separator : params.stringify(separatorBox.value),
-                suffix    : params.stringify(suffixBox.value)
-            });
-            status = params.joinText([
-                params.stringify(psc.description),
-                params.trim(psc.body) ? q + params.trim(psc.body) + q : '',
-                params.stringify(psc.item),
-                params.stringify(psc.itemUrl),
-                params.stringify(psc.suffix)
-            ], ' ');
-            if (status.length >= 140) {
-                status = shortenUrls(status);
-            }
-            previewBox.value = status;
-            previewLength.value = status.length;
-        }
-        
-        function shortenUrls(text) {
-            var re = /https?[-_.!~*'()a-zA-Z0-9;\/?:@&=+$,%#^]+/g;
-            return text.replace(re, params.SAMPLE_SHORT_URL);
-        }
-        
-        function byId(id) {
-            return document.getElementById(id);
-        }
-    ]]></>.toString();
+    script = [
+        "var args = arguments, params = args[0], env;",
+        "var encloseCheck, prefixBox, separatorBox, suffixBox, displayFormCheck, previewBox, previewLength;",
+        "",
+        "env = Components.classes['@brasil.to/tombloo-service;1'].getService().wrappedJSObject;",
+        "",
+        "window.addEventListener('load', init, true);",
+        "window.addEventListener('dialogaccept', save, true);",
+        "",
+        "function init() {",
+            "encloseCheck     = byId('enclose');",
+            "prefixBox        = byId('prefix');",
+            "separatorBox     = byId('separator');",
+            "suffixBox        = byId('suffix');",
+            "displayFormCheck = byId('displayForm');",
+            "previewBox       = byId('preview');",
+            "previewLength    = byId('length');",
+            "encloseCheck.checked     = !!params.potTwitterEncUtil.getPref('enclose', true);",
+            "prefixBox.value          = params.stringify(params.potTwitterEncUtil.getPref('prefix'));",
+            "separatorBox.value       = params.stringify(params.potTwitterEncUtil.getPref('separator'));",
+            "suffixBox.value          = params.stringify(params.potTwitterEncUtil.getPref('suffix'));",
+            "displayFormCheck.checked = !!params.potTwitterEncUtil.getPref('displayForm', true);",
+            "encloseCheck.addEventListener('command', build, true);",
+            "prefixBox.addEventListener('input', build, true);",
+            "separatorBox.addEventListener('input', build, true);",
+            "suffixBox.addEventListener('input', build, true);",
+            "displayFormCheck.addEventListener('command', build, true);",
+            "build();",
+        "}",
+        "",
+        "function save() {",
+            "params.enclose     = !!byId('enclose').checked;",
+            "params.prefix      = params.stringify(byId('prefix').value);",
+            "params.separator   = params.stringify(byId('separator').value);",
+            "params.suffix      = params.stringify(byId('suffix').value);",
+            "params.displayForm = !!byId('displayForm').checked;",
+            "params.potTwitterEncUtil.setPref('enclose', params.enclose);",
+            "params.potTwitterEncUtil.setPref('prefix', params.prefix);",
+            "params.potTwitterEncUtil.setPref('separator', params.separator);",
+            "params.potTwitterEncUtil.setPref('suffix', params.suffix);",
+            "params.potTwitterEncUtil.setPref('displayForm', params.displayForm);",
+        "}",
+        "",
+        "function build() {",
+            "var psc = env.update({}, params.ps), status, q = '\"';",
+            "params.beforeFilter(psc, {",
+                "enclose   : !!encloseCheck.checked,",
+                "prefix    : params.stringify(prefixBox.value),",
+                "separator : params.stringify(separatorBox.value),",
+                "suffix    : params.stringify(suffixBox.value)",
+            "});",
+            "status = params.joinText([",
+                "params.stringify(psc.description),",
+                "params.trim(psc.body) ? q + params.trim(psc.body) + q : '',",
+                "params.stringify(psc.item),",
+                "params.stringify(psc.itemUrl),",
+                "params.stringify(psc.suffix)",
+            "], ' ');",
+            "if (status.length >= 140) {",
+                "status = shortenUrls(status);",
+            "}",
+            "previewBox.value = status;",
+            "previewLength.value = status.length;",
+        "}",
+        "",
+        "function shortenUrls(text) {",
+            "var re = /https?[-_.!~*'()a-zA-Z0-9;\\/?:@&=+$,%#^]+/g;",
+            "return text.replace(re, params.SAMPLE_SHORT_URL);",
+        "}",
+        "",
+        "function byId(id) {",
+            "return document.getElementById(id);",
+        "}",
+    ].join('\n');
     
     template = template.split('{STYLE}').join(style);
     code = template.split('{SCRIPT}').join(['<![CDATA[', script, ']]>'].join(' '));
@@ -696,7 +689,7 @@ function rtrim(s) {
 
 
 function wrap(text) {
-    let s = trim(text), q = '"';
+    var s = trim(text), q = '"';
     if (s && s.charAt(0) !== q) {
         s = q + s + q;
     }
@@ -705,7 +698,7 @@ function wrap(text) {
 
 
 function unwrap(text) {
-    let s = trim(text), q = '"';
+    var s = trim(text), q = '"';
     if (s && s.length >= 2 && s.charAt(0) === q && s.slice(-1) === q) {
         s = s.slice(1, -1);
     }
@@ -720,7 +713,7 @@ function unwrap(text) {
  * @return {String}      文字列としての値
  */
 function stringify(x) {
-    let result = '', c;
+    var result = '', c;
     if (x !== null) {
         switch (typeof x) {
             case 'string':
@@ -758,10 +751,10 @@ function definePotTwitterEncUtil() {
      *
      * @const  {String}  PREF_PREFIX
      */
-    const PREF_PREFIX = 'patches.polygonplanet.extension.twitter.enclose.';
+    var PREF_PREFIX = 'patches.polygonplanet.extension.twitter.enclose.';
     var potTwitterEncUtil = {
         getPref : function(key, def) {
-            let value = getPref(PREF_PREFIX + key);
+            var value = getPref(PREF_PREFIX + key);
             if (value === undefined) {
                 value = def;
             }
