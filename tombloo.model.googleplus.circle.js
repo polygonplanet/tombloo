@@ -21,10 +21,10 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.13
- * @date       2011-11-19
- * @author     polygon planet <polygon.planet@gmail.com>
- *              - Blog    : http://polygon-planet.blogspot.com/
+ * @version    1.14
+ * @date       2013-04-03
+ * @author     polygon planet <polygon.planet.aqua@gmail.com>
+ *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
  *              - Tumblr  : http://polygonplanet.tumblr.com/
  * @license    Same as Tombloo
@@ -468,11 +468,11 @@ function toPlainText(text) {
         };
         // <strong>は無視されるため <b> に変換
         s = indent(s).replace(re.bold, '<b$1>$2</b>');
-        tags = stringify(<>
-            a b strong s strike kbd em acronym
-            q blockquote ins del sub sup u dfn
-            i abbr cite font img ruby rb rt rp
-        </>).trim().split(re.split);
+        tags = [
+            'a b strong s strike kbd em acronym ',
+            'q blockquote ins del sub sup u dfn ',
+            'i abbr cite font img ruby rb rt rp '
+        ].join(' ').trim().split(re.split);
         p = '';
         do {
             p += '~' + Math.random().toString(36).slice(-1);
