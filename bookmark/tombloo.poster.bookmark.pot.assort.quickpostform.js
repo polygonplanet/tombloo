@@ -18,7 +18,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.25
+ * @version  1.26
  * @date     2013-04-03
  * @author   polygon planet <polygon.planet.aqua@gmail.com>
  *            - Blog    : http://polygon-planet-log.blogspot.com/
@@ -233,7 +233,7 @@ update(FormPanel.prototype.types, {
                             '( ps \\. type ===? [\'"]link["\'] )( \\)? ;? )'
                         ].join('\n')),
                     to: toSp([
-                            '$1 ($2 || ps.type === 'bookmark')$3;'
+                            '$1 ($2 || ps.type === \'bookmark\')$3;'
                         ].join('\n'))
                 },
                 {
