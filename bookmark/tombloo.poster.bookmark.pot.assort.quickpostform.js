@@ -18,8 +18,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version  1.24
- * @date     2013-02-19
+ * @version  1.25
+ * @date     2013-04-03
  * @author   polygon planet <polygon.planet.aqua@gmail.com>
  *            - Blog    : http://polygon-planet-log.blogspot.com/
  *            - Twitter : http://twitter.com/polygon_planet
@@ -90,17 +90,17 @@ update(FormPanel.prototype.types, {
             let re = [
                 {
                     // ブックマークのエントリー数を表示する (Bookmarkのみ(横幅的に))
-                    by: bySp(<><![CDATA[
-                            ( self \. elmWindow \. style \. opacity = 0 ;? [{}]? ;? )
-                            ( [\s\S]*? window \. addEventListener [(][)]{0} ["']load['"] , function )
-                        ]]></>),
-                    to: toSp(<><![CDATA[
-                            $1
-                            if (ps && ps.type === 'bookmark') {
-                                self.potShowEnteredUsersCount();
-                            }
-                            $2
-                        ]]></>)
+                    by: bySp([
+                            '( self \\. elmWindow \\. style \\. opacity = 0 ;? [{}]? ;? )',
+                            '( [\\s\\S]*? window \\. addEventListener [(][)]{0} ["\']load[\'"] , function )'
+                        ].join('\n')),
+                    to: toSp([
+                            '$1',
+                            'if (ps && ps.type === \'bookmark\') {',
+                                'self.potShowEnteredUsersCount();',
+                            '}',
+                            '$2'
+                        ].join('\n'))
                 }
             ];
             re.forEach(function(item) {
@@ -228,36 +228,36 @@ update(FormPanel.prototype.types, {
             var re = [
                 {
                     // bookmark を対応させるため 条件文の中に入れる
-                    by: bySp(<><![CDATA[
-                            ( this \. suggest = \(? [\s\S]+? && )
-                            ( ps \. type ===? ['"]link["'] )( \)? ;? )
-                        ]]></>),
-                    to: toSp(<><![CDATA[
-                            $1 ($2 || ps.type === 'bookmark')$3;
-                        ]]></>)
+                    by: bySp([
+                            '( this \\. suggest = \\(? [\\s\\S]+? && )',
+                            '( ps \\. type ===? [\'"]link["\'] )( \\)? ;? )'
+                        ].join('\n')),
+                    to: toSp([
+                            '$1 ($2 || ps.type === 'bookmark')$3;'
+                        ].join('\n'))
                 },
                 {
                     // コンテキストメニュー用のイベントを設定
-                    by: bySp(<><![CDATA[
-                            (
-                                [{}] [()] [.] addBoth [(] function [(] [)] [{]
-                                    self [.] finishLoading [()]+ ;?
-                            )
-                            (
-                                [}] [)] ;?
-                                [{}] [{}] , false [()] ;?
-                            )
-                            (
-                                connect [()]
-                            )
-                        ]]></>),
-                    to: toSp(<><![CDATA[
-                            $1;
-                            window.addEventListener('DOMContentLoaded', bind('potOnLoad', self), true);
-                            $2;
-                            setTimeout(function() { self.potOnLoad.call(self); }, 100);
-                            $3
-                        ]]></>)
+                    by: bySp([
+                            '(',
+                                '[{}] [()] [.] addBoth [(] function [(] [)] [{]',
+                                    'self [.] finishLoading [()]+ ;?',
+                            ')',
+                            '(',
+                                '[}] [)] ;?',
+                                '[{}] [{}] , false [()] ;?',
+                            ')',
+                            '(',
+                                'connect [()]',
+                            ')'
+                        ].join('\n')),
+                    to: toSp([
+                            '$1;',
+                            'window.addEventListener(\'DOMContentLoaded\', bind(\'potOnLoad\', self), true);',
+                            '$2;',
+                            'setTimeout(function() { self.potOnLoad.call(self); }, 100);',
+                            '$3'
+                        ].join('\n'))
                 }
             ];
             re.forEach(function(item) {
@@ -480,12 +480,8 @@ update(FormPanel.prototype.types, {
         override('EditableLabel', function(code) {
             var re = [
                 {
-                    by: bySp(<><![CDATA[
-                            (window \. addEventListener [()] .*? ['"]onLoad["'] .*?)\b(?:false)\b([\s\S]*)$
-                        ]]></>),
-                    to: toSp(<><![CDATA[
-                            $1true$2
-                        ]]></>)
+                    by: bySp('(window \\. addEventListener [()] .*? [\'"]onLoad["\'] .*?)\\b(?:false)\\b([\\s\\S]*)$'),
+                    to: toSp('$1true$2')
                 }
             ];
             re.forEach(function(item) {
@@ -559,13 +555,11 @@ update(FormPanel.prototype.types, {
             var re = [
                 {
                     // 画像が見えないままの状態を回避
-                    by: bySp(<><![CDATA[
-                            (loadImage \( \w+ \) \. addCallback\b[^{}]+[{}])
-                        ]]></>),
-                    to: toSp(<><![CDATA[
-                            $1
-                            self.potFixFlexImageViewSize(self.elmImage);
-                        ]]></>)
+                    by: bySp('(loadImage \\( \\w+ \\) \\. addCallback\\b[^{}]+[{}])'),
+                    to: toSp([
+                            '$1',
+                            'self.potFixFlexImageViewSize(self.elmImage);'
+                        ].join('\n'))
                 }
             ];
             re.forEach(function(item) {
@@ -667,27 +661,25 @@ update(FormPanel.prototype.types, {
             // 選択範囲のテキスト自動挿入を復活
             if (Pot.getPref('selectionAutoInsert')) {
                 re.push({
-                    by: bySp(<><![CDATA[
-                            var onContentCopy = function [()]+ [{] [\s\S]*? [}] , true [()] ;?
-                        ]]></>),
-                    to: toSp(<><![CDATA[
-                            var selection = broad(window.opener.content.getSelection());
-                            selection.addSelectionListener(self);
-                            window.addEventListener('unload', function() {
-                                selection.removeSelectionListener(self);
-                            }, true);
-                        ]]></>)
+                    by: bySp([
+                            'var onContentCopy = function [()]+ [{] [\\s\\S]*? [}] , true [()] ;?'
+                        ].join('\n')),
+                    to: toSp([
+                            "var selection = broad(window.opener.content.getSelection());",
+                            "selection.addSelectionListener(self);",
+                            "window.addEventListener('unload', function() {",
+                                "selection.removeSelectionListener(self);",
+                            "}, true);"
+                        ].join('\n'))
                 });
             }
             re.push({
-                by: bySp(<><![CDATA[
-                        ([{({({]?[}] , true [)] ;?)( (?:[}] [)] ;?)? [}]+ |)$
-                    ]]></>),
-                to: toSp(<><![CDATA[
-                        $1;
-                        self.potInitBookmarkDescriptionBox(ps);
-                        $2
-                    ]]></>)
+                by: bySp('([{({({]?[}] , true [)] ;?)( (?:[}] [)] ;?)? [}]+ |)$'),
+                to: toSp([
+                        "$1;",
+                        "self.potInitBookmarkDescriptionBox(ps);",
+                        "$2"
+                    ].join('\n'))
             });
             re.forEach(function(item) {
                 code = code.replace(item.by, item.to);
