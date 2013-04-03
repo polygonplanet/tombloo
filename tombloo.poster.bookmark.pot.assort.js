@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.89
- * @date       2013-03-12
+ * @version    1.90
+ * @date       2013-04-03
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -215,7 +215,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.89',
+    VERSION: '1.90',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -323,9 +323,7 @@ Pot.extend({
 (function() {
     // typeof | is* functions
     var toString = Object.prototype.toString, types = {};
-    <>
-    Boolean Number String Function Array Date RegExp Object Error
-    </>.toString().trim().split(/\s+/).forEach(function(type) {
+    'Boolean Number String Function Array Date RegExp Object Error'.split(' ').forEach(function(type) {
         types[type] = '[object ' + type + ']';
     });
     /**
@@ -1928,44 +1926,44 @@ Pot.extend({
                     up: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
                 };
                 alpha.low = alpha.up.toLowerCase();
-                ids = Pot.StringUtil.trim(<>
-                    autopagerize_page_element
-                    content-main
-                    head-line
-                    headline
-                    news_right
-                    entry_detail
-                    str-contentsleft
-                    col1
-                    kijibox
-                    ynDetail
-                    tmplNews
-                    CONTENTS_MAIN
-                    NewsArticle
-                    articleBox
-                    fs-all
-                    MainBox
-                    entry-content
-                    articlebody
-                    article-body
-                    article
-                    blog-body
-                    body
-                    h-entry
-                    entry
-                    main_content
-                    main-content
-                    block-content
-                    contents-block
-                    content-block
-                    main
-                    content
-                    section
-                    post
-                    container
-                    wrap
-                    wrapper
-                </>).split(/\s+/);
+                ids = Pot.StringUtil.trim([
+                    'autopagerize_page_element',
+                    'content-main',
+                    'head-line',
+                    'headline',
+                    'news_right',
+                    'entry_detail',
+                    'str-contentsleft',
+                    'col1',
+                    'kijibox',
+                    'ynDetail',
+                    'tmplNews',
+                    'CONTENTS_MAIN',
+                    'NewsArticle',
+                    'articleBox',
+                    'fs-all',
+                    'MainBox',
+                    'entry-content',
+                    'articlebody',
+                    'article-body',
+                    'article',
+                    'blog-body',
+                    'body',
+                    'h-entry',
+                    'entry',
+                    'main_content',
+                    'main-content',
+                    'block-content',
+                    'contents-block',
+                    'content-block',
+                    'main',
+                    'content',
+                    'section',
+                    'post',
+                    'container',
+                    'wrap',
+                    'wrapper'
+                ].join(' ')).split(/\s+/);
                 re = /-/g;
                 node = null;
                 found = false;
@@ -3365,40 +3363,40 @@ Pot.extend(Pot.StringUtil, {
      * @return {Number}           CRC チェックサム
      */
     crc32: (function() {
-        const tables = <>
-            00000000 77073096 EE0E612C 990951BA 076DC419 706AF48F E963A535 9E6495A3
-            0EDB8832 79DCB8A4 E0D5E91E 97D2D988 09B64C2B 7EB17CBD E7B82D07 90BF1D91
-            1DB71064 6AB020F2 F3B97148 84BE41DE 1ADAD47D 6DDDE4EB F4D4B551 83D385C7
-            136C9856 646BA8C0 FD62F97A 8A65C9EC 14015C4F 63066CD9 FA0F3D63 8D080DF5
-            3B6E20C8 4C69105E D56041E4 A2677172 3C03E4D1 4B04D447 D20D85FD A50AB56B
-            35B5A8FA 42B2986C DBBBC9D6 ACBCF940 32D86CE3 45DF5C75 DCD60DCF ABD13D59
-            26D930AC 51DE003A C8D75180 BFD06116 21B4F4B5 56B3C423 CFBA9599 B8BDA50F
-            2802B89E 5F058808 C60CD9B2 B10BE924 2F6F7C87 58684C11 C1611DAB B6662D3D
-            76DC4190 01DB7106 98D220BC EFD5102A 71B18589 06B6B51F 9FBFE4A5 E8B8D433
-            7807C9A2 0F00F934 9609A88E E10E9818 7F6A0DBB 086D3D2D 91646C97 E6635C01
-            6B6B51F4 1C6C6162 856530D8 F262004E 6C0695ED 1B01A57B 8208F4C1 F50FC457
-            65B0D9C6 12B7E950 8BBEB8EA FCB9887C 62DD1DDF 15DA2D49 8CD37CF3 FBD44C65
-            4DB26158 3AB551CE A3BC0074 D4BB30E2 4ADFA541 3DD895D7 A4D1C46D D3D6F4FB
-            4369E96A 346ED9FC AD678846 DA60B8D0 44042D73 33031DE5 AA0A4C5F DD0D7CC9
-            5005713C 270241AA BE0B1010 C90C2086 5768B525 206F85B3 B966D409 CE61E49F
-            5EDEF90E 29D9C998 B0D09822 C7D7A8B4 59B33D17 2EB40D81 B7BD5C3B C0BA6CAD
-            EDB88320 9ABFB3B6 03B6E20C 74B1D29A EAD54739 9DD277AF 04DB2615 73DC1683
-            E3630B12 94643B84 0D6D6A3E 7A6A5AA8 E40ECF0B 9309FF9D 0A00AE27 7D079EB1
-            F00F9344 8708A3D2 1E01F268 6906C2FE F762575D 806567CB 196C3671 6E6B06E7
-            FED41B76 89D32BE0 10DA7A5A 67DD4ACC F9B9DF6F 8EBEEFF9 17B7BE43 60B08ED5
-            D6D6A3E8 A1D1937E 38D8C2C4 4FDFF252 D1BB67F1 A6BC5767 3FB506DD 48B2364B
-            D80D2BDA AF0A1B4C 36034AF6 41047A60 DF60EFC3 A867DF55 316E8EEF 4669BE79
-            CB61B38C BC66831A 256FD2A0 5268E236 CC0C7795 BB0B4703 220216B9 5505262F
-            C5BA3BBE B2BD0B28 2BB45A92 5CB36A04 C2D7FFA7 B5D0CF31 2CD99E8B 5BDEAE1D
-            9B64C2B0 EC63F226 756AA39C 026D930A 9C0906A9 EB0E363F 72076785 05005713
-            95BF4A82 E2B87A14 7BB12BAE 0CB61B38 92D28E9B E5D5BE0D 7CDCEFB7 0BDBDF21
-            86D3D2D4 F1D4E242 68DDB3F8 1FDA836E 81BE16CD F6B9265B 6FB077E1 18B74777
-            88085AE6 FF0F6A70 66063BCA 11010B5C 8F659EFF F862AE69 616BFFD3 166CCF45
-            A00AE278 D70DD2EE 4E048354 3903B3C2 A7672661 D06016F7 4969474D 3E6E77DB
-            AED16A4A D9D65ADC 40DF0B66 37D83BF0 A9BCAE53 DEBB9EC5 47B2CF7F 30B5FFE9
-            BDBDF21C CABAC28A 53B39330 24B4A3A6 BAD03605 CDD70693 54DE5729 23D967BF
-            B3667A2E C4614AB8 5D681B02 2A6F2B94 B40BBE37 C30C8EA1 5A05DF1B 2D02EF8D
-        </>.toString().trim().split(/\s+/);
+        const tables = [
+            '00000000 77073096 EE0E612C 990951BA 076DC419 706AF48F E963A535 9E6495A3',
+            '0EDB8832 79DCB8A4 E0D5E91E 97D2D988 09B64C2B 7EB17CBD E7B82D07 90BF1D91',
+            '1DB71064 6AB020F2 F3B97148 84BE41DE 1ADAD47D 6DDDE4EB F4D4B551 83D385C7',
+            '136C9856 646BA8C0 FD62F97A 8A65C9EC 14015C4F 63066CD9 FA0F3D63 8D080DF5',
+            '3B6E20C8 4C69105E D56041E4 A2677172 3C03E4D1 4B04D447 D20D85FD A50AB56B',
+            '35B5A8FA 42B2986C DBBBC9D6 ACBCF940 32D86CE3 45DF5C75 DCD60DCF ABD13D59',
+            '26D930AC 51DE003A C8D75180 BFD06116 21B4F4B5 56B3C423 CFBA9599 B8BDA50F',
+            '2802B89E 5F058808 C60CD9B2 B10BE924 2F6F7C87 58684C11 C1611DAB B6662D3D',
+            '76DC4190 01DB7106 98D220BC EFD5102A 71B18589 06B6B51F 9FBFE4A5 E8B8D433',
+            '7807C9A2 0F00F934 9609A88E E10E9818 7F6A0DBB 086D3D2D 91646C97 E6635C01',
+            '6B6B51F4 1C6C6162 856530D8 F262004E 6C0695ED 1B01A57B 8208F4C1 F50FC457',
+            '65B0D9C6 12B7E950 8BBEB8EA FCB9887C 62DD1DDF 15DA2D49 8CD37CF3 FBD44C65',
+            '4DB26158 3AB551CE A3BC0074 D4BB30E2 4ADFA541 3DD895D7 A4D1C46D D3D6F4FB',
+            '4369E96A 346ED9FC AD678846 DA60B8D0 44042D73 33031DE5 AA0A4C5F DD0D7CC9',
+            '5005713C 270241AA BE0B1010 C90C2086 5768B525 206F85B3 B966D409 CE61E49F',
+            '5EDEF90E 29D9C998 B0D09822 C7D7A8B4 59B33D17 2EB40D81 B7BD5C3B C0BA6CAD',
+            'EDB88320 9ABFB3B6 03B6E20C 74B1D29A EAD54739 9DD277AF 04DB2615 73DC1683',
+            'E3630B12 94643B84 0D6D6A3E 7A6A5AA8 E40ECF0B 9309FF9D 0A00AE27 7D079EB1',
+            'F00F9344 8708A3D2 1E01F268 6906C2FE F762575D 806567CB 196C3671 6E6B06E7',
+            'FED41B76 89D32BE0 10DA7A5A 67DD4ACC F9B9DF6F 8EBEEFF9 17B7BE43 60B08ED5',
+            'D6D6A3E8 A1D1937E 38D8C2C4 4FDFF252 D1BB67F1 A6BC5767 3FB506DD 48B2364B',
+            'D80D2BDA AF0A1B4C 36034AF6 41047A60 DF60EFC3 A867DF55 316E8EEF 4669BE79',
+            'CB61B38C BC66831A 256FD2A0 5268E236 CC0C7795 BB0B4703 220216B9 5505262F',
+            'C5BA3BBE B2BD0B28 2BB45A92 5CB36A04 C2D7FFA7 B5D0CF31 2CD99E8B 5BDEAE1D',
+            '9B64C2B0 EC63F226 756AA39C 026D930A 9C0906A9 EB0E363F 72076785 05005713',
+            '95BF4A82 E2B87A14 7BB12BAE 0CB61B38 92D28E9B E5D5BE0D 7CDCEFB7 0BDBDF21',
+            '86D3D2D4 F1D4E242 68DDB3F8 1FDA836E 81BE16CD F6B9265B 6FB077E1 18B74777',
+            '88085AE6 FF0F6A70 66063BCA 11010B5C 8F659EFF F862AE69 616BFFD3 166CCF45',
+            'A00AE278 D70DD2EE 4E048354 3903B3C2 A7672661 D06016F7 4969474D 3E6E77DB',
+            'AED16A4A D9D65ADC 40DF0B66 37D83BF0 A9BCAE53 DEBB9EC5 47B2CF7F 30B5FFE9',
+            'BDBDF21C CABAC28A 53B39330 24B4A3A6 BAD03605 CDD70693 54DE5729 23D967BF',
+            'B3667A2E C4614AB8 5D681B02 2A6F2B94 B40BBE37 C30C8EA1 5A05DF1B 2D02EF8D'
+        ].join(' ').trim().split(/\s+/);
         return function(string) {
             let s, crc, x, y, i, x0, f, len;
             s = Pot.StringUtil.utf8.encode(Pot.StringUtil.stringify(string));
@@ -4745,65 +4743,65 @@ Pot.extend({
 // Tombloo::Progress では進歩状況としての文字列を表示する要素がなかったため定義
 Pot.ProgressDialog = (function() {
     let xul, script;
-    script = Pot.StringUtil.stringify(<><![CDATA[
-        var args = arguments[0], progress, status, dialog, listener;
-        listener = {
-            loaded: false,
-            window: window,
-            parent: null,
-            dialog: null,
-            onCancel: function(event) {
-                this.parent.onCancel(event);
-            },
-            updateState: function(o) {
-                if (o) {
-                    if (o.title) {
-                        try {
-                            document.title = o.title;
-                        } catch (e) {}
-                    }
-                    if (o.status) {
-                        status.value = o.status;
-                    }
-                }
-            }
-        };
-        window.addEventListener('load', function() {
-            progress = byId('progress');
-            status = byId('status');
-            dialog = byId('dialog');
-            listener.parent = args.that;
-            listener.dialog = dialog;
-            listener.loaded = true;
-            args.referListener.call(args.that, listener);
-        }, true);
-        
-        window.addEventListener('dialogcancel', function(event) {
-            listener.onCancel(event);
-        }, true);
-        
-        function byId(id) {
-            return document.getElementById(id);
-        }
-    ]]></>);
-    xul = Pot.StringUtil.mltrim(Pot.StringUtil.trim(<><![CDATA[
-        <?xml version="1.0" encoding="utf-8"?>
-        <?xml-stylesheet type="text/css" href="chrome://global/skin/"?>
-        <?xml-stylesheet type="text/css" href="chrome://global/skin/global.css"?>
-        <dialog xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
-                width="400" 
-                height="170" 
-                id="dialog" 
-                style="padding: 0.6em;"
-                {BUTTONS}>
-            <spacer height="5"/>
-            <progressmeter id="progress" mode="undetermined"/>
-            <textbox id="status" rows="2" flex="1"
-                     multiline="true" readonly="true" value=""
-                     style="-moz-appearance: none; border: none;"/>
-            <script>{SCRIPT}</script>
-        </dialog>
-    ]]></>).split('{SCRIPT}').join(['<![CDATA[', script, ']]>'].join('\n')));
+    script = Pot.StringUtil.stringify([
+        "var args = arguments[0], progress, status, dialog, listener;",
+        "listener = {",
+            "loaded: false,",
+            "window: window,",
+            "parent: null,",
+            "dialog: null,",
+            "onCancel: function(event) {",
+                "this.parent.onCancel(event);",
+            "},",
+            "updateState: function(o) {",
+                "if (o) {",
+                    "if (o.title) {",
+                        "try {",
+                            "document.title = o.title;",
+                        "} catch (e) {}",
+                    "}",
+                    "if (o.status) {",
+                        "status.value = o.status;",
+                    "}",
+                "}",
+            "}",
+        "};",
+        "window.addEventListener('load', function() {",
+            "progress = byId('progress');",
+            "status = byId('status');",
+            "dialog = byId('dialog');",
+            "listener.parent = args.that;",
+            "listener.dialog = dialog;",
+            "listener.loaded = true;",
+            "args.referListener.call(args.that, listener);",
+        "}, true);",
+        "",
+        "window.addEventListener('dialogcancel', function(event) {",
+            "listener.onCancel(event);",
+        "}, true);",
+        "",
+        "function byId(id) {",
+            "return document.getElementById(id);",
+        "}",
+    ].join('\n'));
+    xul = Pot.StringUtil.mltrim(Pot.StringUtil.trim([
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<?xml-stylesheet type="text/css" href="chrome://global/skin/"?>',
+        '<?xml-stylesheet type="text/css" href="chrome://global/skin/global.css"?>',
+        '<dialog xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"',
+                'width="400" ',
+                'height="170" ',
+                'id="dialog" ',
+                'style="padding: 0.6em;"',
+                '{BUTTONS}>',
+            '<spacer height="5"/>',
+            '<progressmeter id="progress" mode="undetermined"/>',
+            '<textbox id="status" rows="2" flex="1"',
+                     'multiline="true" readonly="true" value=""',
+                     'style="-moz-appearance: none; border: none;"/>',
+            '<script>{SCRIPT}</script>',
+        '</dialog>',
+    ].join('\n')).split('{SCRIPT}').join(['<![CDATA[', script, ']]>'].join('\n')));
     
     function ProgressDialog(title, status, useCancel) {
         return new arguments.callee.prototype.init(title, status, useCancel);
@@ -5614,18 +5612,16 @@ Pot.extend(Pot.BookmarkUtil, {
      */
     fixTags: (function() {
         const specials = {
-            importants: <>
-                __iterator__
-            </>.toString().trim().split(/\s+/),
-            subs: <>
-                __parent__ __proto__  __defineGetter__ __defineSetter__
-                __count__ __lookupGetter__ __lookupSetter__ __noSuchMethod__
-                create defineProperty defineProperties getOwnPropertyDescriptor keys
-                getOwnPropertyNames getPrototypeOf preventExtensions isExtensible seal
-                isSealed freeze isFrozen apply call constructor eval
-                hasOwnProperty isPrototypeOf propertyIsEnumerable toSource
-                toLocaleString toString unwatch valueOf watch
-            </>.toString().trim().split(/\s+/)
+            importants: '__iterator__'.split(/\s+/),
+            subs: [
+                '__parent__ __proto__  __defineGetter__ __defineSetter__',
+                '__count__ __lookupGetter__ __lookupSetter__ __noSuchMethod__',
+                'create defineProperty defineProperties getOwnPropertyDescriptor keys',
+                'getOwnPropertyNames getPrototypeOf preventExtensions isExtensible seal',
+                'isSealed freeze isFrozen apply call constructor eval',
+                'hasOwnProperty isPrototypeOf propertyIsEnumerable toSource',
+                'toLocaleString toString unwatch valueOf watch',
+            ].join('\n').trim().split(/\s+/)
         };
         var hasOwnProperty, hasOwnProp, hasProp, hasIteratorProp, FixTags;
         
@@ -6288,12 +6284,23 @@ update(models.GoogleBookmarks, {
                     hl     : 'en'
                 }
             }).addCallback(function(res) {
-                let result = false, uri, doc;
+                let result = false, uri, doc, text, i, len;
                 doc = convertToHTMLDocument(res.responseText);
                 if (doc.getElementById('gaia_loginform')) {
                     throw new Error(getMessage('error.notLoggedin'));
                 }
                 try {
+                    doc = convertToHTMLDocument(res.responseText);
+                    text = $x('//bookmarks//url/text()', doc, true);
+                    len = text.length;
+                    for (i = 0; i < len; i++) {
+                        if (text[i] === url) {
+                            self.privateCache.bookmarked.add(url);
+                            result = true;
+                            break;
+                        }
+                    }
+                    /*
                     doc = convertToXML(res.responseText);
                     for each (uri in doc..bookmarks..url.text()) {
                         if (uri == url) {
@@ -6302,6 +6309,7 @@ update(models.GoogleBookmarks, {
                             break;
                         }
                     }
+                    */
                 } catch (e) {}
                 return result;
             });
@@ -6341,9 +6349,19 @@ update(models.GoogleBookmarks, {
                     hl     : 'en'
                 }
             }).addCallback(function(res) {
-                let labels, label, tag, result, doc;
+                let labels, label, tag, result, doc, text, i, len;
                 labels = [];
                 try {
+                    doc = convertToHTMLDocument(res.responseText);
+                    text = $x('//bookmarks/url[text() = "' + url + '"]/../label/text()', doc, true);
+                    len = text.length;
+                    for (i = 0; i < len; i++) {
+                        tag = Pot.StringUtil.trim(text[i]);
+                        if (tag && tag.length) {
+                            labels[labels.length] = tag;
+                        }
+                    }
+                    /*
                     doc = convertToXML(res.responseText);
                     for each (label in doc..bookmarks.(url.text() == url).parent()..label.text()) {
                         tag = Pot.StringUtil.trim(label);
@@ -6351,6 +6369,7 @@ update(models.GoogleBookmarks, {
                             labels[labels.length] = tag;
                         }
                     }
+                    */
                 } catch (e) {}
                 result = Pot.BookmarkUtil.normalizeTags(labels);
                 return result;
@@ -6950,12 +6969,12 @@ update(models.HatenaBookmark, {
                                 image = make.image({
                                     tooltiptext : params.title,
                                     src         : ENTRY_IMAGE_URL + (json.url || url),
-                                    style       : Pot.StringUtil.mtrim(<>
-                                        padding: 0.1em;
-                                        cursor: pointer !important;
-                                        outline: 0;
-                                        -moz-user-focus: ignore;
-                                    </>)
+                                    style       : Pot.StringUtil.mtrim([
+                                        'padding: 0.1em;',
+                                        'cursor: pointer !important;',
+                                        'outline: 0;',
+                                        '-moz-user-focus: ignore;'
+                                    ].join('\n'))
                                 });
                                 if (onClick) {
                                     image.addEventListener('click', function() {
@@ -7000,30 +7019,28 @@ update(models.HatenaDiary, {
             return ps.description;
         },
         photo : function(ps, title) {
-            return succeed(<>
-                <blockquote cite={ps.pageUrl} title={title}>
-                    <img src={ps.itemUrl} />
-                </blockquote>
-                <div>
-                {ps.description}
-                </div>
-            </>.toString());
+            return succeed([
+                '<blockquote cite="' + Pot.escapeHTML(ps.pageUrl) + '" title="' + Pot.escapeHTML(title) + '">',
+                    '<img src="' + Pot.escapeHTML(ps.itemUrl) + '">',
+                '</blockquote>',
+                '<div>' + Pot.escapeHTML(ps.description) + '</div>'
+            ].join('\n'));
         },
         link : function(ps, title) {
-            return succeed(<>
-                <h2><a href={ps.pageUrl} title={title}>{ps.page}</a></h2>
-                <div>
-                {ps.description}
-                </div>
-            </>.toString());
+            return succeed([
+                '<h2><a href="' + Pot.escapeHTML(ps.pageUrl) + '" title="' + Pot.escapeHTML(title) + '">' +
+                    Pot.escapeHTML(ps.page) +
+                '</a></h2>',
+                '<div>' + Pot.escapeHTML(ps.description) + '</div>'
+            ].join('\n'));
         },
         quote : function(ps, title) {
-            return succeed(<>
-                <blockquote cite={ps.pageUrl} title={title}>{ps.body}</blockquote>
-                <div>
-                {ps.description}
-                </div>
-            </>.toString());
+            return succeed([
+                '<blockquote cite="' + Pot.escapeHTML(ps.pageUrl) + '" title="' + Pot.escapeHTML(title) + '>' +
+                    Pot.escapeHTML(ps.body) +
+                '</blockquote>',
+                '<div>' + Pot.escapeHTML(ps.description) + '</div>'
+            ].join('\n'));
         },
         bookmark : function(ps, title) {
             let util = Pot.StringUtil,
@@ -7068,12 +7085,12 @@ update(models.HatenaDiary, {
                 };
             return wait(0).addCallback(function() {
                 return summarize(ps.description).addCallback(function(desc) {
-                    return <>
-                        <h2><a href={ps.pageUrl} title={title}>{ps.page}</a></h2>
-                        <div>
-                        {desc}
-                        </div>
-                    </>.toString();
+                    return [
+                        '<h2><a href="' + Pot.escapeHTML(ps.pageUrl) + '" title="' + Pot.escapeHTML(title) + '">' +
+                            Pot.escapeHTML(ps.page) +
+                        '</a></h2>',
+                        '<div>' + Pot.escapeHTML(desc) + '</div>'
+                    ].join('\n');
                 });
             });
         }
@@ -8005,12 +8022,12 @@ update(models.LivedoorClip, {
             image = make.image({
                 tooltiptext : ENTRY_TITLE,
                 src         : ENTRY_IMAGE_URL + url,
-                style       : Pot.StringUtil.mtrim(<>
-                    padding: 0.1em;
-                    cursor: pointer !important;
-                    outline: 0;
-                    -moz-user-focus: ignore;
-                </>)
+                style       : Pot.StringUtil.mtrim([
+                    'padding: 0.1em;',
+                    'cursor: pointer !important;',
+                    'outline: 0;',
+                    '-moz-user-focus: ignore;'
+                ].join('\n'))
             });
             if (onClick) {
                 image.addEventListener('click', function() {
@@ -8522,12 +8539,12 @@ update(models.YahooBookmarks, {
             image = make.image({
                 tooltiptext : ENTRY_TITLE,
                 src         : ENTRY_IMAGE_URL + url,
-                style       : Pot.StringUtil.mtrim(<>
-                    padding: 0.1em;
-                    cursor: pointer !important;
-                    outline: 0;
-                    -moz-user-focus: ignore;
-                </>)
+                style       : Pot.StringUtil.mtrim([
+                    'padding: 0.1em;',
+                    'cursor: pointer !important;',
+                    'outline: 0;',
+                    '-moz-user-focus: ignore;'
+                ].join('\n'))
             });
             if (onClick) {
                 image.addEventListener('click', function() {
@@ -8584,15 +8601,15 @@ update(models.Twitter, {
                                     tooltiptext : params.title,
                                     value       : params.count + ' tweets',
                                     class       : 'text-link',
-                                    style       : Pot.StringUtil.mtrim(<>
-                                        padding: 0.1em;
-                                        color: #68b2d8;
-                                        font-size: 11.2px;
-                                        font-weight: bold;
-                                        cursor: pointer !important;
-                                        outline: 0;
-                                        -moz-user-focus: ignore;
-                                    </>)
+                                    style       : Pot.StringUtil.mtrim([
+                                        'padding: 0.1em;',
+                                        'color: #68b2d8;',
+                                        'font-size: 11.2px;',
+                                        'font-weight: bold;',
+                                        'cursor: pointer !important;',
+                                        'outline: 0;',
+                                        '-moz-user-focus: ignore;',
+                                    ].join('\n'))
                                 });
                                 if (onClick) {
                                     label.addEventListener('click', function() {
@@ -9176,16 +9193,16 @@ function potConvertToHTMLString(src, safe) {
 
 // safe用プロパティを定義
 Pot.extend(potConvertToHTMLString, {
-    UNSAFE_ELEMENTS: Pot.StringUtil.trimAll(<>
-        frame,iframe,script,style,link,meta,base,basefont,
-        bgsound,xmp,plaintext,comment,html,body,head,form
-    </>),
-    SAFE_ATTRIBUTES: Pot.StringUtil.trimAll(<>
-        align,cellpadding,cellspacing,checked,cite,clear,
-        cols,color,colspan,content,coords,enctype,face,
-        for,href,label,method,nohref,nowrap,rel,rows,
-        rowspan,shape,size,span,src,style,type,usemap,valign,value
-    </>),
+    UNSAFE_ELEMENTS: Pot.StringUtil.trimAll([
+        'frame,iframe,script,style,link,meta,base,basefont,',
+        'bgsound,xmp,plaintext,comment,html,body,head,form'
+    ].join('\n')),
+    SAFE_ATTRIBUTES: Pot.StringUtil.trimAll([
+        'align,cellpadding,cellspacing,checked,cite,clear,',
+        'cols,color,colspan,content,coords,enctype,face,',
+        'for,href,label,method,nohref,nowrap,rel,rows,',
+        'rowspan,shape,size,span,src,style,type,usemap,valign,value'
+    ].join('\n')),
     // 不正なアトリビュートを整形/除去
     sanitizeAttributes: function(doc, root) {
         let xpath, value, elem, name, removeAttr, patterns = {
@@ -9272,13 +9289,13 @@ Pot.extend(potConvertToHTMLString, {
             /(?:<\s*(\w+:\w+|[\u007F-\uFFFF]+)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>)(?:\r\n|\r|\n|)/gi,
             /(?:<\s*\/?\s*(?:\w+:\w+|[\u007F-\uFFFF]+)[^>]*\/?>)(?:\r\n|\r|\n|)/gi,
             /(?:<[%?]|[%?]>|<!\S+|(?:\]\]|-+)>)(?:\r\n|\r|\n|)/gi,
-            new RegExp(Pot.StringUtil.trimAll(<><![CDATA[
-                <(   a|b|i|q|s|u|abbr|acronym|applet|big|cite
-                   | code|dfn|em|font|iframe|kbd|label|object
-                   | samp|small|span|strike|strong|sub|sup|tt
-                   | var|\w+:\w+
-                )>[\s\u3000]*</\1[\s\u3000]*>(?:\r\n|\r|\n|)
-            ]]></>), 'gi'),
+            new RegExp(Pot.StringUtil.trimAll([
+                '<(   a|b|i|q|s|u|abbr|acronym|applet|big|cite',
+                '   | code|dfn|em|font|iframe|kbd|label|object',
+                '   | samp|small|span|strike|strong|sub|sup|tt',
+                '   | var|\\w+:\\w+',
+                ')>[\\s\\u3000]*</\\1[\\s\\u3000]*>(?:\\r\\n|\\r|\\n|)'
+            ].join('\n')), 'gi'),
             /(?:(\s*(?:<p>\s*<\/p>|<div>\s*<\/div>)\s*){2,})(?=\s*(?:<p>\s*<\/p>|<div>\s*<\/div>))/gi
         ];
         s = Pot.StringUtil.stringify(html);
@@ -9391,11 +9408,11 @@ addAround(globals, 'sanitizeHTML', function(proceed, args) {
         to: '<$1>'
     }, {
         // 削除によってできた空タグを削除
-        by: new RegExp(Pot.sprintf('<(%s)></\\1>', Pot.StringUtil.trimAll(<>
-                    a|b|i|q|s|u|abbr|acronym|applet|big|cite|
-                    code|dfn|em|font|iframe|kbd|label|object|
-                    samp|small|span|strike|strong|sub|sup|tt|var
-                </>)), 'gi'),
+        by: new RegExp(Pot.sprintf('<(%s)></\\1>', Pot.StringUtil.trimAll([
+                    'a|b|i|q|s|u|abbr|acronym|applet|big|cite|',
+                    'code|dfn|em|font|iframe|kbd|label|object|',
+                    'samp|small|span|strike|strong|sub|sup|tt|var'
+                ].join('\n'))), 'gi'),
         to: ''
     }];
     try {
@@ -9684,20 +9701,20 @@ QuickPostForm.descriptionContextMenus.push(
         // flavors設定時のみ適応のメニュー
         name: 'テキストとHTMLを切り替え',
         // icon: http://www.famfamfam.com/
-        icon: Pot.toDataURI(Pot.StringUtil.trimAll(<>
-            iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6
-            QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAHUSURBVDjLxZ
-            M7a1RhEIafc3J2z6qJkIuCKChItBNSBQ0iIlZiK4gWItj6HwRbC7FRf4CVnSCIkH9
-            gJVjYiCDximCyZ7/zfXOz2A0I2qVwmmFg3rm870wVEezFavZoey7Q3Hv+/Z87qDsi
-            TlZFBJIGKStZlFSCTpyUlAZgfXXfH9BAPTCberVANBB3RAJRR8wp6jzd/DotALA9U
-            cyZgZxis2QNijpZjSJBVqeIszTfkMY65cAjuHxmgSzGlbUFrp1d5ObGErcuLLNxep
-            5hU3H93AqjYcXti4cZZ2OSDU9CnVURddqmIovTDmoev/5GVcGDF585tjzg1JGWo0t
-            DDgxrThxq6XojieOd0nRZ6dVpBxU3zi/T1BVdViKCcTbcYX11ngB6cca9MSlGlpro
-            jHqcglycVJyHL79Q1Jn0TgBdb1gEbz9OeL81IYsRAakYvQSeC/WvVOiLE8GsM4xnv
-            suGe/Do1RY/dpRenIP753hyZxURJ3JQXbr/Lq6uLfLpZ6aIk9XJssv8VK5dNcQcmc
-            l7fKVl89kHmu0dJRVjYTRHGVSMpELaQLVCtEY8EAvMHHUwn067+0LVybtvok9KSOD
-            ZiaKEOJENihPm01gD3P+62Oq/f+Nv2d9y2D8jLUEAAAAASUVORK5CYII=
-        </>), 'image/png', true),
+        icon: Pot.toDataURI(Pot.StringUtil.trimAll([
+            'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6',
+            'QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAHUSURBVDjLxZ',
+            'M7a1RhEIafc3J2z6qJkIuCKChItBNSBQ0iIlZiK4gWItj6HwRbC7FRf4CVnSCIkH9',
+            'gJVjYiCDximCyZ7/zfXOz2A0I2qVwmmFg3rm870wVEezFavZoey7Q3Hv+/Z87qDsi',
+            'TlZFBJIGKStZlFSCTpyUlAZgfXXfH9BAPTCberVANBB3RAJRR8wp6jzd/DotALA9U',
+            'cyZgZxis2QNijpZjSJBVqeIszTfkMY65cAjuHxmgSzGlbUFrp1d5ObGErcuLLNxep',
+            '5hU3H93AqjYcXti4cZZ2OSDU9CnVURddqmIovTDmoev/5GVcGDF585tjzg1JGWo0t',
+            'DDgxrThxq6XojieOd0nRZ6dVpBxU3zi/T1BVdViKCcTbcYX11ngB6cca9MSlGlpro',
+            'jHqcglycVJyHL79Q1Jn0TgBdb1gEbz9OeL81IYsRAakYvQSeC/WvVOiLE8GsM4xnv',
+            'suGe/Do1RY/dpRenIP753hyZxURJ3JQXbr/Lq6uLfLpZ6aIk9XJssv8VK5dNcQcmc',
+            'l7fKVl89kHmu0dJRVjYTRHGVSMpELaQLVCtEY8EAvMHHUwn067+0LVybtvok9KSOD',
+            'ZiaKEOJENihPm01gD3P+62Oq/f+Nv2d9y2D8jLUEAAAAASUVORK5CYII=',
+        ].join('\n')), 'image/png', true),
         icons: {
             html: null,
             plain: null
@@ -10265,19 +10282,19 @@ QuickPostForm.descriptionContextMenus.push(
                     to: ' '
                 }, {
                     // ブックマークボタンの表記を削除
-                    by: new RegExp(Pot.StringUtil.trimAll(<><![CDATA[
-                        (?:
-                            (?:このエントリー?を|)
-                            [\u0020\u3000]*
-                            (?: (?:(?:はてな|Yahoo!)ブックマーク|del\.?icio\.?us|livedoorクリップ|Buzzurl)に(?:追加|登録)
-                              | (?:Twitterで?(?:つぶやく|投稿(?:する|))|Facebookで?シェアする
-                                  |mixiチェック[\u0020\u3000]*はてなブックマーク[\u0020\u3000]*
-                                  |Evernoteでクリップする|印刷する([\u0020\u3000]*ヘルプ|)
-                                )
-                            )
-                            [\u0020\u3000]*
-                        )+
-                    ]]></>), 'gi'),
+                    by: new RegExp(Pot.StringUtil.trimAll([
+                        '(?:',
+                            '(?:このエントリー?を|)',
+                            '[\\u0020\\u3000]*',
+                            '(?: (?:(?:はてな|Yahoo!)ブックマーク|del\\.?icio\\.?us|livedoorクリップ|Buzzurl)に(?:追加|登録)',
+                              '| (?:Twitterで?(?:つぶやく|投稿(?:する|))|Facebookで?シェアする',
+                                  '|mixiチェック[\\u0020\\u3000]*はてなブックマーク[\\u0020\\u3000]*',
+                                  '|Evernoteでクリップする|印刷する([\\u0020\\u3000]*ヘルプ|)',
+                                ')',
+                            ')',
+                            '[\\u0020\\u3000]*',
+                        ')+'
+                    ].join('\n')), 'gi'),
                     to: ' '
                 }, {
                     // はてなダイアリーのノイズを削除
@@ -10735,16 +10752,16 @@ QuickPostForm.descriptionContextMenus.push(
                 let results = [], value, lines, patterns, codes, mark;
                 patterns = {
                     inline: new RegExp(Pot.sprintf('^(?:<|)(%s)(?:[^>]*>|)$',
-                        Pot.StringUtil.trimAll(<><![CDATA[
-                            (?: a|b|i|q|s|u|abbr|acronym|applet|big|cite
-                              | code|dfn|em|font|iframe|kbd|label|object
-                              | samp|small|span|strike|strong|sub|sup|tt
-                              | var|bdo|button|del|ruby|img|input|select
-                              | embed|ins|keygen|textarea|map|canvas|svg
-                              | audio|command|mark|math|meter|time|video
-                              | datalist|progress|output|\w+:\w+
-                            )\b
-                        ]]></>)
+                        Pot.StringUtil.trimAll([
+                            '(?: a|b|i|q|s|u|abbr|acronym|applet|big|cite',
+                              '| code|dfn|em|font|iframe|kbd|label|object',
+                              '| samp|small|span|strike|strong|sub|sup|tt',
+                              '| var|bdo|button|del|ruby|img|input|select',
+                              '| embed|ins|keygen|textarea|map|canvas|svg',
+                              '| audio|command|mark|math|meter|time|video',
+                              '| datalist|progress|output|\\w+:\\w+',
+                            ')\\b',
+                        ].join('\n'))
                     ), 'i'),
                     nl   : /\r\n|\r|\n/g,
                     top  : /^[\s\u00A0\u3000]*<\s*(\/|)\s*(\w+(?::\w+|))\b[^>]*(\/|)>/g,
@@ -11043,101 +11060,101 @@ Pot.extend(Pot.RomaReadingUtil, {
     // 滅多に再設定しないと思うのでメモリを抑えるためXULコードなどをキャッシュしない
     generateXUL: function(title, message) {
         let xul, script, style, params;
-        style = Pot.toDataURI.encodeURI(Pot.StringUtil.trim(<><![CDATA[
-            button {
-                cursor: pointer;
-                margin-top: 0.7em;
-                padding: 0.5em 0.7em 0.5em 0.4em;
-                height: 3.2em;
-                vertical-align: bottom;
-            }
-            .button-icon {
-                margin-right: 0.5em;
-            }
-            #submit-button, #cancel-button {
-                font-weight: bold;
-            }
-            #input {
-                font-family: monospace;
-            }
-        ]]></>), 'text/css');
-        xul = Pot.StringUtil.mtrim(<><![CDATA[
-            <?xml version="1.0" encoding="utf-8"?>
-            <?xml-stylesheet type="text/css" href="chrome://global/skin/"?>
-            <?xml-stylesheet type="text/css" href="chrome://global/skin/global.css"?>
-            <?xml-stylesheet type="text/css" href="{STYLE}"?>
-            <dialog title="{TITLE}" buttons="accept,cancel"
-                    xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
-                    xmlns:html="http://www.w3.org/1999/xhtml">
-                <hbox flex="1">
-                    <vbox style="margin: 0.2em;" flex="1">
-                        {MESSAGE}
-                        <spacer height="3"/>
-                        <label id="error" value="" style="color:red;"/>
-                        <textbox id="input" multiline="true" flex="15" rows="12" value=""/>
-                        <hbox flex="1">
-                            <hbox align="left" flex="1">
-                                <button id="reset" tooltiptext="初期状態に戻す"
-                                        style="margin-right: 0.2em;" label="Reset"/>
-                            </hbox>
-                            <hbox align="right" flex="1">
-                                <button id="submit-button" dlgtype="accept" tooltiptext="保存"
-                                        image="chrome://tombloo/skin/accept.png" label="OK"/>
-                                <button id="cancel-button" dlgtype="cancel"
-                                        tooltiptext="キャンセル" label="Cancel"/>
-                            </hbox>
-                        </hbox>
-                    </vbox>
-                </hbox>
-                <script>{SCRIPT}</script>
-            </dialog>
-        ]]></>);
-        script = ['<![CDATA[', ']]>'].join(Pot.StringUtil.mtrim(<><![CDATA[
-            var args = arguments[0], input, error, reset;
-            window.addEventListener('load', function() {
-                input = document.getElementById('input');
-                error = document.getElementById('error');
-                reset = document.getElementById('reset');
-                input.value = args.inputValue;
-                scrollTop();
-                if (args.onInput) {
-                    input.addEventListener('input', function(event) {
-                        if (!args.onInput(input.value, event)) {
-                            error.value = 'Error: 不正な文字が使われています';
-                        } else {
-                            error.value = '';
-                        }
-                    }, true);
-                }
-                if (args.onReset) {
-                    reset.addEventListener('click', function() {
-                        input.value = args.onReset();
-                    }, true);
-                }
-                if (args.onClose) {
-                    window.addEventListener('unload', function(event) {
-                        args.onClose(event);
-                    }, true);
-                }
-            }, true);
-            
-            window.addEventListener('dialogaccept', function() {
-                args.onAccept(input.value);
-            }, true);
-            
-            function scrollTop() {
-                var i = 100, limit = 600, top = function() {
-                    try {
-                        var anon = document.getAnonymousElementByAttribute(input, 'anonid', 'input');
-                        anon.scrollTop = 0;
-                    } catch (e) {}
-                };
-                do {
-                    setTimeout(top, i);
-                    i += 100;
-                } while (i < limit);
-            }
-        ]]></>).wrap('\n'));
+        style = Pot.toDataURI.encodeURI(Pot.StringUtil.trim([
+            'button {',
+                'cursor: pointer;',
+                'margin-top: 0.7em;',
+                'padding: 0.5em 0.7em 0.5em 0.4em;',
+                'height: 3.2em;',
+                'vertical-align: bottom;',
+            '}',
+            '.button-icon {',
+                'margin-right: 0.5em;',
+            '}',
+            '#submit-button, #cancel-button {',
+                'font-weight: bold;',
+            '}',
+            '#input {',
+                'font-family: monospace;',
+            '}'
+        ].join('\n')), 'text/css');
+        xul = Pot.StringUtil.mtrim([
+            '<?xml version="1.0" encoding="utf-8"?>',
+            '<?xml-stylesheet type="text/css" href="chrome://global/skin/"?>',
+            '<?xml-stylesheet type="text/css" href="chrome://global/skin/global.css"?>',
+            '<?xml-stylesheet type="text/css" href="{STYLE}"?>',
+            '<dialog title="{TITLE}" buttons="accept,cancel"',
+                    'xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"',
+                    'xmlns:html="http://www.w3.org/1999/xhtml">',
+                '<hbox flex="1">',
+                    '<vbox style="margin: 0.2em;" flex="1">',
+                        '{MESSAGE}',
+                        '<spacer height="3"/>',
+                        '<label id="error" value="" style="color:red;"/>',
+                        '<textbox id="input" multiline="true" flex="15" rows="12" value=""/>',
+                        '<hbox flex="1">',
+                            '<hbox align="left" flex="1">',
+                                '<button id="reset" tooltiptext="初期状態に戻す"',
+                                        'style="margin-right: 0.2em;" label="Reset"/>',
+                            '</hbox>',
+                            '<hbox align="right" flex="1">',
+                                '<button id="submit-button" dlgtype="accept" tooltiptext="保存"',
+                                        'image="chrome://tombloo/skin/accept.png" label="OK"/>',
+                                '<button id="cancel-button" dlgtype="cancel"',
+                                        'tooltiptext="キャンセル" label="Cancel"/>',
+                            '</hbox>',
+                        '</hbox>',
+                    '</vbox>',
+                '</hbox>',
+                '<script>{SCRIPT}</script>',
+            '</dialog>'
+        ].join('\n'));
+        script = ['<![CDATA[', ']]>'].join(Pot.StringUtil.mtrim([
+            "var args = arguments[0], input, error, reset;",
+            "window.addEventListener('load', function() {",
+                "input = document.getElementById('input');",
+                "error = document.getElementById('error');",
+                "reset = document.getElementById('reset');",
+                "input.value = args.inputValue;",
+                "scrollTop();",
+                "if (args.onInput) {",
+                    "input.addEventListener('input', function(event) {",
+                        "if (!args.onInput(input.value, event)) {",
+                            "error.value = 'Error: 不正な文字が使われています';",
+                        "} else {",
+                            "error.value = '';",
+                        "}",
+                    "}, true);",
+                "}",
+                "if (args.onReset) {",
+                    "reset.addEventListener('click', function() {",
+                        "input.value = args.onReset();",
+                    "}, true);",
+                "}",
+                "if (args.onClose) {",
+                    "window.addEventListener('unload', function(event) {",
+                        "args.onClose(event);",
+                    "}, true);",
+                "}",
+            "}, true);",
+            "",
+            "window.addEventListener('dialogaccept', function() {",
+                "args.onAccept(input.value);",
+            "}, true);",
+            "",
+            "function scrollTop() {",
+                "var i = 100, limit = 600, top = function() {",
+                    "try {",
+                        "var anon = document.getAnonymousElementByAttribute(input, 'anonid', 'input');",
+                        "anon.scrollTop = 0;",
+                    "} catch (e) {}",
+                "};",
+                "do {",
+                    "setTimeout(top, i);",
+                    "i += 100;",
+                "} while (i < limit);",
+            "}"
+        ].join('\n')).wrap('\n'));
         
         params = {
             title: Pot.escapeHTML(Pot.StringUtil.stringify(title)),
@@ -11557,24 +11574,24 @@ Pot.extend(Pot.SetupUtil, {
             Pot.SetupUtil.progressLog('%s Backuped.', PSU_QPF_XUL_FILE);
             success = Pot.SetupUtil.findReplace(path, [
             {
-                from: Pot.SetupUtil.createPattern(<><![CDATA[
-                    ([\u0009\u0020]*)(<script\b.*?\bsrc = ["']?)(quickPostForm\.js)(['"]? />)(\r\n|\r|\n|)
-                ]]></>),
-                to: Pot.sprintf(Pot.StringUtil.mtrim(<><![CDATA[
-                    $1$2$3$4
-                    $1$2%s$4$5
-                ]]></>),
+                from: Pot.SetupUtil.createPattern([
+                    '([\\u0009\\u0020]*)(<script\\b.*?\\bsrc = ["\']?)(quickPostForm\\.js)([\'"]? />)(\\r\\n|\\r|\\n|)'
+                ].join('\n')),
+                to: Pot.sprintf(Pot.StringUtil.mtrim([
+                    '$1$2$3$4',
+                    '$1$2%s$4$5'
+                ].join('\n')),
                     PSU_QPF_SCRIPT_NAME
                 )
             },
             {
-                from: Pot.SetupUtil.createPattern(<><![CDATA[
-                    ([\u0009\u0020]*)(<spacer\b id = ["']?titleSpace['"]? flex = ["']?1['"]? />)(\r\n|\r|\n|)
-                ]]></>),
-                to: Pot.StringUtil.mtrim(<><![CDATA[
-                    $1<vbox id="potLeftTitleBox"></vbox>
-                    $1$2$3
-                ]]></>)
+                from: Pot.SetupUtil.createPattern([
+                    '([\\u0009\\u0020]*)(<spacer\\b id = ["\']?titleSpace[\'"]? flex = ["\']?1[\'"]? />)(\\r\\n|\\r|\\n|)'
+                ].join('\n')),
+                to: Pot.StringUtil.mtrim([
+                    '$1<vbox id="potLeftTitleBox"></vbox>',
+                    '$1$2$3'
+                ].join('\n'))
             }
             ]);
             if (!success) {
@@ -11591,41 +11608,41 @@ Pot.extend(Pot.SetupUtil, {
             success = Pot.SetupUtil.findReplace(path, [
             {
                 // windowを広くする
-                from: Pot.SetupUtil.createPattern(<><![CDATA[
-                    ([\u0009\u0020]*)(<prefwindow\b[^>]*)(\/?>)(\r\n|\r|\n|)
-                ]]></>),
-                to: Pot.StringUtil.mtrim(<><![CDATA[
-                    $1$2 style="width: auto; height: auto;"$3$4
-                ]]></>)
+                from: Pot.SetupUtil.createPattern([
+                    '([\\u0009\\u0020]*)(<prefwindow\\b[^>]*)(\\/?>)(\\r\\n|\\r|\\n|)'
+                ].join('\n')),
+                to: Pot.StringUtil.mtrim([
+                    '$1$2 style="width: auto; height: auto;"$3$4'
+                ].join('\n'))
             },
             {
                 // 「Bookmarkクイックポスト」などを追加
-                from: Pot.SetupUtil.createPattern(<><![CDATA[
-                    ([\u0009\u0020]*)(</preferences>)(\r\n|\r|\n|)
-                ]]></>),
-                to: Pot.sprintf(Pot.StringUtil.mtrim(<><![CDATA[
-                    $1<preference 
-                        $1id="%s" 
-                        $1name="extensions.tombloo.%s" 
-                        $1type="string" />
-                    $1<preference 
-                        $1id="%s" 
-                        $1name="extensions.tombloo.%s" 
-                        $1type="string" />
-                    $1<preference 
-                        $1id="%s" 
-                        $1name="extensions.tombloo.%s" 
-                        $1type="bool" />
-                    $1<preference 
-                        $1id="%s" 
-                        $1name="extensions.tombloo.%s" 
-                        $1type="bool"/>
-                    $1<preference 
-                        $1id="%s" 
-                        $1name="extensions.tombloo.%s" 
-                        $1type="bool"/>
-                    $1$2$3
-                ]]></>),
+                from: Pot.SetupUtil.createPattern([
+                    '([\\u0009\\u0020]*)(</preferences>)(\\r\\n|\\r|\\n|)'
+                ].join('\n')),
+                to: Pot.sprintf(Pot.StringUtil.mtrim([
+                    '$1<preference ',
+                        '$1id="%s" ',
+                        '$1name="extensions.tombloo.%s" ',
+                        '$1type="string" />',
+                    '$1<preference ',
+                        '$1id="%s" ',
+                        '$1name="extensions.tombloo.%s" ',
+                        '$1type="string" />',
+                    '$1<preference ',
+                        '$1id="%s" ',
+                        '$1name="extensions.tombloo.%s" ',
+                        '$1type="bool" />',
+                    '$1<preference ',
+                        '$1id="%s" ',
+                        '$1name="extensions.tombloo.%s" ',
+                        '$1type="bool"/>',
+                    '$1<preference ',
+                        '$1id="%s" ',
+                        '$1name="extensions.tombloo.%s" ',
+                        '$1type="bool"/>',
+                    '$1$2$3'
+                ].join('\n')),
                     POT_PREF_KEY_PREFIX + POT_SHORTCUTKEY_BOOKMARK,
                     POT_PREF_KEY_PREFIX + POT_SHORTCUTKEY_BOOKMARK,
                     POT_PREF_KEY_PREFIX + POT_AUTO_APPEND_TAGS,
@@ -11640,97 +11657,97 @@ Pot.extend(Pot.SetupUtil, {
             },
             {
                 // windowのsubmitボタンの幅を調整
-                from: Pot.SetupUtil.createPattern(<><![CDATA[
-                    ([\u0009\u0020]*)(<tabpanels\b (?:flex = ["']\d+['"]|) )(>)(\r\n|\r|\n|)
-                ]]></>),
-                to: Pot.StringUtil.mtrim(<><![CDATA[
-                    $1$2 style="margin-bottom: 1em;"$3$4
-                ]]></>)
+                from: Pot.SetupUtil.createPattern([
+                    '([\\u0009\\u0020]*)(<tabpanels\\b (?:flex = ["\']\\d+[\'"]|) )(>)(\\r\\n|\\r|\\n|)'
+                ].join('\n')),
+                to: Pot.StringUtil.mtrim([
+                    '$1$2 style="margin-bottom: 1em;"$3$4'
+                ].join('\n'))
             },
             {
                 // Posters Treeの幅を調整
-                from: Pot.SetupUtil.createPattern(<><![CDATA[
-                    ([\u0009\u0020]*)(<tree\b id = ["']posters['"][^>]*)(>)(\r\n|\r|\n|)
-                ]]></>),
-                to: Pot.StringUtil.mtrim(<><![CDATA[
-                    $1$2 style="width: 55em;"$3$4
-                ]]></>)
+                from: Pot.SetupUtil.createPattern([
+                    '([\\u0009\\u0020]*)(<tree\\b id = ["\']posters[\'"][^>]*)(>)(\\r\\n|\\r|\\n|)'
+                ].join('\n')),
+                to: Pot.StringUtil.mtrim([
+                    '$1$2 style="width: 55em;"$3$4'
+                ].join('\n'))
             },
             {
                 // Treeに「Audio」と「Bookmark」を追加
-                from: Pot.SetupUtil.createPattern(<><![CDATA[
-                    ([\u0009\u0020]*)(</treecols>)(\r\n|\r|\n|)
-                ]]></>),
-                to: Pot.StringUtil.mtrim(<><![CDATA[
-                    $1<treecol cycler="true"><hbox><label value="Audio"/></hbox></treecol>
-                    $1<treecol cycler="true"><hbox><label value="Bookmark"/></hbox></treecol>
-                    $1$2$3
-                ]]></>)
+                from: Pot.SetupUtil.createPattern([
+                    '([\\u0009\\u0020]*)(</treecols>)(\\r\\n|\\r|\\n|)'
+                ].join('\n')),
+                to: Pot.StringUtil.mtrim([
+                    '$1<treecol cycler="true"><hbox><label value="Audio"/></hbox></treecol>',
+                    '$1<treecol cycler="true"><hbox><label value="Bookmark"/></hbox></treecol>',
+                    '$1$2$3'
+                ].join('\n'))
             },
             {
                 // セパレータのマージンを調整
-                from: Pot.SetupUtil.createPattern(<><![CDATA[
-                    ([\u0009\u0020]*)(<separator\b 
-                        class = ["']groove-thin['"] width = ["']1['"] 
-                        style = ["']margin : 0?\.6em 0 1\.5em 0;?['"] />)(\r\n|\r|\n|)
-                ]]></>),
-                to: Pot.StringUtil.mtrim(<><![CDATA[
-                    $1<separator class="groove-thin" width="1" style="margin: 0.1em 0 0.1em 0;" />$3
-                ]]></>)
+                from: Pot.SetupUtil.createPattern([
+                    '([\\u0009\\u0020]*)(<separator\\b ',
+                        'class = ["\']groove-thin[\'"] width = ["\']1[\'"] ',
+                        'style = ["\']margin : 0?\\.6em 0 1\\.5em 0;?[\'"] />)(\\r\\n|\\r|\\n|)'
+                ].join('\n')),
+                to: Pot.StringUtil.mtrim([
+                    '$1<separator class="groove-thin" width="1" style="margin: 0.1em 0 0.1em 0;" />$3'
+                ].join('\n'))
             },
             {
                 // セパレータのマージンを調整(下側)
-                from: Pot.SetupUtil.createPattern(<><![CDATA[
-                    ([\u0009\u0020]*)(<separator\b 
-                        class = ["']groove-thin['"] width = ["']1['"] 
-                        style = ["']margin : 0?\.6em 0 1\.5em 0;?['"] />)(\r\n|\r|\n|)
-                ]]></>),
-                to: Pot.StringUtil.mtrim(<><![CDATA[
-                    $1<separator class="groove-thin" width="1" style="margin: 0.1em 0 0.1em 0;" />$3
-                ]]></>)
+                from: Pot.SetupUtil.createPattern([
+                    '([\\u0009\\u0020]*)(<separator\\b ',
+                        'class = ["\']groove-thin[\'"] width = ["\']1[\'"] ',
+                        'style = ["\']margin : 0?\\.6em 0 1\\.5em 0;?[\'"] />)(\\r\\n|\\r|\\n|)'
+                ].join('\n')),
+                to: Pot.StringUtil.mtrim([
+                    '$1<separator class="groove-thin" width="1" style="margin: 0.1em 0 0.1em 0;" />$3'
+                ].join('\n'))
             },
             {
                 // 「Bookmarkクイックポスト」の入力欄を追加
-                from: Pot.SetupUtil.createPattern(<><![CDATA[
-                    ([\u0009\u0020]*)(<row\b[^>]*>
-                        <label\b value = ["'] &label\.shortcutkey\.quickPost\.link;['"][^>]*>
-                        <hbox>
-                            <textbox\b preference = ["']shortcutkey\.quickPost\.link['"][^>]*>
-                        </hbox>
-                    </row>)(\r\n|\r|\n|)
-                ]]></>),
-                to: Pot.sprintf(Pot.StringUtil.mtrim(<><![CDATA[
-                    $1$2$3
-                    $1<row align="center">
-                        $1<label value="&label.%s;" />
-                        $1<hbox>
-                            $1<textbox preference="%s" size="35"/>
-                        $1</hbox>
-                    $1</row>$3
-                ]]></>),
+                from: Pot.SetupUtil.createPattern([
+                    '([\\u0009\\u0020]*)(<row\\b[^>]*>',
+                        '<label\\b value = ["\'] &label\\.shortcutkey\\.quickPost\\.link;[\'"][^>]*>',
+                        '<hbox>',
+                            '<textbox\\b preference = ["\']shortcutkey\\.quickPost\\.link[\'"][^>]*>',
+                        '</hbox>',
+                    '</row>)(\\r\\n|\\r|\\n|)',
+                ].join('\n')),
+                to: Pot.sprintf(Pot.StringUtil.mtrim([
+                    '$1$2$3',
+                    '$1<row align="center">',
+                        '$1<label value="&label.%s;" />',
+                        '$1<hbox>',
+                            '$1<textbox preference="%s" size="35"/>',
+                        '$1</hbox>',
+                    '$1</row>$3'
+                ].join('\n')),
                     POT_SHORTCUTKEY_BOOKMARK,
                     POT_PREF_KEY_PREFIX + POT_SHORTCUTKEY_BOOKMARK
                 )
             },
             {
                 // 「自動挿入するタグ」「タグを非公開にする」項目を追加
-                from: Pot.SetupUtil.createPattern(<><![CDATA[
-                    ([\u0009\u0020]*)(<row\b[^>]*>
-                        <label\b value = ["']&label\.tagAutoComplete;['"][^>]*>
-                        <checkbox\b preference = ["']tagAutoComplete['"][^>]*>
-                    </row>)(\r\n|\r|\n|)
-                ]]></>),
-                to: Pot.sprintf(Pot.StringUtil.mtrim(<><![CDATA[
-                    $1$2$3
-                    $1<row align="center" style="margin: 0.7em 0 0.5em 0;">
-                        $1<label value="&label.%s;" />
-                        $1<textbox preference="%s" />
-                    $1</row>
-                    $1<row align="center" style="margin: 0.7em 0 0.5em 0;">
-                        $1<label value="&label.%s;" />
-                        $1<checkbox preference="%s" />
-                    $1</row>$3
-                ]]></>),
+                from: Pot.SetupUtil.createPattern([
+                    '([\\u0009\\u0020]*)(<row\\b[^>]*>',
+                        '<label\\b value = ["\']&label\\.tagAutoComplete;[\'"][^>]*>',
+                        '<checkbox\\b preference = ["\']tagAutoComplete[\'"][^>]*>',
+                    '</row>)(\\r\\n|\\r|\\n|)'
+                ].join('\n')),
+                to: Pot.sprintf(Pot.StringUtil.mtrim([
+                    '$1$2$3',
+                    '$1<row align="center" style="margin: 0.7em 0 0.5em 0;">',
+                        '$1<label value="&label.%s;" />',
+                        '$1<textbox preference="%s" />',
+                    '$1</row>',
+                    '$1<row align="center" style="margin: 0.7em 0 0.5em 0;">',
+                        '$1<label value="&label.%s;" />',
+                        '$1<checkbox preference="%s" />',
+                    '$1</row>$3',
+                ].join('\n')),
                     POT_AUTO_APPEND_TAGS,
                     POT_PREF_KEY_PREFIX + POT_AUTO_APPEND_TAGS,
                     POT_BOOKMARK_PRIVATE,
@@ -11740,22 +11757,22 @@ Pot.extend(Pot.SetupUtil, {
             {
                 // 「メディアファイル(Photo/Audio等)をフォルダ分けして保存」を追加
                 // 「選択したテキストを自動挿入する」を追加
-                from: Pot.SetupUtil.createPattern(<><![CDATA[
-                    ([\u0009\u0020]*)(<textbox\b 
-                        readonly = ["']true['"] value = ["']&label.example; {ProfD}/tombloo['"] />
-                    </row>)(\r\n|\r|\n|)
-                ]]></>),
-                to: Pot.sprintf(Pot.StringUtil.mtrim(<><![CDATA[
-                    $1$2$3
-                    $1<row align="center" style="margin: 0.7em 0 0.5em 0;">
-                        $1<label value="&label.%s;"/>
-                        $1<checkbox preference="%s" />
-                    $1</row>
-                    $1<row align="center" style="margin: 0.7em 0 0.5em 0;">
-                        $1<label value="&label.%s;"/>
-                        $1<checkbox preference="%s" />
-                    $1</row>$3
-                ]]></>),
+                from: Pot.SetupUtil.createPattern([
+                    '([\\u0009\\u0020]*)(<textbox\\b ',
+                        'readonly = ["\']true[\'"] value = ["\']&label.example; {ProfD}/tombloo[\'"] />',
+                    '</row>)(\\r\\n|\\r|\\n|)'
+                ].join('\n')),
+                to: Pot.sprintf(Pot.StringUtil.mtrim([
+                    '$1$2$3',
+                    '$1<row align="center" style="margin: 0.7em 0 0.5em 0;">',
+                        '$1<label value="&label.%s;"/>',
+                        '$1<checkbox preference="%s" />',
+                    '$1</row>',
+                    '$1<row align="center" style="margin: 0.7em 0 0.5em 0;">',
+                        '$1<label value="&label.%s;"/>',
+                        '$1<checkbox preference="%s" />',
+                    '$1</row>$3',
+                ].join('\n')),
                     POT_SEPARATE_USER_DATA_FOLDERS,
                     POT_PREF_KEY_PREFIX + POT_SEPARATE_USER_DATA_FOLDERS,
                     POT_SELECTION_AUTO_INSERT,
@@ -11764,27 +11781,27 @@ Pot.extend(Pot.SetupUtil, {
             },
             {
                 // ブックマークに対する処理を定義
-                from: Pot.SetupUtil.createPattern(<><![CDATA[
-                    ([\u0009\u0020]*)(keyStringField
-                        [(] ["']shortcutkey\.quickPost\.regular['"] , true [)] ;?)(\r\n|\r|\n|)
-                ]]></>),
-                to: Pot.sprintf(Pot.StringUtil.mtrim(<><![CDATA[
-                    $1$2$3
-                    $1keyStringField('%s', true);$3
-                ]]></>),
+                from: Pot.SetupUtil.createPattern([
+                    '([\\u0009\\u0020]*)(keyStringField',
+                        '[(] ["\']shortcutkey\\.quickPost\\.regular[\'"] , true [)] ;?)(\\r\\n|\\r|\\n|)'
+                ].join('\n')),
+                to: Pot.sprintf(Pot.StringUtil.mtrim([
+                    '$1$2$3',
+                    '$1keyStringField(\'%s\', true);$3'
+                ].join('\n')),
                     POT_PREF_KEY_PREFIX + POT_SHORTCUTKEY_BOOKMARK
                 )
             },
             {
                 // TYPESにAudioとBookmarkを追加
-                from: Pot.SetupUtil.createPattern(<><![CDATA[
-                    ([\u0009\u0020]*)(TYPES : 
-                        ["']regular photo quote link video conversation favorite)(['"] 
-                            \. split [(] ["'] ['"] [)] ,[\u0009\u0020]*)(\r\n|\r|\n|)
-                ]]></>),
-                to: Pot.StringUtil.mtrim(<><![CDATA[
-                    $1$2 audio bookmark$3$4
-                ]]></>)
+                from: Pot.SetupUtil.createPattern([
+                    '([\\u0009\\u0020]*)(TYPES : ',
+                        '["\']regular photo quote link video conversation favorite)([\'"] ',
+                            '\\. split [(] ["\'] [\'"] [)] ,[\\u0009\\u0020]*)(\\r\\n|\\r|\\n|)'
+                ].join('\n')),
+                to: Pot.StringUtil.mtrim([
+                    '$1$2 audio bookmark$3$4'
+                ].join('\n'))
             }
             ]);
             if (!success) {
@@ -11801,19 +11818,19 @@ Pot.extend(Pot.SetupUtil, {
             success = Pot.SetupUtil.findReplace(path, [
             {
                 // 左右(←→)キーでタグ入力補完ウィンドウを閉じられるようにする
-                from: Pot.SetupUtil.createPattern(<><![CDATA[
-                    ([\u0009\u0020]*)(case KeyEvent \. DOM_VK_ESCAPE : 
-                        (?:// FIXME 入力途中の候補をクリア)?
-                        this \. popup \. hidePopup [(] [)] ;?
-                        return[\u0009\u0020]*;?[\u0009\u0020]*)(\r\n|\r|\n|)
-                ]]></>),
-                to: Pot.StringUtil.mtrim(<><![CDATA[
-                    $1$2$3
-                    $1case KeyEvent.DOM_VK_LEFT:
-                    $1case KeyEvent.DOM_VK_RIGHT:
-                        $1this.popup.hidePopup();
-                        $1return;$3
-                ]]></>)
+                from: Pot.SetupUtil.createPattern([
+                    '([\\u0009\\u0020]*)(case KeyEvent \\. DOM_VK_ESCAPE : ',
+                        '(?:// FIXME 入力途中の候補をクリア)?',
+                        'this \\. popup \\. hidePopup [(] [)] ;?',
+                        'return[\\u0009\\u0020]*;?[\\u0009\\u0020]*)(\\r\\n|\\r|\\n|)'
+                ].join('\n')),
+                to: Pot.StringUtil.mtrim([
+                    '$1$2$3',
+                    '$1case KeyEvent.DOM_VK_LEFT:',
+                    '$1case KeyEvent.DOM_VK_RIGHT:',
+                        '$1this.popup.hidePopup();',
+                        '$1return;$3'
+                ].join('\n'))
             }
             ]);
             if (!success) {
@@ -11829,13 +11846,13 @@ Pot.extend(Pot.SetupUtil, {
             Pot.SetupUtil.progressLog('%s Backuped.', PSU_DTD_JA_FILE);
             success = Pot.SetupUtil.appendContents(
                 path,
-                Pot.StringUtil.mtrim(<><![CDATA[
-                    <!ENTITY label.autoAppendTags "自動挿入するタグ(スペース区切り)">
-                    <!ENTITY label.bookmarkPrivate "非公開でブックマークする(対応してる場合)">
-                    <!ENTITY label.shortcutkey.quickPost.bookmark "ショートカット - Bookmarkクイックポスト">
-                    <!ENTITY label.separateUserDataFolders "メディア(Photo等)をフォルダ分けして保存">
-                    <!ENTITY label.selectionAutoInsert "選択したテキストを自動挿入する(再起動が必要)">
-                ]]></>).wrap('\n')
+                Pot.StringUtil.mtrim([
+                    '<!ENTITY label.autoAppendTags "自動挿入するタグ(スペース区切り)">',
+                    '<!ENTITY label.bookmarkPrivate "非公開でブックマークする(対応してる場合)">',
+                    '<!ENTITY label.shortcutkey.quickPost.bookmark "ショートカット - Bookmarkクイックポスト">',
+                    '<!ENTITY label.separateUserDataFolders "メディア(Photo等)をフォルダ分けして保存">',
+                    '<!ENTITY label.selectionAutoInsert "選択したテキストを自動挿入する(再起動が必要)">'
+                ].join('\n')).wrap('\n')
             );
             if (!success) {
                 Pot.SetupUtil.raiseError('Failed to append entity: ' + PSU_DTD_JA_FILE);
@@ -11848,13 +11865,13 @@ Pot.extend(Pot.SetupUtil, {
             Pot.SetupUtil.progressLog('%s Backuped.', PSU_DTD_EN_FILE);
             success = Pot.SetupUtil.appendContents(
                 path,
-                Pot.StringUtil.mtrim(<><![CDATA[
-                    <!ENTITY label.autoAppendTags "Append tags automatically (Splits on whitespace)">
-                    <!ENTITY label.bookmarkPrivate "Bookmark private if supported on the service.">
-                    <!ENTITY label.shortcutkey.quickPost.bookmark "Shortcutkey - Bookmark Quick Post">
-                    <!ENTITY label.separateUserDataFolders "Save media(photo etc.) as separate folders">
-                    <!ENTITY label.selectionAutoInsert "Automatically insert the selected text. (requires restart)">
-                ]]></>).wrap('\n')
+                Pot.StringUtil.mtrim([
+                    '<!ENTITY label.autoAppendTags "Append tags automatically (Splits on whitespace)">',
+                    '<!ENTITY label.bookmarkPrivate "Bookmark private if supported on the service.">',
+                    '<!ENTITY label.shortcutkey.quickPost.bookmark "Shortcutkey - Bookmark Quick Post">',
+                    '<!ENTITY label.separateUserDataFolders "Save media(photo etc.) as separate folders">',
+                    '<!ENTITY label.selectionAutoInsert "Automatically insert the selected text. (requires restart)">'
+                ].join('\n')).wrap('\n')
             );
             if (!success) {
                 Pot.SetupUtil.raiseError('Failed to append entity: ' + PSU_DTD_EN_FILE);
@@ -12710,27 +12727,27 @@ Pot.extend(Pot.SetupUtil, {
         throw ((e instanceof Error) ? e : new Error(e));
     },
     openAlert: (function() {
-        let xul = Pot.StringUtil.trim(<><![CDATA[
-            <?xml version="1.0" encoding="utf-8"?>
-            <?xml-stylesheet type="text/css" href="chrome://global/skin/"?>
-            <?xml-stylesheet type="text/css" href="chrome://global/skin/global.css"?>
-            <?xml-stylesheet type="text/css" href="{STYLE}"?>
-            <dialog title="{TITLE}" buttons="accept"
-                    xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
-                    xmlns:html="http://www.w3.org/1999/xhtml">
-                <script>{SCRIPT}</script>
-                <hbox flex="1">
-                    <vbox style="margin: 0.8em 1.7em;" flex="1">
-                        <spacer height="10"/>
-                        {MESSAGE}
-                        <spacer height="10"/>
-                        {EXTRA}
-                        <button id="submit-button" dlgtype="accept" label="{BUTTON}" 
-                                image="chrome://tombloo/skin/accept.png"/>
-                    </vbox>
-                </hbox>
-            </dialog>
-        ]]></>);
+        let xul = Pot.StringUtil.trim([
+            '<?xml version="1.0" encoding="utf-8"?>',
+            '<?xml-stylesheet type="text/css" href="chrome://global/skin/"?>',
+            '<?xml-stylesheet type="text/css" href="chrome://global/skin/global.css"?>',
+            '<?xml-stylesheet type="text/css" href="{STYLE}"?>',
+            '<dialog title="{TITLE}" buttons="accept"',
+                    'xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"',
+                    'xmlns:html="http://www.w3.org/1999/xhtml">',
+                '<script>{SCRIPT}</script>',
+                '<hbox flex="1">',
+                    '<vbox style="margin: 0.8em 1.7em;" flex="1">',
+                        '<spacer height="10"/>',
+                        '{MESSAGE}',
+                        '<spacer height="10"/>',
+                        '{EXTRA}',
+                        '<button id="submit-button" dlgtype="accept" label="{BUTTON}" ',
+                                'image="chrome://tombloo/skin/accept.png"/>',
+                    '</vbox>',
+                '</hbox>',
+            '</dialog>'
+        ].join('\n'));
         return function(title, message, button, extra, onClose) {
             let data, reps, params = {};
             reps = {
@@ -12740,33 +12757,33 @@ Pot.extend(Pot.SetupUtil, {
                             }).join('\n'),
                 '{BUTTON}'  : Pot.escapeHTML(Pot.StringUtil.stringify(button) || 'OK'),
                 '{EXTRA}'   : Pot.StringUtil.stringify(/<\w[^>]*>/.test(extra) ? extra : ''),
-                '{STYLE}'   : Pot.toDataURI.encodeURI(Pot.StringUtil.trim(<><![CDATA[
-                                    button {
-                                        cursor: pointer;
-                                        margin-top: 0.7em;
-                                        padding: 0.5em 0.7em 0.5em 0.4em;
-                                    }
-                                    .button-icon {
-                                        margin-right: 0.5em;
-                                    }
-                                ]]></>), 'text/css'),
-                '{SCRIPT}'  : ['<![CDATA[', ']]>'].join(Pot.StringUtil.mtrim(<><![CDATA[
-                                var args = arguments[0];
-                                var env = Components.classes['@brasil.to/tombloo-service;1'].getService().wrappedJSObject;
-                                window.addEventListener('load', function() {
-                                    var p, submit = document.getElementById('submit-button');
-                                    if (args && args.button) {
-                                        for (p in args.button) {
-                                            submit.setAttribute(p, args.button[p]);
-                                        }
-                                    }
-                                }, true);
-                                window.addEventListener('unload', function() {
-                                    if (args && args.onClose) {
-                                        args.onClose();
-                                    }
-                                }, true);
-                            ]]></>).wrap('\n'))
+                '{STYLE}'   : Pot.toDataURI.encodeURI(Pot.StringUtil.trim([
+                                    'button {',
+                                        'cursor: pointer;',
+                                        'margin-top: 0.7em;',
+                                        'padding: 0.5em 0.7em 0.5em 0.4em;',
+                                    '}',
+                                    '.button-icon {',
+                                        'margin-right: 0.5em;',
+                                    '}'
+                                ].join('\n')), 'text/css'),
+                '{SCRIPT}'  : ['<![CDATA[', ']]>'].join(Pot.StringUtil.mtrim([
+                                "var args = arguments[0];",
+                                "var env = Components.classes['@brasil.to/tombloo-service;1'].getService().wrappedJSObject;",
+                                "window.addEventListener('load', function() {",
+                                    "var p, submit = document.getElementById('submit-button');",
+                                    "if (args && args.button) {",
+                                        "for (p in args.button) {",
+                                            "submit.setAttribute(p, args.button[p]);",
+                                        "}",
+                                    "}",
+                                "}, true);",
+                                "window.addEventListener('unload', function() {",
+                                    "if (args && args.onClose) {",
+                                        "args.onClose();",
+                                    "}",
+                                "}, true);"
+                            ].join('\n')).wrap('\n'))
             };
             data = Pot.StringUtil.stringify(xul);
             forEach(reps, function([key, val]) {
@@ -12854,22 +12871,22 @@ Tombloo.Service.actions.register({
     name: Pot.tmp.MENULABEL('top'),
     type: 'context,menu',
     // icon: http://www.famfamfam.com/
-    icon: Pot.toDataURI(Pot.StringUtil.trimAll(<>
-        iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0
-        U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAKfSURBVDjLfZNLaNRXFIe/O//JTCePxqQi
-        Rq2CDcQkGFoQF0VaCS4MAVGoiEhDpEigi0JxXYKhthTaTRcuVOhCIgXBFCtVCLb1laoNKkl8tIyP
-        SCoTY8aOJqP538evixiZUOKBw+Uezve7h3PONZKYs81fntPuLfX8MZonOOF9wPtA8AHnAhveeYsD
-        vVcZPPCRmWOSlFjwnhCEsy9BN3t6N+vOCe98KUKi9PLqNetxsaex7BIdb36FjT3W+lnB1wkE55ku
-        WpZVpbGxp7X8J9bV3mGpbvN2dYap4gzev7YC3/Pn8DiL00maa56yOjVEoraVTZVnWFKR4vK1MYLz
-        PQsKnPumrXvk74mey0M51pf/RrJuO4lF79Oc6OfK9VGG/8r13Ort7C5ljCTsxVUZKWpQUBQEX1zs
-        6OpqOb1nZcseSKSIH/zIkfPRzzuahvZJCUIQ3hYn6rY/emAkEZ+tG1N543IJJKEgEjUfQPkqZJ8g
-        W8BODuGLjxCGYC3xs/vE+ccdRhLF42ZLsPRGTZ9WJpfvRHGOED8h2Dz4IsiBSWKSVQRnKQweJT84
-        coI0u8zcIhWOmPrgOZlas60hWrEVxePITaNQRP45mAiXf0ju1DEfP6O75Xvtn9fE6o+VJc26F/f6
-        +sLTmyAhzaAwA4oxRIz/eixvZ2ibg/83hZqdmjKZin5byCIDKGAwII9CgIiptd+qf8ExAog32stq
-        3sWYJHKOOP8QU1ZLIlVNasnSlcP7zNrS/Hl/YbJvcSaI1mhRE4Ur3zE5MJDFcKGiob6zas1G0nXN
-        5O/k2oHhBTbRfWgqV2cmTu5l4veBg87yXuPX2v3v7Wzb3eOH/4mfx7yYpn1+ydIrHzvEJ9n93B35
-        nM2lcUlc+ozqM7v44Zdt3CiN/wel+5Gy/cSN+gAAAABJRU5ErkJggg==
-    </>), 'image/png', true),
+    icon: Pot.toDataURI(Pot.StringUtil.trimAll([
+        'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0',
+        'U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAKfSURBVDjLfZNLaNRXFIe/O//JTCePxqQi',
+        'Rq2CDcQkGFoQF0VaCS4MAVGoiEhDpEigi0JxXYKhthTaTRcuVOhCIgXBFCtVCLb1laoNKkl8tIyP',
+        'SCoTY8aOJqP538evixiZUOKBw+Uezve7h3PONZKYs81fntPuLfX8MZonOOF9wPtA8AHnAhveeYsD',
+        'vVcZPPCRmWOSlFjwnhCEsy9BN3t6N+vOCe98KUKi9PLqNetxsaex7BIdb36FjT3W+lnB1wkE55ku',
+        'WpZVpbGxp7X8J9bV3mGpbvN2dYap4gzev7YC3/Pn8DiL00maa56yOjVEoraVTZVnWFKR4vK1MYLz',
+        'PQsKnPumrXvk74mey0M51pf/RrJuO4lF79Oc6OfK9VGG/8r13Ort7C5ljCTsxVUZKWpQUBQEX1zs',
+        '6OpqOb1nZcseSKSIH/zIkfPRzzuahvZJCUIQ3hYn6rY/emAkEZ+tG1N543IJJKEgEjUfQPkqZJ8g',
+        'W8BODuGLjxCGYC3xs/vE+ccdRhLF42ZLsPRGTZ9WJpfvRHGOED8h2Dz4IsiBSWKSVQRnKQweJT84',
+        'coI0u8zcIhWOmPrgOZlas60hWrEVxePITaNQRP45mAiXf0ju1DEfP6O75Xvtn9fE6o+VJc26F/f6',
+        '+sLTmyAhzaAwA4oxRIz/eixvZ2ibg/83hZqdmjKZin5byCIDKGAwII9CgIiptd+qf8ExAog32stq',
+        '3sWYJHKOOP8QU1ZLIlVNasnSlcP7zNrS/Hl/YbJvcSaI1mhRE4Ur3zE5MJDFcKGiob6zas1G0nXN',
+        '5O/k2oHhBTbRfWgqV2cmTu5l4veBg87yXuPX2v3v7Wzb3eOH/4mfx7yYpn1+ydIrHzvEJ9n93B35',
+        'nM2lcUlc+ozqM7v44Zdt3CiN/wel+5Gy/cSN+gAAAABJRU5ErkJggg=='
+    ].join('\n')), 'image/png', true),
     children: [
         {
             // アップデートの確認
@@ -12949,24 +12966,24 @@ Tombloo.Service.actions.register({
                         ''
                     ].join('\n'),
                     null,
-                    Pot.StringUtil.mtrim(<><![CDATA[
-                        <hbox flex="1">
-                            <label value="Blog article:"/>
-                            <label class="text-link"
-                                    style="-moz-user-focus: ignore;"
-                                    value="http://polygon-planet-log.blogspot.com/2011/06/audiobookmarktombloo_19.html"
-                                    onclick="env.addTab(this.value);"/>
-                        </hbox>
-                        <spacer height="2"/>
-                        <hbox hrex="1">
-                            <label value="Repository:"/>
-                            <label class="text-link"
-                                    style="-moz-user-focus: ignore;"
-                                    value="https://github.com/polygonplanet/tombloo"
-                                    onclick="env.addTab(this.value);"/>
-                        </hbox>
-                        <spacer height="15"/>
-                    ]]></>)
+                    Pot.StringUtil.mtrim([
+                        '<hbox flex="1">',
+                            '<label value="Blog article:"/>',
+                            '<label class="text-link"',
+                                    'style="-moz-user-focus: ignore;"',
+                                    'value="http://polygon-planet-log.blogspot.com/2011/06/audiobookmarktombloo_19.html"',
+                                    'onclick="env.addTab(this.value);"/>',
+                        '</hbox>',
+                        '<spacer height="2"/>',
+                        '<hbox hrex="1">',
+                            '<label value="Repository:"/>',
+                            '<label class="text-link"',
+                                    'style="-moz-user-focus: ignore;"',
+                                    'value="https://github.com/polygonplanet/tombloo"',
+                                    'onclick="env.addTab(this.value);"/>',
+                        '</hbox>',
+                        '<spacer height="15"/>',
+                    ].join('\n'))
                 );
             }
         }
