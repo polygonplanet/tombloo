@@ -15,8 +15,8 @@
  * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.extension.update.patches.js
  *
  *
- * @version    1.04
- * @date       2013-04-03
+ * @version    1.05
+ * @date       2013-04-07
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -518,6 +518,7 @@ function generateXUL() {
                 "patches.forEach(function(patch) {",
                     "var item, check, icon, name, vbox1, vbox2, vbox3, vbox4, vbox5;",
                     "var edit, view, remove, search, url, hbox1, hbox2, hbox3, hbox4, input;",
+                    "var status;",
                     "var trappers = {",
                         "dblclick: function(event) {",
                             "var triggers;",
