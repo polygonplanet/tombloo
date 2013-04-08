@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.90
- * @date       2013-04-03
+ * @version    1.91
+ * @date       2013-04-08
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -215,7 +215,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.90',
+    VERSION: '1.91',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -7190,23 +7190,54 @@ update(models.Delicious, {
         }
     },
     getAuthCookie : function() {
-        // Cookieあったりなかったりなので廃止, ログイン判断はgetCurrentUser()で
-        return true; // getCookieString('.delicious.com', 'connect.sid');
+        return true;
     },
     getCurrentUser : function() {
         var self = this;
         return this.getSessionValue('user', function() {
             return self.getInfo().addCallback(function(info) {
-                if (!info.is_logged_in || /not.*log.*in/i.test(info.error) || !info.logged_in_username) {
+                if (!info || !info.isLoggedIn || !info.username) {
                     throw new Error(getMessage('error.notLoggedin'));
                 }
-                return info.logged_in_username;
+                return info.username;
             });
         });
     },
     getInfo : function() {
-        return request('http://previous.delicious.com/save/quick', {method : 'POST'}).addCallback(function(res) {
-            return evalInSandbox('(' + res.responseText + ')', 'http://previous.delicious.com/');
+        var info;
+        return succeed().addCallback(function() {
+            var file, storage, stmt, value;
+            // localStorage参照
+            file = DirectoryService.get('ProfD', IFile);
+            file.append('webappsstore.sqlite');
+            storage = StorageService.openDatabase(file);
+            stmt = storage.createStatement([
+                "SELECT key, value FROM webappsstore2 WHERE key = 'user' AND scope LIKE '",
+                'delicious.com'.split('').reverse().join(''),
+                "%'"
+            ].join(''));
+            try {
+                while (stmt.executeStep()) {
+                    value = stmt.getString(1);
+                }
+                info = (value && JSON.parse(value));
+            } finally {
+                stmt.reset();
+                stmt.finalize();
+            }
+        }).addBoth(function(res) {
+            if (info) {
+                return info;
+            }
+            if (res && res instanceof Error) {
+                debug(res);
+                throw res;
+            }
+            return request('http://previous.delicious.com/save/quick', {
+                method : 'POST'
+            }).addCallback(function(res) {
+                return evalInSandbox('(' + res.responseText + ')', 'http://previous.delicious.com/');
+            });
         });
     },
     getAPIAuth : function(basic, username) {
