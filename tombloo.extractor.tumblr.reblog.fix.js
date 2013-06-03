@@ -10,7 +10,7 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.12
+ * @version    1.13
  * @date       2013-06-03
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Twitter : http://twitter.com/polygon_planet
@@ -42,9 +42,12 @@ update(Tumblr, {
             form.redirect_to = Tumblr.TUMBLR_URL+'dashboard';
             if(form.reblog_post_id){
                 self.trimReblogInfo(form);
-                // Tumblrから他サービスへポストするため画像URLを取得しておく
-                if(form['post[type]']=='photo')
-                    form.image = $x('id("edit_post")//img[contains(@src, "media.tumblr.com/") or contains(@src, "data.tumblr.com/")]/@src', doc);
+            }
+            // Tumblrから他サービスへポストするため画像URLを取得しておく
+            if (form['post[type]'] == 'photo') {
+                form.image = $x(
+                    '//*[contains(@class, "media_post_external_url")]' +
+                    '//img[contains(@src, "media.tumblr.com/") or contains(@src, "data.tumblr.com/")]/@src', doc);
             }
             return form;
         });
