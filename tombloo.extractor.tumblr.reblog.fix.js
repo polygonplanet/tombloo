@@ -10,8 +10,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.13
- * @date       2013-06-03
+ * @version    1.14
+ * @date       2013-06-08
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Twitter : http://twitter.com/polygon_planet
  * @license    Same as Tombloo
@@ -24,7 +24,8 @@
 addAround(Tombloo.Service.extractors['ReBlog'], 'getFrameUrl', function(proceed, args) {
     var doc = args[0];
     var re = /(?:<|\\x3c)iframe\b[\s\S]*?src\s*=\s*(["']|\\x22)(http:\/\/assets\.tumblr\.com\/.*?iframe.*?)\1/i;
-    var url = proceed(args) || doc.documentElement.innerHTML.extract(re, 2);
+    var url = $x('//iframe[@id="tumblr_controls"]/@src', doc) ||
+            proceed(args) || doc.documentElement.innerHTML.extract(re, 2);
     return (url || '').replace(/\\x22/g, '"').replace(/\\x26/g, '&');
 });
 
@@ -53,6 +54,18 @@ update(Tumblr, {
         });
     },
 });
+
+
+Tombloo.Service.extractors.register([{
+    name : 'ReBlog - Tumblr archive',
+    ICON : 'chrome://tombloo/skin/reblog.ico',
+    check : function(ctx) {
+        return ctx.onLink && /tumblr\.com\/archive/.test(ctx.href);
+    },
+    extract : function(ctx) {
+        return Tombloo.Service.extractors.ReBlog.extractByLink(ctx, ctx.linkURL);
+    }
+}], 'ReBlog - Tumblr', false);
 
 
 }());
