@@ -3,8 +3,8 @@
  *
  * TumblrでhighRes画像を取得するTomblooパッチ
  *
- * @version    1.00
- * @date       2013-06-13
+ * @version    1.01
+ * @date       2013-06-15
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Twitter: http://twitter.com/polygon_planet
  * @license    Same as Tombloo
@@ -28,7 +28,9 @@ addAround(Tombloo.Service.extractors['ReBlog'], 'extractByEndpoint', function(pr
             return ps;
         }
 
-        return request(highRes).addCallback(function(res) {
+        return request(highRes).addErrback(function(err) {
+            return ps;
+        }).addCallback(function(res) {
             if (res.status == 200) {
                 itemUrl = highRes;
                 update(ps, {
