@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.91
- * @date       2013-04-08
+ * @version    1.92
+ * @date       2013-07-18
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -205,8 +205,8 @@ const PSU_QPF_SCRIPT_NAME   = 'tombloo.poster.bookmark.pot.assort.quickpostform.
 const PSU_QPF_XUL_FILE      = 'quickPostForm.xul';
 const PSU_PREFS_XUL_FILE    = 'prefs.xul';
 const PSU_COMP_XML_FILE     = 'completion.xml';
-const PSU_DTD_JA_FILE       = 'ja-JP/tombloo.dtd';
-const PSU_DTD_EN_FILE       = 'en-US/tombloo.dtd';
+const PSU_DTD_JA_FILE       = 'ja-JP/tombfix.dtd';
+const PSU_DTD_EN_FILE       = 'en-US/tombfix.dtd';
 const PSU_BMA_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/master/' + PSU_BMA_SCRIPT_NAME;
 const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/master/bookmark/' + PSU_QPF_SCRIPT_NAME;
 
@@ -215,7 +215,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.91',
+    VERSION: '1.92',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -7341,7 +7341,7 @@ update(models.Delicious, {
                 return request(API_URL, {
                     headers : {
                         Authorization : auth,
-                        'User-Agent'  : 'Mozilla/Firefox/Tombloo/BookmarkPatch/' + Pot.VERSION
+                        'User-Agent'  : 'Mozilla/Firefox/Tombfix/BookmarkPatch/' + Pot.VERSION
                     }
                 }).addCallback(function(res) {
                     var tags = [], items, doc = convertToHTMLDocument(res.responseText);
@@ -8688,7 +8688,7 @@ if (typeof(PlacesUtils) === 'undefined') {
 
 update(models.FirefoxBookmark, {
     name: 'FirefoxBookmark',
-    ICON: 'chrome://tombloo/skin/firefox.ico',
+    ICON: 'chrome://tombfix/skin/firefox.ico',
     ANNO_DESCRIPTION: 'bookmarkProperties/description',
     check: function(ps) {
         return Pot.BookmarkUtil.check(ps);
@@ -9046,7 +9046,7 @@ Pot.extend({
 callLater(1.25, function() {
     Tombloo.Service.extractors.register([{
         name: 'Bookmark',
-        ICON: 'chrome://tombloo/skin/star.png',
+        ICON: 'chrome://tombfix/skin/star.png',
         check: function(ctx) {
             let self = this;
             Pot.callLazy(function() {
@@ -11130,7 +11130,7 @@ Pot.extend(Pot.RomaReadingUtil, {
                             '</hbox>',
                             '<hbox align="right" flex="1">',
                                 '<button id="submit-button" dlgtype="accept" tooltiptext="保存"',
-                                        'image="chrome://tombloo/skin/accept.png" label="OK"/>',
+                                        'image="chrome://tombfix/skin/accept.png" label="OK"/>',
                                 '<button id="cancel-button" dlgtype="cancel"',
                                         'tooltiptext="キャンセル" label="Cancel"/>',
                             '</hbox>',
@@ -11248,7 +11248,7 @@ if (!Tombloo.Service.extractors['Audio']) {
     Tombloo.Service.extractors.register([
     {
         name: 'Audio',
-        ICON: 'chrome://tombloo/skin/audio.png',
+        ICON: 'chrome://tombfix/skin/audio.png',
         check: function(ctx) {
             let re = /(?:mp3|ogg|wav|midi?)$/i;
             return ctx.onAudio ||
@@ -11283,7 +11283,7 @@ if (!Tombloo.Service.extractors['Audio']) {
     },
     {
         name: 'Audio - audio link',
-        ICON: 'chrome://tombloo/skin/audio.png',
+        ICON: 'chrome://tombfix/skin/audio.png',
         check: function(ctx) {
             let re = /(?:mp3|ogg|wav|midi?)$/i;
             return ctx.onLink && ctx.link &&
@@ -11298,7 +11298,7 @@ if (!Tombloo.Service.extractors['Audio']) {
     },
     {
         name: 'Audio - Upload from Cache',
-        ICON: 'chrome://tombloo/skin/audio.png',
+        ICON: 'chrome://tombfix/skin/audio.png',
         check: function(ctx) {
             return Tombloo.Service.extractors['Audio'].check(ctx) ||
                 Tombloo.Service.extractors['Audio - audio link'].check(ctx);
@@ -11654,23 +11654,23 @@ Pot.extend(Pot.SetupUtil, {
                 to: Pot.sprintf(Pot.StringUtil.mtrim([
                     '$1<preference ',
                         '$1id="%s" ',
-                        '$1name="extensions.tombloo.%s" ',
+                        '$1name="extensions.tombfix.%s" ',
                         '$1type="string" />',
                     '$1<preference ',
                         '$1id="%s" ',
-                        '$1name="extensions.tombloo.%s" ',
+                        '$1name="extensions.tombfix.%s" ',
                         '$1type="string" />',
                     '$1<preference ',
                         '$1id="%s" ',
-                        '$1name="extensions.tombloo.%s" ',
+                        '$1name="extensions.tombfix.%s" ',
                         '$1type="bool" />',
                     '$1<preference ',
                         '$1id="%s" ',
-                        '$1name="extensions.tombloo.%s" ',
+                        '$1name="extensions.tombfix.%s" ',
                         '$1type="bool"/>',
                     '$1<preference ',
                         '$1id="%s" ',
-                        '$1name="extensions.tombloo.%s" ',
+                        '$1name="extensions.tombfix.%s" ',
                         '$1type="bool"/>',
                     '$1$2$3'
                 ].join('\n')),
@@ -11790,7 +11790,7 @@ Pot.extend(Pot.SetupUtil, {
                 // 「選択したテキストを自動挿入する」を追加
                 from: Pot.SetupUtil.createPattern([
                     '([\\u0009\\u0020]*)(<textbox\\b ',
-                        'readonly = ["\']true[\'"] value = ["\']&label.example; {ProfD}/tombloo[\'"] />',
+                        'readonly = ["\']true[\'"] value = ["\']&label.example; {ProfD}/(?:tombloo|tombfix)[\'"] />',
                     '</row>)(\\r\\n|\\r|\\n|)'
                 ].join('\n')),
                 to: Pot.sprintf(Pot.StringUtil.mtrim([
@@ -12610,7 +12610,7 @@ Pot.extend(Pot.SetupUtil, {
     },
     validateCode: function(code) {
         let ok = false, filters, len, keywords = [
-            /Tombloo/i,
+            /tombloo|tombfix/i,
             /\b(?:addCallbacks?|Deferred|request|download)\b/i,
             /\b(?:update|addBefore|addAround)\b/,
             'function',
@@ -12774,7 +12774,7 @@ Pot.extend(Pot.SetupUtil, {
                         '<spacer height="10"/>',
                         '{EXTRA}',
                         '<button id="submit-button" dlgtype="accept" label="{BUTTON}" ',
-                                'image="chrome://tombloo/skin/accept.png"/>',
+                                'image="chrome://tombfix/skin/accept.png"/>',
                     '</vbox>',
                 '</hbox>',
             '</dialog>'
@@ -12950,7 +12950,7 @@ Tombloo.Service.actions.register({
             // アンインストール
             name: Pot.tmp.MENULABEL('uninstall'),
             type: 'context,menu',
-            icon: 'chrome://tombloo/skin/cross.png',
+            icon: 'chrome://tombfix/skin/cross.png',
             check: function(ctx) {
                 return true;
             },
