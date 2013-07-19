@@ -31,12 +31,11 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.40
- * @date       2013-04-03
+ * @version    1.41
+ * @date       2013-07-19
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
- *              - Tumblr  : http://polygonplanet.tumblr.com/
  * @license    Same as Tombloo
  * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.pixiv.js
  *
@@ -102,13 +101,12 @@ var pixivProto = {
                 href = stringify(link.href);
                 re = {
                     host   : /\bpixiv[.]net/,
-                    ext    : /\.(?:jpe?g|png|gif|ico|svg)(?:[!?#].*)?$/i,
                     illust : /\b(?:member_illust)/i,
                     mode   : /\b(?:mode=medium)\b/i,
                     id     : /\b(?:illust_?id)=\d+/i
                 };
                 result = false;
-                if (re.host.test(src) && re.ext.test(src) &&
+                if (re.host.test(src) &&
                     re.illust.test(href) &&
                     re.mode.test(href) && re.id.test(href)) {
                     result = true;
