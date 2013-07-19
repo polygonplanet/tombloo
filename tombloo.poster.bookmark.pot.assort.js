@@ -38,8 +38,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.92
- * @date       2013-07-18
+ * @version    1.93
+ * @date       2013-07-19
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -50,7 +50,7 @@
  * Tombloo: https://github.com/to/tombloo/wiki
  */
 //-----------------------------------------------------------------------------
-(function(undefined) {
+setTimeout(function() {
 //-----------------------------------------------------------------------------
 // for debugging
 //-----------------------------------------------------------------------------
@@ -215,7 +215,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.92',
+    VERSION: '1.93',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -7088,8 +7088,7 @@ update(models.HatenaDiary, {
                     return [
                         '<h2><a href="' + Pot.escapeHTML(ps.pageUrl) + '" title="' + Pot.escapeHTML(title) + '">' +
                             Pot.escapeHTML(ps.page) +
-                        '</a></h2>',
-                        '<div>' + Pot.escapeHTML(desc) + '</div>'
+                        '</a></h2>'
                     ].join('\n');
                 });
             });
@@ -7191,6 +7190,37 @@ update(models.Delicious, {
     },
     getAuthCookie : function() {
         return true;
+    },
+    updateSession : function() {
+        var cookie = this.getAuthCookie();
+        if (cookie && this.cookie == cookie) {
+            return 'same';
+        }
+        delete this.cookie;
+        delete this.user;
+        delete this.token;
+        delete this.password;
+
+        if (!cookie) {
+            return 'none';
+        }
+        this.cookie = cookie;
+        return 'changed';
+    },
+    getSessionValue : function(key, func) {
+        var self = this;
+        switch (this.updateSession()) {
+            case 'none':
+                return fail(new Error(getMessage('error.notLoggedin')));
+            case 'same':
+                if (self[key]) {
+                    return succeed(self[key]);
+                }
+            case 'changed':
+                return func.apply(self).addCallback(function(value) {
+                    return self[key] = value;
+                });
+        }
     },
     getCurrentUser : function() {
         var self = this;
@@ -13033,20 +13063,11 @@ delete Pot.tmp.MENULABEL;
 
 
 })();
-//-----------------------------------------------------------------------------
-// Update the grobal object with Pot
-//-----------------------------------------------------------------------------
-(function() {
 
 
 update(typeof grobal !== 'undefined' && grobal || {}, {
     Pot: Pot
 });
 
-
-})();
-//-----------------------------------------------------------------------------
-// End.
-//-----------------------------------------------------------------------------
-})();
+}, 1000);
 
