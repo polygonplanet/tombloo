@@ -31,8 +31,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.41
- * @date       2013-07-19
+ * @version    1.42
+ * @date       2013-08-07
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Blog    : http://polygon-planet-log.blogspot.com/
  *              - Twitter : http://twitter.com/polygon_planet
@@ -587,7 +587,7 @@ Tombloo.Service.extractors.register([
         APPEND_TAGS: false,
         GET_ALL_TAGS: false
     })
-], 'Photo');
+], 'Photo - pixiv', false);
 })();
 //-----------------------------------------------------------------------------
 /**
