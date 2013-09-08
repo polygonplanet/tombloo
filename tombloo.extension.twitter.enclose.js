@@ -17,12 +17,10 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.25
- * @date       2013-04-03
+ * @version    1.26
+ * @date       2013-09-08
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
- *              - Blog    : http://polygon-planet-log.blogspot.com/
- *              - Twitter : http://twitter.com/polygon_planet
- *              - Tumblr  : http://polygonplanet.tumblr.com/
+ *              - Twitter: http://twitter.com/polygon_planet
  * @license    Same as Tombloo
  * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.extension.twitter.enclose.js
  *
@@ -138,7 +136,7 @@ if (QuickPostForm.extended) {
     QuickPostForm.extended.addProcedure(procedure);
 } else {
     addAround(QuickPostForm, 'show', function(proceed, args) {
-        var QUICKPOSTFORM_XUL_PATH = 'chrome://tombloo/content/quickPostForm.xul';
+        var QUICKPOSTFORM_XUL_PATH = 'chrome://tombfix/content/quickPostForm.xul';
         var ps = args[0], position = args[1], message = args[2];
         var win, result, orgOpenDialog;
         orgOpenDialog = globals.openDialog;
@@ -590,7 +588,7 @@ function generateXUL() {
         "var args = arguments, params = args[0], env;",
         "var encloseCheck, prefixBox, separatorBox, suffixBox, displayFormCheck, previewBox, previewLength;",
         "",
-        "env = Components.classes['@brasil.to/tombloo-service;1'].getService().wrappedJSObject;",
+        "env = Components.classes['@tombfix.github.io/tombfix-service;1'].getService().wrappedJSObject;",
         "",
         "window.addEventListener('load', init, true);",
         "window.addEventListener('dialogaccept', save, true);",
