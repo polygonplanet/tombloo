@@ -1,7 +1,7 @@
 /**
- * Extension.Update.Patches - Tombloo patches
+ * Extension.Update.Patches - Tombloo/Tombfix patches
  *
- * インストール済みのパッチすべてを一括でアップデートできるパッチ
+ * インストール済みのパッチすべてを一括でアップデートできるTombfixパッチ
  *
  * 機能:
  * --------------------------------------------------------------------------
@@ -15,12 +15,10 @@
  * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.extension.update.patches.js
  *
  *
- * @version    1.05
- * @date       2013-04-07
+ * @version    1.06
+ * @date       2013-09-08
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
- *              - Blog    : http://polygon-planet-log.blogspot.com/
- *              - Twitter : http://twitter.com/polygon_planet
- *              - Tumblr  : http://polygonplanet.tumblr.com/
+ *              - Twitter: http://twitter.com/polygon_planet
  * @license    Same as Tombloo
  *
  * Tombloo: https://github.com/to/tombloo/wiki
@@ -330,7 +328,8 @@ function generateXUL() {
         'button {',
             'cursor: pointer;',
             'margin-top: 0.7em;',
-            'padding: 0.5em 0;',
+            'padding: 0.7em 0;',
+            'line-height: 0;',
         '}',
         'richlistitem {',
             'border: 1px dotted #666;',
@@ -455,6 +454,7 @@ function generateXUL() {
                     '</box>',
                 '</vbox>',
             '</hbox>',
+            '<script type="application/javascript;version=1.7" src="chrome://global/content/viewSourceUtils.js"></script>',
             '<script type="application/javascript;version=1.7">{SCRIPT}</script>',
         '</dialog>'
     ].join('\n');
@@ -462,7 +462,7 @@ function generateXUL() {
     script = [
         "var env, args, updateUrls, patches, listScripts, icons, updateItems = [];",
         "args = arguments[0];",
-        "env = Components.classes['@brasil.to/tombloo-service;1'].getService().wrappedJSObject;",
+        "env = Components.classes['@tombfix.github.io/tombfix-service;1'].getService().wrappedJSObject;",
         "env.extend(this, env, false);",
         "'checkbox label textbox image richlistitem box hbox vbox'.split(' ').forEach(function(tag) {",
             "this[tag.toUpperCase()] = bind(E, null, tag);",
@@ -1324,6 +1324,14 @@ function generateXUL() {
                     "func(ifc ? value.QueryInterface(ifc) : value);",
                 "}",
             "} catch (e if e == StopIteration) {}",
+        "}",
+        "",
+        "function openInEditor(url) {",
+            "try {",
+                "gViewSourceUtils.viewSource(url.path || url);",
+            "} catch (e) {",
+                "error('Cannot open source in editor.');",
+            "}",
         "}"
     ].join('\n');
     
