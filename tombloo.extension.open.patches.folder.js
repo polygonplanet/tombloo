@@ -10,12 +10,10 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.01
- * @date       2013-04-03
+ * @version    1.02
+ * @date       2013-09-08
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
- *              - Blog    : http://polygon-planet-log.blogspot.com/
- *              - Twitter : http://twitter.com/polygon_planet
- *              - Tumblr  : http://polygonplanet.tumblr.com/
+ *              - Twitter: http://twitter.com/polygon_planet
  * @license    Same as Tombloo
  * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.extension.open.patches.folder.js
  *
@@ -50,7 +48,7 @@ Tombloo.Service.actions.register({
     type : 'context,menu',
     // icon: folder.png : http://www.famfamfam.com/
     icon : [
-        'data:image/png;base64',
+        'data:image/png;base64,',
         'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0',
         'U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAGrSURBVDjLxZO7ihRBFIa/6u0ZW7GHBUV0',
         'UQQTZzd3QdhMQxOfwMRXEANBMNQX0MzAzFAwEzHwARbNFDdwEd31Mj3X7a6uOr9BtzNjYjKBJ6ni',
