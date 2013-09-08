@@ -10,8 +10,8 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.02
- * @date       2013-04-03
+ * @version    1.03
+ * @date       2013-09-08
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Twitter : http://twitter.com/polygon_planet
  * @license    Same as Tombloo
@@ -210,7 +210,7 @@ function generateXUL() {
         "var env, args, accounts, input;",
         "",
         "args = arguments[0];",
-        "env = Components.classes['@brasil.to/tombloo-service;1'].getService().wrappedJSObject;",
+        "env = Components.classes['@tombfix.github.io/tombfix-service;1'].getService().wrappedJSObject;",
         "env.extend(this, env, false);",
         "",
         "void function() {",
