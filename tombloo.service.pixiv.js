@@ -1,7 +1,7 @@
 /**
  * pixiv Service - Tombloo patches
  *
- * ピクシブ用のTomblooパッチ : http://www.pixiv.net/
+ * pixiv用のTombloo/Tombfixパッチ : http://www.pixiv.net/
  *
  * - pixiv Extractor patch
  * - pixiv Bookmark patch
@@ -31,12 +31,11 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.42
- * @date       2013-08-07
+ * @version    1.43
+ * @date       2013-09-14
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
- *              - Blog    : http://polygon-planet-log.blogspot.com/
- *              - Twitter : http://twitter.com/polygon_planet
- * @license    Same as Tombloo
+ *              - Twitter: http://twitter.com/polygon_planet
+ * @license    Same as Tomblo
  * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.pixiv.js
  *
  * Tombloo: https://github.com/to/tombloo/wiki
@@ -75,7 +74,7 @@ var pixivProto = {
     pixivDocuments: {},
     check: function(ctx) {
         var result = false, checkUrl;
-        if (ctx.onImage && this.PIXIV_HOST_REGEXP.test(ctx.host)) {
+        if ((ctx.onImage || ctx.onLink) && this.PIXIV_HOST_REGEXP.test(ctx.host)) {
             checkUrl = this.getNextPageURL(ctx);
             if (checkUrl && checkUrl.length > 21) {
                 result = true;
@@ -84,7 +83,7 @@ var pixivProto = {
         return result;
     },
     isThumbnailPage: function(ctx) {
-        var result = false, img, link, re, src, i, href;
+        var result = false, img, link, re, src, i, href, bg, bgRe, m;
         try {
             img = ctx.target;
             link = img.parentNode;
@@ -96,8 +95,17 @@ var pixivProto = {
                 link = link.parentNode;
                 i++;
             }
-            if (img && link && img.src && link.href) {
-                src = stringify(img.src);
+            src = img.src;
+            if (!src && link) {
+                bg = link.style.backgroundImage;
+                bgRe = /(["'])(.*pixiv.*?)\1/;
+                m = (bg || '').match(bgRe);
+                if (m) {
+                    src = m[2];
+                }
+            }
+            if (img && link && src && link.href) {
+                src = stringify(src);
                 href = stringify(link.href);
                 re = {
                     host   : /\bpixiv[.]net/,
@@ -830,11 +838,12 @@ var pixivBookmark = update({
         token = this.getToken();
         psc = update({}, ps);
         return token.addCallback(function(token) {
+            var illustId = self.getIllustId(psc, doc);
             return request(addUrl, {
                 sendContent: {
                     mode     : 'add',
                     tt       : token,
-                    id       : self.getIllustId(psc, doc),
+                    id       : illustId,
                     type     : 'illust',
                     restrict : 0, // 1 = 非公開, 0 = 公開
                     tag      : joinText(psc.tags || [], ' '),
@@ -865,6 +874,25 @@ var pixivBookmark = update({
                             if (!found) {
                                 newNode = select(html, sels);
                                 oldNode = select(curDoc, sels);
+                                if (!oldNode && newNode) {
+                                    // トップページおすすめユーザーのFollowボタン
+                                    oldNode = function() {
+                                        var id = ('' + illustId).replace(/["']/g, '');
+                                        var elem = $x('//li[contains(@class, "user-recommendation-item")]//a[contains(@href, "illust_id=' + id + '")]',
+                                            curDoc);
+                                        var follow;
+                                        if (elem) {
+                                            while (elem) {
+                                                follow = elem.querySelector('.follow');
+                                                if (follow) {
+                                                    break;
+                                                }
+                                                elem = elem.parentNode;
+                                            }
+                                        }
+                                        return follow;
+                                    }();
+                                }
                                 if (newNode && oldNode) {
                                     found = true;
                                 }
