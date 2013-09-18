@@ -1,13 +1,13 @@
 /**
- * Model Desktop - Tombloo patch
+ * Model Desktop - Tombfix patch
  *
  * デスクトップに保存するmodelを追加します
  *
- * @version    1.00
- * @date       2013-05-25
+ * @version    1.02
+ * @date       2013-09-19
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
- *              - Twitter: http://twitter.com/polygon_planet
- * @license    Same as Tombloo
+ * @link       http://twitter.com/polygon_planet
+ * @license    Public Domain
  * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.desktop.js
  *
  * Tombloo: https://github.com/to/tombloo/wiki
@@ -44,14 +44,27 @@ models.register(update({}, Local, {
     },
     Photo : {
         post : function(ps) {
-            var file = getDesktopDir();
-            var name = ps.file && ps.file.leafName || validateFileName(createURI(ps.itemUrl).fileName);
-            file.append(name);
-            clearCollision(file);
+            var post_ = function(p) {
+                var file = getDesktopDir();
+                var name = p.file && p.file.leafName || validateFileName(createURI(p.itemUrl).fileName);
+                file.append(name);
+                clearCollision(file);
+                return succeed().addCallback(function() {
+                    return p.file ? (p.file.copyTo(file.parent, file.leafName), file) : download(p.itemUrl, file);
+                });
+            };
 
-            return succeed().addCallback(function() {
-                return ps.file ? (ps.file.copyTo(file.parent, file.leafName), file) : download(ps.itemUrl, file);
-            });
+            if (ps.favorite && ps.favorite.form &&
+                Array.isArray(ps.favorite.form.images) && ps.favorite.form.images.length
+            ) {
+                // Photoset
+                return deferredForEach(ps.favorite.form.images, function(image) {
+                    return wait(0).addCallback(function() {
+                        return post_(update({}, ps, { itemUrl : image }));
+                    });
+                });
+            }
+            return post_(ps);
         }
     }
 }), Local, true);
