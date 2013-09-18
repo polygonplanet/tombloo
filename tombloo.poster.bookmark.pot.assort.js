@@ -38,7 +38,7 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.95
+ * @version    1.96
  * @date       2013-09-18
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Twitter: http://twitter.com/polygon_planet
@@ -213,7 +213,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.95',
+    VERSION: '1.96',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -5911,12 +5911,13 @@ Pot.extend(Pot.BookmarkUtil, {
                 });
             }
         }).addCallback(function(doc) {
+            var copy = convertToHTMLDocument('' + doc.documentElement.innerHTML);
             ['script', 'style'].forEach(function(tag) {
-                Array.prototype.slice.call(doc.getElementsByTagName(tag)).forEach(function(elem) {
+                Array.prototype.slice.call(copy.getElementsByTagName(tag)).forEach(function(elem) {
                     elem.parentNode.removeChild(elem);
                 });
             });
-            return doc;
+            return copy;
         }).addCallback(function(doc) {
             return {
                 title : doc.title || $x('//title/text()', doc) || '',
