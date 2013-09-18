@@ -15,8 +15,8 @@
  * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.extension.update.patches.js
  *
  *
- * @version    1.06
- * @date       2013-09-08
+ * @version    1.07
+ * @date       2013-09-18
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Twitter: http://twitter.com/polygon_planet
  * @license    Same as Tombloo
@@ -35,7 +35,8 @@ var UPDATE_PATTERNS = {
         /(?:@updateUR[IL]\b|\bupdateUR[IL][\u0009\u0020]*:)[\u0009\u0020]+(https?:\/+[-_.!~*'()a-z0-9;\/?:@&=+$,%#]+)/i,
         /(?:@(?:update|raw|ur[il])(?:ur[il]|)\b|\b(?:update|raw|ur[il])(?:ur[il]|)[\u0009\u0020]*:)[\u0009\u0020]+(https?:\/+[-_.!~*'()a-z0-9;\/?:@&=+$,%#]+)/i
     ],
-    version : /(?:@version\b|\bversion[\u0009\u0020]*:)[\u0009\u0020]+(\S+)/i
+    version : /(?:@version\b|\bversion[\u0009\u0020]*:)[\u0009\u0020]+(\S+)/i,
+    date    : /(?:@date\b|\bdate[\u0009\u0020]*:)[\u0009\u0020]+(\S+)/i
 };
 
 // あらかじめ設定できそうなupdateURL (初期起動時のみ適応)
@@ -122,7 +123,7 @@ Tombloo.Service.actions.register({
     type: 'context,menu',
     // icon: http://www.famfamfam.com/
     icon: [
-        'data:image/png;base64',
+        'data:image/png;base64,',
         'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0',
         'U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAALtSURBVBgZTcFLaFxVAIDh/5577jwzj0wS',
         'UmqMtKIiBltbbJ1FUCxVoQu3FrHGVRU3BVcKrkTcKOhCUOtOAyJ23WIQtFawpoooZWKJpnbsNJN5',
@@ -280,6 +281,10 @@ function generateXUL() {
             '{UPDATE_PROCESS_SUCCESS_SHOULD_CHECK}' : {
                 ja : '-- アップデート: 更新できます(不明なバージョンなので要確認)',
                 en : '-- Update: It is unknown different version. Should check script source.'
+            },
+            '{UPDATE_PROCESS_SUCCESS_BUT_ALREADY_LATEST}' : {
+                ja : '-- アップデート: すでに最新ぽいです(不明なバージョンなので要確認)',
+                en : '-- Update: Your patch is like already latest version. Should check script source.'
             },
             '{UPDATE_PROCESS_ERROR_SOURCE}' : {
                 ja : '-- エラー: 不正なソースコードです',
@@ -762,7 +767,8 @@ function generateXUL() {
                 "org = {",
                     "path    : item.value,",
                     "source  : getContents(item.value),",
-                    "version : getCurrentVersion(item.value)",
+                    "version : getCurrentVersion(item.value),",
+                    "date    : getCurrentDate(item.value)",
                 "};",
                 "setStatus = function(msg) {",
                     "icon.src = icons.pass;",
@@ -783,7 +789,7 @@ function generateXUL() {
                             "].join(' ').trim();",
                         "}",
                     "},",
-                    "success: function(msg, version) {",
+                    "success: function(msg, version, date) {",
                         "var check;",
                         "updateCount++;",
                         "updateItems.push({",
@@ -791,11 +797,13 @@ function generateXUL() {
                             "item  : item,",
                             "org: {",
                                 "uri     : org.path,",
-                                "version : org.version",
+                                "version : org.version,",
+                                "date    : org.date",
                             "},",
                             "cur: {",
                                 "uri     : updateUrl,",
-                                "version : version",
+                                "version : version,",
+                                "date    : date",
                             "}",
                         "});",
                         "icon.src = icons.checked;",
@@ -838,7 +846,7 @@ function generateXUL() {
                             "String(createURI(updateUrl).fileExtension).toLowerCase() === 'js'",
                         ") {",
                             "dd = request(updateUrl).addCallbacks(function(res) {",
-                                "var version, text, type, head, ok = false;",
+                                "var version, date, text, type, head, ok = false;",
                                 "try {",
                                     "text = String(res.responseText || '');",
                                     "type = String(res.channel && res.channel.contentType || '');",
@@ -860,17 +868,22 @@ function generateXUL() {
                                         "(version = head.match(args.UPDATE_PATTERNS.version)[1]) &&",
                                         "compareVersions(version, org.version) > 0",
                                     ") {",
-                                        "setStatus.success('{UPDATE_PROCESS_SUCCESS}', version);",
+                                        "setStatus.success('{UPDATE_PROCESS_SUCCESS}', version, date);",
                                     "} else if (org.source !== text) {",
-                                        "if (org.source.length < text.length ||",
-                                            "countChars(org.source) < countChars(text)",
+                                        "if (org.date && args.UPDATE_PATTERNS.date.test(head) &&",
+                                            "(date = head.match(args.UPDATE_PATTERNS.date)[1]) &&",
+                                            "org.date > date",
+                                        ") {",
+                                            "setStatus.success('{UPDATE_PROCESS_SUCCESS_BUT_ALREADY_LATEST}', version, date);",
+                                        "} else if (org.source.length < text.length ||",
+                                                   "countChars(org.source) < countChars(text)",
                                         ") {",
                                             "// ファイルサイズ/使われてる文字のByteコード数で比較",
                                             "//XXX: Last-Modified, Date, Expires などのヘッダを信頼するかどうか",
-                                            "setStatus.success('{UPDATE_PROCESS_SUCCESS_MAYBE}', version);",
+                                            "setStatus.success('{UPDATE_PROCESS_SUCCESS_MAYBE}', version, date);",
                                         "} else {",
                                             "// あいまいでバージョン不明だけど中身が違う",
-                                            "setStatus.success('{UPDATE_PROCESS_SUCCESS_SHOULD_CHECK}', version);",
+                                            "setStatus.success('{UPDATE_PROCESS_SUCCESS_SHOULD_CHECK}', version, date);",
                                         "}",
                                     "} else {",
                                         "setStatus('{UPDATE_PROCESS_SKIP_LATEST}');",
@@ -1198,6 +1211,18 @@ function generateXUL() {
                 "head = source.trim().slice(0, args.SCRIPT_DOCCOMMENT_SIZE);",
                 "if (args.UPDATE_PATTERNS.version.test(head)) {",
                     "result = head.match(args.UPDATE_PATTERNS.version)[1];",
+                "}",
+            "}",
+            "return result;",
+        "}",
+        "function getCurrentDate(path) {",
+            "var result = '', source, fileName, head;",
+            "fileName = path && path.path || path;",
+            "source = getContents(fileName);",
+            "if (source) {",
+                "head = source.trim().slice(0, args.SCRIPT_DOCCOMMENT_SIZE);",
+                "if (args.UPDATE_PATTERNS.date.test(head)) {",
+                    "result = head.match(args.UPDATE_PATTERNS.date)[1];",
                 "}",
             "}",
             "return result;",
