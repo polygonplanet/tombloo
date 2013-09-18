@@ -38,12 +38,10 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.93
- * @date       2013-07-19
+ * @version    1.95
+ * @date       2013-09-18
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
- *              - Blog    : http://polygon-planet-log.blogspot.com/
- *              - Twitter : http://twitter.com/polygon_planet
- *              - Tumblr  : http://polygonplanet.tumblr.com/
+ *              - Twitter: http://twitter.com/polygon_planet
  * @license    Same as Tombloo
  * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.poster.bookmark.pot.assort.js
  *
@@ -215,7 +213,7 @@ const PSU_QPF_SCRIPT_URL    = 'https://github.com/polygonplanet/tombloo/raw/mast
 //-----------------------------------------------------------------------------
 var Pot = {
     // 必ずパッチのバージョンと同じにする
-    VERSION: '1.93',
+    VERSION: '1.95',
     SYSTEM: 'Tombloo',
     DEBUG: getPref('debug'),
     lang: (function(n) {
@@ -3497,6 +3495,23 @@ Pot.extend(Pot.StringUtil, {
         return (s && re.seq.test(s)) ? s.replace(re.seq, rep) : s;
     },
     /**
+     * 文字列をJavaScriptエスケープシーケンスとして評価できる値に変換
+     *
+     * @example  escapeSequenceAll('ほげabc ("ｗ")');
+     * @results  '\u307b\u3052\u0061\u0062\u0063\u0020\u0028\u0022\uff57\u0022\u0029'
+     *
+     * @param  {String}   text   対象の文字列
+     * @return {String}          変換された文字列
+     */
+    escapeSequenceAll: function(text) {
+        let r = [], s = Pot.StringUtil.stringify(text), len = s.length, i = 0, c;
+        for (; i < len; i++) {
+            c = '\\u' + ('0000' + s.charCodeAt(i).toString(16)).slice(-4);
+            r.push(c);
+        }
+        return r.join('');
+    },
+    /**
      * 文字列のByte数を取得
      *
      * @param  {String}   string   対象の文字列
@@ -5895,6 +5910,13 @@ Pot.extend(Pot.BookmarkUtil, {
                     return convertToHTMLDocument(res.responseText);
                 });
             }
+        }).addCallback(function(doc) {
+            ['script', 'style'].forEach(function(tag) {
+                Array.prototype.slice.call(doc.getElementsByTagName(tag)).forEach(function(elem) {
+                    elem.parentNode.removeChild(elem);
+                });
+            });
+            return doc;
         }).addCallback(function(doc) {
             return {
                 title : doc.title || $x('//title/text()', doc) || '',
@@ -10676,6 +10698,21 @@ QuickPostForm.descriptionContextMenus.push(
         },
         {
             name: 'JSON文字列アンエスケープ',
+            execute: function(elmText, desc) {
+                desc.value = Pot.StringUtil.unescapeSequence(desc.value);
+            }
+        },
+        {
+            name: '----'
+        },
+        {
+            name: 'UNICODEエスケープ',
+            execute: function(elmText, desc) {
+                desc.value = Pot.StringUtil.escapeSequenceAll(desc.value);
+            }
+        },
+        {
+            name: 'UNICODEアンエスケープ',
             execute: function(elmText, desc) {
                 desc.value = Pot.StringUtil.unescapeSequence(desc.value);
             }
