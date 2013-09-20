@@ -1,19 +1,22 @@
-# Scripts and patches for Tombloo
+# Scripts and patches for Tombfix
 
-Firefox アドオン [Tombloo](https://github.com/to/tombloo/wiki) で利用できるパッチやスクリプトを置いてます。
+Firefox アドオン [Tombfix](https://github.com/tombfix/core) ([Tombloo](https://github.com/to/tombloo/wiki) fork) 
+で利用できるパッチやスクリプトを置いてます。
 
 ## インストール
 
-raw: のほうのリンク、または 各スクリプトのビュー (ファイル名クリック) の右上にある **raw** リンク
-を右クリックして 「Tomblooパッチのインストール」 から行います。
+raw: のほうのリンク、または 各スクリプトのビュー (ファイル名クリック) の右上にある **Raw** ボタン
+を右クリックして 「Tombfix」→「Tombfixパッチのインストール」 から行います。
 
-※ 直接インストールしても無効なファイルもあります。
-   詳細は以下から。
+※ 直接インストールしても無効なファイルもあります
+
+詳細は以下から。
 
 ## 各パッチの概要
 
 各パッチの詳細に記事へのリンクを載せています。  
-注意点などもあるので目を通してみてください。
+注意点などもあるので目を通してみてください。  
+Tombloo という表記のままだったりしますが、Tombfix で動作確認済みです。
 
 *  **tombloo.extension.twitter.enclose.js**  
    [raw: tombloo.extension.twitter.enclose.js][tombloo.extension.twitter.enclose.js(raw)]  
@@ -27,20 +30,10 @@ raw: のほうのリンク、または 各スクリプトのビュー (ファイ
    Evernoteのログイン切れてたら自動で再ログインするパッチ。  
    [Evernoteのログイン切れてたら自動で再ログインするTomblooパッチ | 圧縮電子どうのこうの][tombloo.model.evernote.relogin.js]
 
-*  **tombloo.model.googlereader.quickadd.js**  
-   [raw: tombloo.model.googlereader.quickadd.js][tombloo.model.googlereader.quickadd.js(raw)]  
-   Googleリーダーにポストしたサイトのフィードを登録するTomblooパッチ。  
-   [Googleリーダーにポストしたサイトのフィードを登録するTomblooパッチ | 圧縮電子どうのこうの][tombloo.model.googlereader.quickadd.js]
-
 *  **tombloo.poster.bookmark.pot.assort.js**  
    [raw: tombloo.poster.bookmark.pot.assort.js][tombloo.poster.bookmark.pot.assort.js(raw)]  
-   Postersに「Bookmark」と「Audio」を追加するパッチ。  
+   Postersに「Bookmark」と「Audio」を追加するパッチ (実験的)。  
    [「Audio」と「Bookmark」をポスト一覧に追加するTomblooパッチ | 圧縮電子どうのこうの][tombloo.poster.bookmark.pot.assort.js]
-
-*  **tombloo.service.actions.installpatch.fix.js**  
-   [raw: tombloo.service.actions.installpatch.fix.js][tombloo.service.actions.installpatch.fix.js(raw)]  
-   パッチのインストールに失敗しなくなるパッチ。  
-   [Tomblooパッチのインストールに失敗しなくなるパッチ | 圧縮電子どうのこうの][tombloo.service.actions.installpatch.fix.js]
 
 *  **tombloo.service.pixiv.js**  
    [raw: tombloo.service.pixiv.js][tombloo.service.pixiv.js(raw)]  
@@ -98,11 +91,6 @@ raw: のほうのリンク、または 各スクリプトのビュー (ファイ
    ページ内のDOM要素を削除したり操作できるパッチ。  
    [ページ内のDOM要素を削除したり操作できるTomblooパッチ | 圧縮電子どうのこうの][tombloo.service.actions.element.js]
 
-*  **tombloo.service.soundcloud.changeaccount.js**  
-   [raw: tombloo.service.soundcloud.changeaccount.js][tombloo.service.soundcloud.changeaccount.js(raw)]  
-   Tomblooの「アカウントの切り替え」にSoundCloudを追加するパッチ。  
-   [Tomblooの「アカウントの切り替え」にSoundCloudを追加するパッチ | 圧縮電子どうのこうの][tombloo.service.soundcloud.changeaccount.js]
-
 *  **tombloo.model.tumblr.postlimit.message.js**  
    [raw: tombloo.model.tumblr.postlimit.message.js][tombloo.model.tumblr.postlimit.message.js(raw)]  
    Tumblrのリブログ/ポストのリミット残数が確認できるTomblooパッチ。  
@@ -123,9 +111,20 @@ raw: のほうのリンク、または 各スクリプトのビュー (ファイ
    Tomblooの「アカウントの切り替え」にTwitterを追加するパッチ。  
    [Tomblooの「アカウントの切り替え」にTwitterを追加するパッチ | 圧縮電子どうのこうの][tombloo.service.twitter.changeaccount.js]
 
+*  **tombloo.extractor.tumblr.highres.js**  
+   [raw: tombloo.extractor.tumblr.highres.js][tombloo.extractor.tumblr.highres.js(raw)]  
+   TumblrでHighRes画像を取得するTombfixパッチ。  
+   [TumblrでHighRes画像を取得するTombfixパッチ | 圧縮電子どうのこうの][tombloo.extractor.tumblr.highres.js]
 
+*  **tombloo.model.desktop.js**  
+   [raw: tombloo.model.desktop.js][tombloo.model.desktop.js(raw)]  
+   デスクトップに保存するmodelを追加するTombfixパッチ。  
+   [デスクトップに保存するmodelを追加するTombfixパッチ | 圧縮電子どうのこうの][tombloo.model.desktop.js]
 
-
+*  **tombfix.model.tumblr.photoset.local.js**  
+   [raw: tombfix.model.tumblr.photoset.local.js][tombfix.model.tumblr.photoset.local.js(raw)]  
+   TumblrでPhotosetをローカル保存する時、全画像を取得するTombfixパッチ。  
+   [TumblrでPhotosetをローカル保存する時、全画像を取得するTombfixパッチ | 圧縮電子どうのこうの][tombfix.model.tumblr.photoset.local.js]
 
 
 
@@ -218,6 +217,19 @@ raw: のほうのリンク、または 各スクリプトのビュー (ファイ
 
 [tombloo.service.twitter.changeaccount.js]: http://polygon-planet-log.blogspot.com/2012/06/tomblootwitter.html "Tomblooの「アカウントの切り替え」にTwitterを追加するパッチ | 圧縮電子どうのこうの"
 [tombloo.service.twitter.changeaccount.js(raw)]: https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.twitter.changeaccount.js "tombloo.service.twitter.changeaccount.js(raw)"
+
+
+[tombloo.extractor.tumblr.highres.js]: http://polygon-planet-log.blogspot.jp/2013/09/tombfix-tumblr-high-res-photo-patch.html "TumblrでHighRes画像を取得するTombfixパッチ | 圧縮電子どうのこうの"
+[tombloo.extractor.tumblr.highres.js(raw)]: https://github.com/polygonplanet/tombloo/raw/master/tombloo.extractor.tumblr.highres.js "tombloo.extractor.tumblr.highres.js(raw)"
+
+
+[tombloo.model.desktop.js]: http://polygon-planet-log.blogspot.jp/2013/09/tombfix-model-local-desktop-patch.html "デスクトップに保存するmodelを追加するTombfixパッチ | 圧縮電子どうのこうの"
+[tombloo.model.desktop.js(raw)]: https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.desktop.js "tombloo.model.desktop.js(raw)"
+
+
+[tombfix.model.tumblr.photoset.local.js]: http://polygon-planet-log.blogspot.jp/2013/09/tombfix-tumblr-photoset-local-patch.html "TumblrでPhotosetをローカル保存する時、全画像を取得するTombfixパッチ | 圧縮電子どうのこうの"
+[tombfix.model.tumblr.photoset.local.js(raw)]: https://github.com/polygonplanet/tombloo/raw/master/tombfix.model.tumblr.photoset.local.js "tombfix.model.tumblr.photoset.local.js(raw)"
+
 
 
 
