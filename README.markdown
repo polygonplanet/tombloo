@@ -18,22 +18,10 @@ raw: のほうのリンク、または 各スクリプトのビュー (ファイ
 注意点などもあるので目を通してみてください。  
 Tombloo という表記のままだったりしますが、Tombfix で動作確認済みです。
 
-*  **tombloo.extension.twitter.enclose.js**  
-   [raw: tombloo.extension.twitter.enclose.js][tombloo.extension.twitter.enclose.js(raw)]  
-   Twitterポスト時に括弧(「」)等でタイトルを囲うパッチ。  
-   最大文字数超えないよう 140 文字に切り詰めたりする。  
-   括弧で囲うかどうかはオプションで変更可。  
-   [TwitterにPOSTするとき先頭に“見てる”を付けてタイトルを括弧で囲うTomblooパッチ | 圧縮電子どうのこうの][tombloo.extension.twitter.enclose.js]
-
 *  **tombloo.model.evernote.relogin.js**  
    [raw: tombloo.model.evernote.relogin.js][tombloo.model.evernote.relogin.js(raw)]  
    Evernoteのログイン切れてたら自動で再ログインするパッチ。  
    [Evernoteのログイン切れてたら自動で再ログインするTomblooパッチ | 圧縮電子どうのこうの][tombloo.model.evernote.relogin.js]
-
-*  **tombloo.poster.bookmark.pot.assort.js**  
-   [raw: tombloo.poster.bookmark.pot.assort.js][tombloo.poster.bookmark.pot.assort.js(raw)]  
-   Postersに「Bookmark」と「Audio」を追加するパッチ (実験的)。  
-   [「Audio」と「Bookmark」をポスト一覧に追加するTomblooパッチ | 圧縮電子どうのこうの][tombloo.poster.bookmark.pot.assort.js]
 
 *  **tombloo.service.pixiv.js**  
    [raw: tombloo.service.pixiv.js][tombloo.service.pixiv.js(raw)]  
@@ -128,29 +116,12 @@ Tombloo という表記のままだったりしますが、Tombfix で動作確�
 
 
 
-
-
-
-
-
-[tombloo.extension.twitter.enclose.js]: http://polygon-planet-log.blogspot.com/2011/06/twitterposttombloo_02.html "TwitterにPOSTするとき先頭に“見てる”を付けてタイトルを括弧で囲うTomblooパッチ | 圧縮電子どうのこうの"
-[tombloo.extension.twitter.enclose.js(raw)]: https://github.com/polygonplanet/tombloo/raw/master/tombloo.extension.twitter.enclose.js "tombloo.extension.twitter.enclose.js(raw)"
-
-
 [tombloo.model.evernote.relogin.js]: http://polygon-planet-log.blogspot.com/2011/07/evernotetombloo_02.html "Evernoteのログイン切れてたら自動で再ログインするTomblooパッチ | 圧縮電子どうのこうの"
 [tombloo.model.evernote.relogin.js(raw)]: https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.evernote.relogin.js "tombloo.model.evernote.relogin.js(raw)"
 
 
 [tombloo.model.googlereader.quickadd.js]: http://polygon-planet-log.blogspot.com/2011/07/googletombloo_4862.html "Googleリーダーにポストしたサイトのフィードを登録するTomblooパッチ | 圧縮電子どうのこうの"
 [tombloo.model.googlereader.quickadd.js(raw)]: https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.googlereader.quickadd.js "tombloo.model.googlereader.quickadd.js(raw)"
-
-
-[tombloo.poster.bookmark.pot.assort.js]: http://polygon-planet-log.blogspot.com/2011/06/audiobookmarktombloo_19.html "「Audio」と「Bookmark」をポスト一覧に追加するTomblooパッチ | 圧縮電子どうのこうの"
-[tombloo.poster.bookmark.pot.assort.js(raw)]: https://github.com/polygonplanet/tombloo/raw/master/tombloo.poster.bookmark.pot.assort.js "tombloo.poster.bookmark.pot.assort.js(raw)"
-
-
-[tombloo.service.actions.installpatch.fix.js]: http://polygon-planet-log.blogspot.com/2011/05/tombloo_04.html "Tomblooパッチのインストールに失敗しなくなるパッチ | 圧縮電子どうのこうの"
-[tombloo.service.actions.installpatch.fix.js(raw)]: https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.actions.installpatch.fix.js "tombloo.service.actions.installpatch.fix.js"
 
 
 [tombloo.service.pixiv.js]: http://polygon-planet-log.blogspot.com/2011/04/pixivposttombloo_14.html "pixivからブックマークと同時にPOSTできるTomblooパッチがサムネイル対応 | 圧縮電子どうのこうの"
