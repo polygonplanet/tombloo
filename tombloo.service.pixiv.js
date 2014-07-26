@@ -31,8 +31,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.43
- * @date       2013-09-14
+ * @version    1.44
+ * @date       2014-07-26
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Twitter: http://twitter.com/polygon_planet
  * @license    Same as Tomblo
@@ -2185,7 +2185,7 @@ update(pixivThumbsExpander, {
                 href: attr(a, 'href')
             });
             a.parentNode.insertBefore(nop, a);
-            a.removeChild(simg);
+            simg.parentNode.removeChild(simg);
             if (this.isBasicPage()) {
                 callLater(0, function() {
                     if (self.expanding) {
@@ -2414,7 +2414,8 @@ update(pixivThumbsExpander, {
         var parents = {
             li: true,
             div: true,
-            article: true
+            article: true,
+            section: true
         };
         return node && (tagName(node) in parents);
     },
