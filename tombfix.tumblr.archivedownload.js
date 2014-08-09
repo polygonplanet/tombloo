@@ -5,8 +5,8 @@
  * 肌色っぽい画像だけでてきてクリックするとLocalに保存される
  * HighResがあればHighResで保存する
  *
- * @version   1.0.0
- * @date      2014-06-14
+ * @version   1.0.1
+ * @date      2014-08-09
  * @license   MIT
  * @updateURL https://github.com/polygonplanet/tombloo/raw/master/tombfix.tumblr.archivedownload.js
  */
@@ -348,7 +348,7 @@ Tombfix.Service.actions.register({
 
         deferredForEach(allImages, function(src) {
             // gifはやらない
-            if (!/_500\.(?:png|jpe?g)$/.test(src)) {
+            if (!/_\d+\.(?:png|jpe?g)$/.test(src)) {
                 return succeed(false);
             }
 
