@@ -167,7 +167,7 @@ Tombfix.Service.actions.register({
             '/*[contains(@class, "has_imageurl")]/@data-imageurl', doc, true);
     },
     updateDate: function(doc, archive) {
-        var posts = $x('//*[@id="content"]//section[contains(@class, "posts")]', doc);
+        var posts = $x('//*[starts-with(@id, "posts_")]', doc);
 
         if (posts && posts.id && /\d{6,}/.test(posts.id)) {
             var date = posts.id.match(/posts_(\d{4})(\d{2})/);
