@@ -31,8 +31,8 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.44
- * @date       2014-07-26
+ * @version    1.45
+ * @date       2014-10-03
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Twitter: http://twitter.com/polygon_planet
  * @license    Same as Tomblo
@@ -86,6 +86,10 @@ var pixivProto = {
         var result = false, img, link, re, src, i, href, bg, bgRe, m;
         try {
             img = ctx.target;
+            if (tagName(img) !== 'img') {
+                img = img.querySelector('img');
+            }
+
             link = img.parentNode;
             i = 0;
             while (link && i < 3) {
@@ -541,6 +545,7 @@ var pixivProto = {
         var self = this, tags, url, extractor;
         this.normalizeContext(ctx);
         url = this.getNextPageURL(ctx);
+        
         this.checkNextPageURL(url);
         tags = this.getTags(ctx);
         extractor = this.getEachExtractor(ctx);
@@ -1469,7 +1474,7 @@ update(pixivThumbsExpander, {
         }
         win = this.getWindow();
         doc = this.getDocument();
-        re = {by: /@href[\s\S]*$/gi, to: 'img/@src'};
+        re = {by: /@href[\s\S]*$/gi, to: '/img/@src'};
         xpath = pixivService.XPATH_NEXT_PAGE_HREF.replace(re.by, re.to);
         return request(url, {
             referrer: doc.URL || doc.location && doc.location.href
@@ -1942,7 +1947,8 @@ update(pixivThumbsExpander, {
             padding: 2,
             verticalAlign: 'middle',
             //cursor: 'zoom-in',
-            cursor: '-moz-zoom-in'
+            cursor: '-moz-zoom-in',
+            zIndex: 10
         });
         try {
             img.style.setProperty('border-color', '#568fd9', 'important');
@@ -2212,6 +2218,12 @@ update(pixivThumbsExpander, {
             this.setNopStyle(nop);
             //XXX: スクロール出すか出さないか
             css(li, {overflow : 'visible'});
+
+            var img = li.querySelector('.rtl, .ltr');
+            if (img) {
+                img.classList.remove('rtl');
+                img.classList.remove('ltr');
+            }
             show(li, this.isStaccfeedPage ? 'inline-block' : 'inline-table');
         }
     },
