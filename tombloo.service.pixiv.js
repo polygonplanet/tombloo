@@ -31,11 +31,11 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.45
- * @date       2014-10-03
+ * @version    1.46
+ * @date       2014-10-14
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
  *              - Twitter: http://twitter.com/polygon_planet
- * @license    Same as Tomblo
+ * @license    Public Domain
  * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.pixiv.js
  *
  * Tombloo: https://github.com/to/tombloo/wiki
@@ -193,7 +193,7 @@ var pixivProto = {
     getMangaPageNumber: function(ctx) {
         var page, re;
         try {
-            re = /_p(\d+)[.](?:jpe?g|png|gif|ico|svg)(?:[#?].*|)$/i;
+            re = /_p(\d+)(?:_master\d+|)[.](?:jpe?g|png|gif|ico|svg)(?:[#?].*|)$/i;
             page = ctx.target.src.match(re)[1];
         } catch (e) {
             page = 0;
@@ -202,7 +202,7 @@ var pixivProto = {
     },
     getMangaFirstImage: function(text) {
         var url, re;
-        re = /\b(https?:\/+.*?pixiv\.net\/[\w#!?=&;:.\/+-]*?\d+_p0\.\w+)\b/i;
+        re = /\b(https?:\/+.*?pixiv\.net\/[\w#!?=&;:.\/+-]*?\d+_p0(?:_master\d+|)\.\w+)\b/i;
         try {
             url = text.match(re)[1];
         } catch (e) {}
