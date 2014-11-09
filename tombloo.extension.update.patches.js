@@ -46,7 +46,6 @@ var BASE_UPDATE_URLS = {
     'tombloo.extension.update.patches.js'         : 'https://github.com/polygonplanet/tombloo/raw/master/tombloo.extension.update.patches.js',
     'tombloo.model.evernote.relogin.js'           : 'https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.evernote.relogin.js',
     'tombloo.model.googleplus.circle.js'          : 'https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.googleplus.circle.js',
-    'tombloo.model.googlereader.quickadd.js'      : 'https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.googlereader.quickadd.js',
     'tombloo.poster.bookmark.pot.assort.js'       : 'https://github.com/polygonplanet/tombloo/raw/master/tombloo.poster.bookmark.pot.assort.js',
     'tombloo.service.actions.installpatch.fix.js' : 'https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.actions.installpatch.fix.js',
     'tombloo.service.pixiv.js'                    : 'https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.pixiv.js',

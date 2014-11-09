@@ -120,10 +120,6 @@ Tombloo という表記のままだったりしますが、Tombfix で動作確�
 [tombloo.model.evernote.relogin.js(raw)]: https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.evernote.relogin.js "tombloo.model.evernote.relogin.js(raw)"
 
 
-[tombloo.model.googlereader.quickadd.js]: http://polygon-planet-log.blogspot.com/2011/07/googletombloo_4862.html "Googleリーダーにポストしたサイトのフィードを登録するTomblooパッチ | 圧縮電子どうのこうの"
-[tombloo.model.googlereader.quickadd.js(raw)]: https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.googlereader.quickadd.js "tombloo.model.googlereader.quickadd.js(raw)"
-
-
 [tombloo.service.pixiv.js]: http://polygon-planet-log.blogspot.com/2011/04/pixivposttombloo_14.html "pixivからブックマークと同時にPOSTできるTomblooパッチがサムネイル対応 | 圧縮電子どうのこうの"
 [tombloo.service.pixiv.js(raw)]: https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.pixiv.js "tombloo.service.pixiv.js(raw)"
 
