@@ -94,11 +94,6 @@ Tombloo という表記のままだったりしますが、Tombfix で動作確�
    Tumblrでリブログ/ポストするとき特定のアカウントだったら警告するTomblooパッチ。  
    [Tumblrでリブログ/ポストするとき特定のアカウントだったら警告するTomblooパッチ | 圧縮電子どうのこうの][tombloo.model.tumblr.confirm.reblog.js]
 
-*  **tombloo.service.twitter.changeaccount.js**  
-   [raw: tombloo.service.twitter.changeaccount.js][tombloo.service.twitter.changeaccount.js(raw)]  
-   Tomblooの「アカウントの切り替え」にTwitterを追加するパッチ。  
-   [Tomblooの「アカウントの切り替え」にTwitterを追加するパッチ | 圧縮電子どうのこうの][tombloo.service.twitter.changeaccount.js]
-
 *  **tombloo.extractor.tumblr.highres.js**  
    [raw: tombloo.extractor.tumblr.highres.js][tombloo.extractor.tumblr.highres.js(raw)]  
    TumblrでHighRes画像を取得するTombfixパッチ。  
@@ -118,10 +113,6 @@ Tombloo という表記のままだったりしますが、Tombfix で動作確�
 
 [tombloo.model.evernote.relogin.js]: http://polygon-planet-log.blogspot.com/2011/07/evernotetombloo_02.html "Evernoteのログイン切れてたら自動で再ログインするTomblooパッチ | 圧縮電子どうのこうの"
 [tombloo.model.evernote.relogin.js(raw)]: https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.evernote.relogin.js "tombloo.model.evernote.relogin.js(raw)"
-
-
-[tombloo.model.googlereader.quickadd.js]: http://polygon-planet-log.blogspot.com/2011/07/googletombloo_4862.html "Googleリーダーにポストしたサイトのフィードを登録するTomblooパッチ | 圧縮電子どうのこうの"
-[tombloo.model.googlereader.quickadd.js(raw)]: https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.googlereader.quickadd.js "tombloo.model.googlereader.quickadd.js(raw)"
 
 
 [tombloo.service.pixiv.js]: http://polygon-planet-log.blogspot.com/2011/04/pixivposttombloo_14.html "pixivからブックマークと同時にPOSTできるTomblooパッチがサムネイル対応 | 圧縮電子どうのこうの"
@@ -184,10 +175,6 @@ Tombloo という表記のままだったりしますが、Tombfix で動作確�
 
 [tombloo.model.tumblr.confirm.reblog.js]: http://polygon-planet-log.blogspot.com/2012/06/tumblrtombloo.html "Tumblrでリブログ/ポストするとき特定のアカウントだったら警告するTomblooパッチ | 圧縮電子どうのこうの"
 [tombloo.model.tumblr.confirm.reblog.js(raw)]: https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.tumblr.confirm.reblog.js "tombloo.model.tumblr.confirm.reblog.js(raw)"
-
-
-[tombloo.service.twitter.changeaccount.js]: http://polygon-planet-log.blogspot.com/2012/06/tomblootwitter.html "Tomblooの「アカウントの切り替え」にTwitterを追加するパッチ | 圧縮電子どうのこうの"
-[tombloo.service.twitter.changeaccount.js(raw)]: https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.twitter.changeaccount.js "tombloo.service.twitter.changeaccount.js(raw)"
 
 
 [tombloo.extractor.tumblr.highres.js]: http://polygon-planet-log.blogspot.jp/2013/09/tombfix-tumblr-high-res-photo-patch.html "TumblrでHighRes画像を取得するTombfixパッチ | 圧縮電子どうのこうの"
