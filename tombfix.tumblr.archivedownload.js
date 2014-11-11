@@ -1,7 +1,7 @@
 /**
  * Download Tumblr Archive - Tombfix patch
  *
- * Tumblr/archiveページで 右クリック→Tumbfix→「Download archive photos」
+ * Tumblr/archiveページで 右クリック→Tombfix→「Download archive photos」
  * 肌色っぽい画像だけでてきてクリックするとLocalに保存される
  * HighResがあればHighResで保存する
  *
@@ -53,7 +53,7 @@ Tombfix.Service.actions.register({
                 display: 'none'
             },
             attr: {
-                id: 'tumbfixArchiveDownload_next',
+                id: 'tombfixArchiveDownload_next',
                 'data-href': query
             }
         });
@@ -123,7 +123,7 @@ Tombfix.Service.actions.register({
                 }
 
                 if (win.scrollY >= win.scrollMaxY) {
-                    var next = $x('//*[@id="tumbfixArchiveDownload_next"]', doc);
+                    var next = $x('//*[@id="tombfixArchiveDownload_next"]', doc);
                     var query = next.getAttribute('data-href');
 
                     if (query) {
