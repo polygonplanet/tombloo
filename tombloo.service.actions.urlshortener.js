@@ -438,8 +438,9 @@ function generateExpandXUL() {
     ].join('\n'));
     
     script = stringify([
-        "var args = arguments[0], env, expandDialog, shortUrl, longUrl, expandButton;",
-        "env = Components.classes['@brasil.to/tombloo-service;1'].getService().wrappedJSObject;",
+        "var args = arguments[0], extService, env, expandDialog, shortUrl, longUrl, expandButton;",
+        "extService = Components.classes['@brasil.to/tombloo-service;1'] || Components.classes['@tombfix.github.io/tombfix-service;1'];",
+        "env = extService.getService().wrappedJSObject;",
         "env.extend(this, env, false);",
         "",
         "window.addEventListener('load', init, true);",
