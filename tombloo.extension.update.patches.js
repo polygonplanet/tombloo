@@ -15,15 +15,13 @@
  * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.extension.update.patches.js
  *
  *
- * @version    1.07
- * @date       2013-09-18
+ * @version    1.08
+ * @date       2014-11-11
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
- *              - Twitter: http://twitter.com/polygon_planet
- * @license    Same as Tombloo
- *
- * Tombloo: https://github.com/to/tombloo/wiki
+ * @license    Public Domain
  */
-(function(undefined) {
+(function() {
+'use strict';
 
 // コメントエリアを取得する最大サイズ
 var SCRIPT_DOCCOMMENT_SIZE = 1024 * 5;
@@ -41,47 +39,19 @@ var UPDATE_PATTERNS = {
 
 // あらかじめ設定できそうなupdateURL (初期起動時のみ適応)
 var BASE_UPDATE_URLS = {
-    'model.gplus.js'                              : 'https://github.com/YungSang/Scripts-for-Tombloo/raw/master/model.gplus.js',
-    'tombloo.extension.twitter.enclose.js'        : 'https://github.com/polygonplanet/tombloo/raw/master/tombloo.extension.twitter.enclose.js',
-    'tombloo.extension.update.patches.js'         : 'https://github.com/polygonplanet/tombloo/raw/master/tombloo.extension.update.patches.js',
-    'tombloo.model.evernote.relogin.js'           : 'https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.evernote.relogin.js',
-    'tombloo.model.googleplus.circle.js'          : 'https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.googleplus.circle.js',
-    'tombloo.poster.bookmark.pot.assort.js'       : 'https://github.com/polygonplanet/tombloo/raw/master/tombloo.poster.bookmark.pot.assort.js',
-    'tombloo.service.actions.installpatch.fix.js' : 'https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.actions.installpatch.fix.js',
-    'tombloo.service.pixiv.js'                    : 'https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.pixiv.js',
-    'tombloo.service.post.notify.js'              : 'https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.post.notify.js'
+    'model.gplus.js'                       : 'https://github.com/YungSang/Scripts-for-Tombloo/raw/master/model.gplus.js',
+    'tombloo.extension.twitter.enclose.js' : 'https://github.com/polygonplanet/tombloo/raw/master/tombloo.extension.twitter.enclose.js',
+    'tombloo.extension.update.patches.js'  : 'https://github.com/polygonplanet/tombloo/raw/master/tombloo.extension.update.patches.js',
+    'tombloo.model.evernote.relogin.js'    : 'https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.evernote.relogin.js',
+    'tombloo.model.googleplus.circle.js'   : 'https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.googleplus.circle.js',
+    'tombloo.service.pixiv.js'             : 'https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.pixiv.js',
+    'tombloo.service.post.notify.js'       : 'https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.post.notify.js'
 };
 
 // 自分のファイル名など (ソート用)
 var MOVE_TO_ENDS = {
-    'tombloo.poster.bookmark.pot.assort.js' : -1,
-    'tombloo.extension.update.patches.js'   :  0
+    'tombloo.extension.update.patches.js' : 0
 };
-
-// 特殊なパッチ
-var SPECIAL_PATCHES = {
-    'tombloo.poster.bookmark.pot.assort.js' : {
-        name : 'bookmark.pot.assort',
-        update : function(item) {
-            if (typeof Pot !== 'undefined' && Pot.SetupUtil) {
-                Pot.callLazy(function() {
-                    Pot.SetupUtil.autoUpdaterUserCanceled = false;
-                    Pot.SetupUtil.isUpdatable(true);
-                });
-            }
-        },
-        canceled : function() {
-            return !!(Pot.SetupUtil.setupCanceled);
-        },
-        completed : function() {
-            return !!(Pot.SetupUtil.setupCompleted);
-        },
-        canRemove : function() {
-            return false;
-        }
-    }
-};
-
 
 // Define language
 var LANG = (function(n) {
@@ -148,7 +118,6 @@ Tombloo.Service.actions.register({
             SCRIPT_DOCCOMMENT_SIZE : SCRIPT_DOCCOMMENT_SIZE,
             UPDATE_PATTERNS        : UPDATE_PATTERNS,
             MOVE_TO_ENDS           : MOVE_TO_ENDS,
-            SPECIAL_PATCHES        : SPECIAL_PATCHES,
             extendUpdateURL        : extendUpdateURL,
             potUpdatePatchUtil     : definePotUpdatePatchUtil()
         };
@@ -200,7 +169,7 @@ Tombloo.Service.actions.register({
 // XULを動的生成 (キャッシュはしない)
 function generateXUL() {
     var head, template, script, style, code, labels;
-    
+
     labels = {
         template : {
             '{TITLE}' : {
@@ -327,13 +296,12 @@ function generateXUL() {
     style = ['data:text/css,', encodeURIComponent([
         'window, dialog {',
             'margin: 0.7em 0.5em;',
-            'max-height: 580px;',
+            'height: 580px;',
         '}',
         'button {',
             'cursor: pointer;',
             'margin-top: 0.7em;',
             'padding: 0.7em 0;',
-            'line-height: 0;',
         '}',
         'richlistitem {',
             'border: 1px dotted #666;',
@@ -398,7 +366,7 @@ function generateXUL() {
             'font-weight: bold;',
         '}'
     ].join('\n'))].join('');
-    
+
     template = [
         '<?xml version="1.0" encoding="utf-8"?>',
         '<?xml-stylesheet type="text/css" href="chrome://global/skin/"?>',
@@ -420,8 +388,10 @@ function generateXUL() {
                         '<label id="progress-status" value="..."/>',
                     '</vbox>',
                     '<spacer height="5"/>',
-                    '<button id="update-button" label="{BUTTON_UPDATE_CONFIRM}" flex="1"',
-                            'tooltiptext="{TIP_BUTTON_UPDATE}"/>',
+                    '<vbox flex="1">',
+                        '<button id="update-button" label="{BUTTON_UPDATE_CONFIRM}" ',
+                                'tooltiptext="{TIP_BUTTON_UPDATE}"/>',
+                    '</vbox>',
                     '<box id="update-finish-box" flex="1" style="display: none;">',
                         '<vbox flex="1">',
                             '<spacer height="5"/>',
@@ -434,8 +404,8 @@ function generateXUL() {
                         '</vbox>',
                         '<vbox flex="1">',
                             '<spacer height="5"/>',
-                            '<button id="update-finish-button"',
-                                    'label="{BUTTON_UPDATE_FINISH}" flex="1"',
+                            '<button id="update-finish-button" ',
+                                    'label="{BUTTON_UPDATE_FINISH}" ',
                                     'tooltiptext="{TIP_BUTTON_UPDATE_FINISH}"/>',
                         '</vbox>',
                     '</box>',
@@ -451,8 +421,8 @@ function generateXUL() {
                         '</vbox>',
                         '<vbox flex="1">',
                             '<spacer height="5"/>',
-                            '<button id="update-end-button"',
-                                    'label="{BUTTON_UPDATE_END}" flex="1"',
+                            '<button id="update-end-button" ',
+                                    'label="{BUTTON_UPDATE_END}" flex="1" ',
                                     'tooltiptext="{TIP_BUTTON_UPDATE_END}"/>',
                         '</vbox>',
                     '</box>',
@@ -462,7 +432,7 @@ function generateXUL() {
             '<script type="application/javascript;version=1.7">{SCRIPT}</script>',
         '</dialog>'
     ].join('\n');
-    
+
     script = [
         "var env, args, updateUrls, patches, listScripts, icons, updateItems = [];",
         "args = arguments[0];",
@@ -684,14 +654,8 @@ function generateXUL() {
                     "item.addEventListener('dblclick', trappers.dblclick, true);",
                     "listScripts.appendChild(item);",
                     "callLater(0.5, function() {",
-                        "var scps, scriptName = patch.leafName;",
+                        "var scriptName = patch.leafName;",
                         "view.style.display = url.value ? '' : 'none';",
-                        "if (scriptName in args.SPECIAL_PATCHES) {",
-                            "scps = args.SPECIAL_PATCHES[scriptName];",
-                            "if (!scps.canRemove || !scps.canRemove()) {",
-                                "remove.style.display = 'none';",
-                            "}",
-                        "}",
                     "});",
                 "});",
             "});",
@@ -992,21 +956,17 @@ function generateXUL() {
                 "return dd;",
             "});",
             "",
-            "var specials = [], newItems = [], item, name;",
+            "var newItems = [], item, name;",
             "while (updateItems && updateItems.length) {",
                 "item = updateItems.shift();",
                 "if (item) {",
                     "name = getFileName(item.org && item.org.uri);",
                     "if (name) {",
-                        "if (name in args.SPECIAL_PATCHES) {",
-                            "specials.push(item);",
-                        "} else {",
-                            "newItems.push(item);",
-                        "}",
+                        "newItems.push(item);",
                     "}",
                 "}",
             "}",
-            "updateItems = [].concat(newItems).concat(specials);",
+            "updateItems = [].concat(newItems);",
             "",
             "// ソート済みが条件",
             "updateItems.forEach(function(item, index) {",
@@ -1017,99 +977,36 @@ function generateXUL() {
                 "className = 'x-check-' + item.index;",
                 "check = listScripts.querySelector('.' + className);",
                 "if (check && check.checked && updateUrl) {",
-                    "if (name in args.SPECIAL_PATCHES) {",
-                        "// インストールが特殊なパッチ",
-                        "d.addCallback(function() {",
-                            "return wait(1.5);",
-                        "}).addCallback(function() {",
-                            "var result, special, timeout, startTime;",
-                            "updateStatus('Updating... ' + name);",
-                            "try {",
-                                "timeout = 5 * 60 * 1000;",
-                                "startTime = (new Date()).getTime();",
-                                "special = args.SPECIAL_PATCHES[name];",
-                                "try {",
-                                    "window.blur();",
-                                "} catch (er) {}",
-                                "result = special.update(item);",
-                                "if (result instanceof Error) {",
-                                    "throw result;",
-                                "}",
-                                "if (special.completed) {",
-                                    "till(function() {",
-                                        "var end = false;",
-                                        "if (special.completed()) {",
-                                            "updateCount++;",
-                                            "end = true;",
-                                        "} else if (special.canceled()) {",
-                                            "end = true;",
-                                        "} else if (startTime - (new Date()).getTime() > timeout) {",
-                                            "end = true;",
-                                        "}",
-                                        "return end;",
-                                    "});",
-                                "}",
-                                "try {",
-                                    "byId('update-patches-dialog').centerWindowOnScreen();",
-                                    "window.focus();",
-                                "} catch (er) {}",
-                            "} catch (e) {",
-                                "throw e;",
-                            "}",
-                            "return wait(0.1);",
-                        "}).addErrback(function(err) {",
-                            "try {",
-                                "byId('update-patches-dialog').centerWindowOnScreen();",
-                                "window.focus();",
-                            "} catch (er) {}",
-                            "icon.src = icons.failed;",
-                            "alert('Error! ' + extractErrorMessage(err));",
-                            "throw (err instanceof Error) ? err : new Error(err);",
-                        "}).addCallback(function() {",
-                            "icon.src = icons.checked;",
-                            "return wait(0.525);",
-                        "}).addBoth(function(err) {",
-                            "updateProgress(index + 1);",
-                            "if (err instanceof Error) {",
-                                "updateStatus('Failed: ' + name);",
-                                "throw err;",
-                            "} else {",
-                                "updateStatus('Updated: ' + name);",
-                            "}",
-                            "return wait(1.25);",
+                    "d.addCallback(function() {",
+                        "updateStatus('Updating... ' + name);",
+                        "return wait(2.275);",
+                    "}).addCallback(function() {",
+                        "return download(updateUrl, getPatchDir()).addCallback(function(file) {",
+                            "reload();",
+                            "updateCount++;",
+                            "notify(",
+                                "name,",
+                                "getMessage('message.install.success'),",
+                                "notify.ICON_INFO",
+                            ");",
                         "});",
-                    "} else {",
-                        "d.addCallback(function() {",
-                            "updateStatus('Updating... ' + name);",
-                            "return wait(2.275);",
-                        "}).addCallback(function() {",
-                            "return download(updateUrl, getPatchDir()).addCallback(function(file) {",
-                                "reload();",
-                                "updateCount++;",
-                                "notify(",
-                                    "name,",
-                                    "getMessage('message.install.success'),",
-                                    "notify.ICON_INFO",
-                                ");",
-                            "});",
-                        "}).addErrback(function(err) {",
-                            "icon.src = icons.failed;",
-                            "alert('Error! ' + extractErrorMessage(err));",
-                            "throw (err instanceof Error) ? err : new Error(err);",
-                        "}).addCallback(function() {",
-                            "icon.src = icons.checked;",
-                            "return wait(0.525);",
-                        "}).addBoth(function(err) {",
-                            "updateProgress(index + 1);",
-                            "if (err instanceof Error) {",
-                                "updateStatus('Failed: ' + name);",
-                                "throw err;",
-                            "} else {",
-                                "updateStatus('Updated: ' + name);",
-                            "}",
-                            "return wait(1.25);",
-                        "});",
-                    "}",
+                    "}).addErrback(function(err) {",
+                        "icon.src = icons.failed;",
+                        "alert('Error! ' + extractErrorMessage(err));",
+                        "throw (err instanceof Error) ? err : new Error(err);",
+                    "}).addCallback(function() {",
+                        "icon.src = icons.checked;",
+                        "return wait(0.525);",
+                    "}).addBoth(function(err) {",
+                        "updateProgress(index + 1);",
+                        "if (err instanceof Error) {",
+                            "updateStatus('Failed: ' + name);",
+                            "throw err;",
+                        "} else {",
+                            "updateStatus('Updated: ' + name);",
+                        "}",
+                        "return wait(1.25);",
+                    "});",
                 "}",
             "});",
             "d.addErrback(function(err) {",
@@ -1255,7 +1152,7 @@ function generateXUL() {
                             "if (!file.exists()) {",
                                 "result = true;",
                             "} else {",
-                                "file.permissions = 0666;",
+                                "file.permissions = parseInt('666', 8);",
                                 "file.remove(false);",
                                 "if (!file.exists()) {",
                                     "result = true;",
@@ -1358,7 +1255,7 @@ function generateXUL() {
             "}",
         "}"
     ].join('\n');
-    
+
     (function() {
         var lang = LANG === 'ja' && LANG || 'en';
         forEach(labels.template, function([key, vals]) {
@@ -1368,7 +1265,7 @@ function generateXUL() {
             script = script.split(key).join(vals[lang]);
         });
     }());
-    
+
     forEach({
         '{ICON_LOADING}' : [
             "data:image/gif;base64,",
