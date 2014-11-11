@@ -1,27 +1,19 @@
 /**
- * Service.Post.Notify - Tombloo patches
+ * Service.Post.Notify - Tombloo/Tombfix patches
  *
  * ポスト完了時に通知メッセージを表示するパッチ
  *
- *
- * またポスト時のエラーで再試行できる場合は再度実行する
+ * また、ポスト時のエラーで再試行できる場合は再度実行する
  * これによりエラー減少が期待できる(かも…)
  *
- * ※通知はウザイ可能性があるのでその場合はパッチ削除
- *
- *
- * @version    1.08
- * @date       2013-03-07
+ * @version    1.09
+ * @date       2014-11-11
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
- *              - Blog    : http://polygon-planet-log.blogspot.com/
- *              - Twitter : http://twitter.com/polygon_planet
- *              - Tumblr  : http://polygonplanet.tumblr.com/
- * @license    Same as Tombloo
+ * @license    Public Domain
  * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.post.notify.js
- *
- * Tombloo: https://github.com/to/tombloo/wiki
  */
-(function(undefined) {
+(function() {
+'use strict';
 
 
 // 特定のエラーは再試行によってポストに成功するので回数を決めて再度ポストする
@@ -47,17 +39,6 @@ var retryErrors = [
             ].join('\n')),
         limit: 2,
         defaultLimit: 2
-    },
-    {
-        // ソースコード変化で効かなくなるけど一応
-        pattern: toSimpleRegExp([
-                'Tumblr: ',
-                  'message : ',
-                  'fileName : chrome://tombloo/content/eval.js?file=20_Tumblr.js',
-                  'lineNumber : 299'
-            ].join('\n')),
-        limit: 1,
-        defaultLimit: 1
     }
 ];
 
@@ -72,25 +53,22 @@ update(Tombloo.Service, {
      * @param  {Boolean}  recursive 再試行かどうか (internal)
      * @return {Deferred}           ポスト完了後に呼び出される
      */
-    post: function(ps, posters, recursive) {
-        var self = this, ds = {}, isFavorite, args = arguments, postCancel, isTumblr;
-        
-        // エラー後再ポスト時のデバッグに使用
-        debug(ps);
-        debug(posters);
-        
-        postCancel = false;
-        
+    post: function post_service(ps, posters, recursive) {
+        var self = this, ds = {}, args = arguments, isTumblr;
+        var postCancel = false;
+
         // 最初に呼ばれたときはリセットする
-        if (args.length === 2 && recursive === undefined) {
+        if (args.length === 2 && recursive === void 0) {
             retryErrors.forEach(function(retry) {
                 retry.limit = retry.defaultLimit;
             });
         }
-        isFavorite = function(name) {
+
+        var isFavorite = function(name) {
             return ps.favorite &&
                 (new RegExp('^' + ps.favorite.name + '(\\s|$)')).test(name);
         };
+
         [].concat(posters).forEach(function(p) {
             try {
                 ds[p.name] = isFavorite(p.name) ? p.favor(ps) : p.post(ps);
@@ -98,18 +76,18 @@ update(Tombloo.Service, {
                 ds[p.name] = fail(e);
             }
         });
+
         return new DeferredHash(ds).addCallback(function(ress) {
             var errs, ignoreError, name, success, res,
                 msg, errmsg, retryName, doRetry, called,
                 doneNames, failNames, allLen;
-            
-            debug(ress);
-            
+
             // Tumblrのみ再試行する
             retryName = 'tumblr';
-            
+
             errs = [];
             ignoreError = getPref('ignoreError');
+
             try {
                 ignoreError = ignoreError && new RegExp(ignoreError, 'i');
             } catch (e) {
@@ -117,19 +95,20 @@ update(Tombloo.Service, {
                 alert('Missing pattern: ' + ignoreError.toString() + '\n' + e);
                 ignoreError = null;
             }
+
             allLen = 0;
             doneNames = [];
             failNames = [];
             doRetry = false;
+
             for (name in ress) {
-                
                 allLen++;
                 [success, res] = ress[name];
-                
+
                 if (~name.toLowerCase().indexOf(retryName)) {
                     isTumblr = true;
                 }
-                
+
                 if (success) {
                     doneNames.push(name);
                 } else {
@@ -141,18 +120,21 @@ update(Tombloo.Service, {
                             format('HTTP Status Code %s', res.message.status) :
                             format('\n%s', errmsg.indent(4))
                     );
+
                     if (!ignoreError || !msg.match(ignoreError)) {
                         errs.push(msg);
                     }
-                    
+
                     if (name.toLowerCase().indexOf(retryName) !== -1) {
                         retryName = name;
                         doRetry = true;
                     }
                 }
             }
+
             postCancel = false;
             called = false;
+
             if (errs.length) {
                 if (doRetry && retryName) {
                     errmsg = errs.join('\n');
@@ -160,11 +142,12 @@ update(Tombloo.Service, {
                         if (retryErrors[i].limit < 0) {
                             retryErrors[i].limit = retryErrors[i].defaultLimit;
                         }
+
                         if (!called && retry.pattern.test(errmsg) &&
-                            --retryErrors[i].limit >= 0) {
-                            
+                            --retryErrors[i].limit >= 0
+                        ) {
                             called = true;
-                            
+
                             // 遅延呼び出しで再試行
                             callLater(1, function() {
                                 var reps;
@@ -172,16 +155,18 @@ update(Tombloo.Service, {
                                     return p.name === retryName;
                                 });
                                 // かならず第三引数を渡す
-                                args.callee.call(self, ps, reps, true);
+                                post_service.call(self, ps, reps, true);
                             });
                         }
                     });
                 }
+
                 if (!called) {
                     self.alertError(errmsg, ps.page, ps.pageUrl, ps);
                     postCancel = true;
                 }
             }
+
             return {
                 doneNames   : doneNames,
                 failNames   : failNames,
@@ -189,22 +174,21 @@ update(Tombloo.Service, {
                 postSuccess : !postCancel
             };
         }).addErrback(function(err) {
-            
             self.alertError(err, ps.page, ps.pageUrl, ps);
         }).addCallback(function(postedInfo) {
             var title, sep, message, info, retryMsg;
-            
+
             info = postedInfo || {};
             if (info && info.postSuccess) {
-                
                 sep = '';
                 title = '';
-                
+
                 if (info.retry) {
                     retryMsg = format('[RETRY]: %s',
                         info.retry
                     );
                 }
+
                 // リトライ通知だけの場合は doneNames で判断
                 if (info.doneNames && info.doneNames.length) {
                     title += format('[%s] POST Completed.',
@@ -212,20 +196,25 @@ update(Tombloo.Service, {
                     );
                     sep = ' \n';
                 }
+
                 if (info.retry) {
                     title += format('%s%s',
                         sep,
                         retryMsg
                     );
                 }
-                
+
                 message = format('%s \n%s',
                     ps.item || ps.page,
                     ps.itemUrl || ps.pageUrl
                 );
-                
+
+                // POST先サービス名一覧を追加
+                title += ' (' + [].concat(posters).map(function(p) {
+                    return p.name;
+                }).join(', ') + ')';
+
                 // 通知メッセージ 
-                
                 // 「Tumblrのリブログ/ポスト残量を表示するTomblooパッチ」が有効の場合は表示
                 // https://github.com/polygonplanet/tombloo/blob/master/tombloo.model.tumblr.postlimit.message.js
                 if (isTumblr && Tumblr.ReblogPostLimit) {
@@ -323,6 +312,4 @@ function format(base) {
     return stringify(base).replace(re, rep);
 }
 
-
 })();
-
