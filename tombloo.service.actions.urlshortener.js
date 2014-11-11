@@ -11,16 +11,11 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.04
- * @date       2013-03-24
+ * @version    1.05
+ * @date       2014-11-11
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
- *              - Blog    : http://polygon-planet-log.blogspot.com/
- *              - Twitter : http://twitter.com/polygon_planet
- *              - Tumblr  : http://polygonplanet.tumblr.com/
- * @license    Same as Tombloo
+ * @license    Public Domain
  * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.actions.urlshortener.js
- *
- * Tombloo: https://github.com/to/tombloo/wiki
  *
  * Based: http://efcl.info/2009/0831/res1276/
  */
@@ -196,7 +191,7 @@ Tombloo.Service.actions.register({
         '3rtTT6SLfA4A4+5PKNJjYmKC2tpaAHRdR3qwMvXIGP6AmnQ6bSpSSgAGv3glbKTNnyP/xlOv9g4o',
         'iUSSgOojl8uxsbGBpmm0trbS1NSEI5zS3qM95ubmHitSSgAA2tvbfY399eOhx5GPmxubq7UqTVFQ',
         'eKCsllyfu90pus4qKFiW5WYymbyu61f/B/q4pKqmYKY6AAAAAElFTkSuQmCC'
-    ].join('\n'),
+    ].join(''),
     children : [
         createMenuItem({
             label   : 'link',
@@ -291,7 +286,7 @@ Tombloo.Service.actions.register({
                 'iSPHebRt8o9wmL72Oa5ysYXLgWQvw50n+Ts3x5WlWScs23uWz2ZrhtYagFe+fjkqPHFeeHL83ZH3',
                 'TWQKrcMYPoNkvMKnF0/T1zrM1aW53Qbd3rtwZmkdwNBaAwAAMHJm6A0p5AdSqn4lVQIAKO/47yeF',
                 'IlBTMrB9VgsAgP8BON24AjtZfcoAAAAASUVORK5CYII='
-            ].join('\n'),
+            ].join(''),
             check : function(ctx) {
                 return true;
             },
@@ -455,7 +450,7 @@ function generateExpandXUL() {
                     "var d = new Deferred();",
                     "d.addCallback(function() {",
                         "expandDialog.style.cursor = 'wait';",
-                        "longUrl.value = '処理中…';",
+                        "longUrl.value = 'processing...';",
                     "}).addCallback(function() {",
                         "longUrl.value = expandUrls(shortUrl.value);",
                     "}).addBoth(function() {",
