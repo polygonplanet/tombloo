@@ -5,11 +5,13 @@
  * 肌色っぽい画像だけでてきてクリックするとLocalに保存される
  * HighResがあればHighResで保存する
  *
- * @version   1.0.1
- * @date      2014-08-09
+ * @version   1.0.2
+ * @date      2014-11-11
  * @license   MIT
  * @updateURL https://github.com/polygonplanet/tombloo/raw/master/tombfix.tumblr.archivedownload.js
  */
+(function() {
+'use strict';
 
 Tombfix.Service.actions.register({
     name: 'Download archive photos',
@@ -448,3 +450,5 @@ Tombfix.Service.actions.register({
         return true;
     }
 }, '----');
+
+}());
