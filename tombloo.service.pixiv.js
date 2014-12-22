@@ -31,14 +31,11 @@
  *
  * -----------------------------------------------------------------------
  *
- * @version    1.46
- * @date       2014-10-14
+ * @version    1.47
+ * @date       2014-12-22
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
- *              - Twitter: http://twitter.com/polygon_planet
  * @license    Public Domain
  * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.pixiv.js
- *
- * Tombloo: https://github.com/to/tombloo/wiki
  */
 //-----------------------------------------------------------------------------
 (function(undefined) {
@@ -68,19 +65,20 @@ var pixivProto = {
     MANGA_PAGE_REGEXP  : /\b(?:mode=manga)\b/,
     PIXIV_HOST_REGEXP  : /^(?:[\w-]+\.)*?pixiv\.net(?:\b|$)/,
     
-    XPATH_NEXT_PAGE_HREF: '//*[contains(@class,"works_display")]//a/@href',
+    XPATH_NEXT_PAGE_HREF: '//*[contains(@class,"works_display")]//img/@src',
     
     pixivDocKey: 0,
     pixivDocuments: {},
     check: function(ctx) {
-        var result = false, checkUrl;
-        if ((ctx.onImage || ctx.onLink) && this.PIXIV_HOST_REGEXP.test(ctx.host)) {
-            checkUrl = this.getNextPageURL(ctx);
-            if (checkUrl && checkUrl.length > 21) {
-                result = true;
+        if (this.PIXIV_HOST_REGEXP.test(ctx.host)) {
+            if (ctx.onImage || ctx.onLink || (ctx.target && ctx.target.querySelector('img'))) {
+                var url = this.getNextPageURL(ctx);
+                if (url && url.length > 21) {
+                    return true;
+                }
             }
         }
-        return result;
+        return false;
     },
     isThumbnailPage: function(ctx) {
         var result = false, img, link, re, src, i, href, bg, bgRe, m;
@@ -138,7 +136,7 @@ var pixivProto = {
             throw new Error('Cannot get URL:\n' + url + '\n');
         }
     },
-    getNextPageURL: function(ctx) {
+    getNextPageURL: function(ctx, curDoc) {
         var url, xpath, doc, base, type, node, i, patterns = {
             illust: {
                 by: /\b(?:(mode=)(?:medium|[a-z]+))\b/i,
@@ -155,28 +153,45 @@ var pixivProto = {
         };
         base = this.BASE_URL.replace(/\/+$/g, '');
         doc = this.getDocument(false, ctx);
-        if (this.isThumbnailPage(ctx)) {
-            try {
-                node = ctx.target.parentNode;
-                for (i = 0; i < 3; i++) {
-                    if (node.href) {
-                        break;
-                    }
-                    node = node.parentNode;
-                }
-                url = node.href;
-            } catch (e) {}
-        } else if (ctx && ctx.href && this.isMangaPage(ctx.href)) {
-            url = ctx.href;
-        } else {
-            xpath = this.XPATH_NEXT_PAGE_HREF;
-            url = $x(xpath, doc);
+
+        if (curDoc) {
+            var curHref = $x('//*[contains(@class, "works_display")]//a/@href', curDoc);
+            if (curHref) {
+                url = curHref;
+            }
         }
+
+        if (!url) {
+            if (this.isThumbnailPage(ctx)) {
+                try {
+                    node = ctx.target.parentNode;
+                    for (i = 0; i < 3; i++) {
+                        if (node.href) {
+                            break;
+                        }
+                        node = node.parentNode;
+                    }
+                    url = node.href;
+                } catch (e) {}
+            } else if (ctx && ctx.href && this.isMangaPage(ctx.href)) {
+                url = ctx.href;
+            } else if (ctx.target && ctx.target.parentNode &&
+                       ctx.target.parentNode.href &&
+                       this.isMangaPage(ctx.target.parentNode.href)) {
+                url = ctx.target.parentNode.href;
+            }
+
+            if (!url) {
+                xpath = this.XPATH_NEXT_PAGE_HREF;
+                url = $x(xpath, doc);
+            }
+        }
+
         if (!url || typeof url !== 'string') {
             url = null;
         } else {
             url = url.replace(/^\/+/g, '');
-            if (url.indexOf(base) === -1) {
+            if (!/^https?:/.test(url) && url.indexOf(base) === -1) {
                 url = [base, url].join('/');
             }
             if (this.isMangaPage(url)) {
@@ -229,15 +244,14 @@ var pixivProto = {
         }
         return uri;
     },
-    getFullSizeImageURL: function(isManga, res) {
-        var url, text;
-        text = res && res.responseText || '';
+    getFullSizeImageURL: function(isManga, res, url) {
+        var text = res && res.responseText || '';
         if (isManga) {
-            url = this.getMangaFirstImage(text);
+            return this.getMangaFirstImage(text);
         } else {
-            url = this.parseFullSizePage(text);
+            var originalSizeUrl = url.replace(/(pixiv\.net\/)\w\/\d+x\d+\/img-master(\/.+)_master\d+(\.\w+)$/, '$1img-original$2$3');
+            return originalSizeUrl;
         }
-        return url;
     },
     parseFullSizePage: function(text) {
         var url, xpath;
@@ -397,14 +411,25 @@ var pixivProto = {
             
             // download() は referrer を設定できない(と思う)ので
             // request() でバイナリデータ(キャッシュ)を取得
-            src = self.getFullSizeImageURL(false, res);
-            return request(src, {
+            var originalSizeUrl = self.getFullSizeImageURL(false, res, url);
+
+            return request(originalSizeUrl, {
                 referrer: url
             }).addCallback(function(data) {
                 return {
                     data: data,
-                    src: src
+                    src: originalSizeUrl
                 };
+            }).addErrback(function(err) {
+                // オリジナルサイズが存在しない
+                return request(url, {
+                    referrer: url
+                }).addCallback(function(data) {
+                    return {
+                        data: data,
+                        src: url
+                    };
+                });
             });
         });
     },
@@ -488,22 +513,28 @@ var pixivProto = {
             referrer: ctx.href
         }).addCallback(function(res) {
             var d, uri, doc, tags, extractor;
-            
+
             self.resolveLogin(res);
-            
             doc = convertToHTMLDocument(res.responseText);
-            
+
             // document を置換してイラストページにいることにする
             ctx.title = doc.title || $x('//title/text()', doc) || ctx.title;
             ctx.href = url;
             ctx.target = doc;
+
             self.pixivDocuments[++self.pixivDocKey] = doc;
             ctx.pixivDocKey = self.pixivDocKey;
             self.normalizeContext(ctx);
-            uri = self.getNextPageURL(ctx);
+            uri = self.getNextPageURL(ctx, doc);
             self.checkNextPageURL(uri);
+
             tags = self.getTags(ctx);
-            extractor = self.getEachExtractor(ctx);
+            if (self.isMangaPage(uri)) {
+                extractor = self.extractManga;
+            } else {
+                extractor = self.getEachExtractor(ctx, true);
+            }
+
             try {
                 d = extractor.call(self, ctx, uri).addCallback(function(data) {
                     try {
@@ -525,9 +556,9 @@ var pixivProto = {
             return maybeDeferred(d);
         });
     },
-    getEachExtractor: function(ctx) {
+    getEachExtractor: function(ctx, fromThumbnail) {
         var isManga, isMangaView, isThumbnail, extractor;
-        isThumbnail = this.isThumbnailPage(ctx);
+        isThumbnail = !fromThumbnail && this.isThumbnailPage(ctx);
         isMangaView = this.isMangaPage(ctx.href);
         isManga = this.isMangaPage(this.getNextPageURL(ctx));
         if (isThumbnail) {
@@ -1074,7 +1105,7 @@ update(pixivThumbsExpander, {
     // 画像読み込みエラー秒数
     loadTimeLimit: 10,
     debugMode: false,
-    loadingCanvas: defineLoadingCanvas(),
+    loading: null,
     fadings: [],
     isRankingPage: false,
     isStaccfeedPage: false,
@@ -1087,7 +1118,6 @@ update(pixivThumbsExpander, {
             if (this.expanding) {
                 this.clearProps();
                 callLater(0, function() {
-                    self.initLoadingCanvas();
                     self.searchImageNodes();
                 });
             }
@@ -1135,56 +1165,6 @@ update(pixivThumbsExpander, {
                 }
             } catch (e) {
                 this.debug(e);
-            }
-        }
-    },
-    initLoadingCanvas: function() {
-        var doc, margin, loading, size;
-        doc = this.getDocument();
-        if (!('canvas' in this.loadingCanvas) &&
-            !doc.querySelector('.' + this.loadingId)) {
-            try {
-                this.loadingCanvas = this.loadingCanvas({
-                    target: doc.body,
-                    size: 16,
-                    interval: 120,
-                    doc: doc,
-                    hidden: true
-                });
-                size = this.viewSize.s;
-                loading = this.loadingCanvas;
-                margin = [
-                    Math.floor(
-                        Math.max(10, (size.height / 2) - (loading.size / 2))
-                    ),
-                    Math.floor(
-                        Math.max(10, (size.width / 2) - (loading.size / 2))
-                    )
-                ].map(function(m) {
-                    return m + 'px';
-                }).join(' ');
-                
-                attr(this.loadingCanvas.canvas, {
-                    className: this.loadingId,
-                    style: {
-                        margin: margin,
-                        display: 'none',
-                        background: 'transparent',
-                        verticalAlign: 'middle',
-                        MozUserSelect: 'none',
-                        userSelect: 'none'
-                    }
-                });
-            } catch (e) {
-                this.debug(e);
-                
-                // loadingCanvas のためだけに動作しなくなるのを防止
-                this.loadingCanvas = {
-                    draw: function() {},
-                    stop: function() {},
-                    canvas: doc.createElement('span')
-                };
-                this.loadingCanvas.canvas.innerHTML = 'Loading...';
             }
         }
     },
@@ -1356,7 +1336,6 @@ update(pixivThumbsExpander, {
             
             callLater(0, function() {
                 if (self.expanding) {
-                    self.initLoadingCanvas();
                     self.registerNodeInserted();
                     self.searchImageNodes();
                     
@@ -1972,7 +1951,6 @@ update(pixivThumbsExpander, {
         }
         doc = this.getDocument();
         try {
-            this.loadingCanvas.stop();
             hide(loading);
             removeNode(loading);
         } catch (e) {}
@@ -2006,21 +1984,22 @@ update(pixivThumbsExpander, {
             return;
         }
         doc = this.getDocument();
-        try {
-            this.loadingCanvas.canvas.parentNode.removeChild(this.loadingCanvas.canvas);
-        } catch (e) {
-            // ignore
-        } finally {
-            this.loadingCanvas = defineLoadingCanvas();
+
+        if (this.loading) {
+            try {
+                this.loading.parentNode.removeChild(this.loading);
+            } catch (e) {
+                // TypeError: can't access dead object
+            }
         }
-        this.initLoadingCanvas();
-        loading = this.loadingCanvas.canvas;
+        this.loading = null;
+        this.loading = createLoading(doc);
+        this.loading.className = this.loadingId;
         hide(simg);
-        nop.appendChild(loading);
-        show(loading);
+        nop.appendChild(this.loading);
+        show(this.loading);
         css(nop, { display: 'block' });
-        this.loadingCanvas.draw();
-        return succeed(loading);
+        return succeed(this.loading);
     },
     insertImage: function(src, nop, simg, mimg, callback) {
         var self = this, doc, loading, loaded, raise, failed, d;
@@ -2032,7 +2011,7 @@ update(pixivThumbsExpander, {
         doc = this.getDocument();
         callback = callback || (function() {});
         try {
-            loading = this.loadingCanvas.canvas;
+            loading = this.loading;
             failed = false;
             loaded = false;
             raise = function() {
@@ -2090,7 +2069,6 @@ update(pixivThumbsExpander, {
                 // 規定秒間経ってから onload が呼ばれた場合は遅延させる
                 callLater(failed ? 3.5 : 0.075, function() {
                     try {
-                        self.loadingCanvas.stop();
                         hide(loading);
                         removeNode(loading);
                     } catch (e) {}
@@ -2860,136 +2838,36 @@ function removeNode(elem) {
 }
 
 
-// Loading circle animation by Canvas
-function defineLoadingCanvas() {
+// Loading circle animation
+function createLoading(doc) {
+    doc || (doc = currentDocument());
 
-    function loadingCanvas(options) {
-        return new loadingCanvas.prototype.init(options);
-    }
-    
-    loadingCanvas.prototype = {
-        constructor: loadingCanvas,
-        defaultOpts: {
-            target: null,
-            size: 30,
-            interval: 80,
-            doc: document,
-            hidden: false
-        },
-        target: null,
-        size: null,
-        interval: null,
-        color: {
-            r: 128,
-            g: 128,
-            b: 128,
-            rgb: null
-        },
-        alphas: [],
-        timer: null,
-        canvas: null,
-        ctx: null,
-        sz: {},
-        init: function(options) {
-            var opts, doc;
-            if (typeof options !== 'object') {
-                options = {target: String(options)};
-            }
-            opts = this.extend(this.defaultOpts, options || {});
-            if (opts.target) {
-                if (opts.target.nodeType == 1) {
-                    this.target = opts.target;
-                } else if (opts.target.substring) {
-                    this.target = opts.doc.querySelector(opts.target);
-                }
-            }
-            this.size = opts.size;
-            this.interval = opts.interval;
-            if (!this.target || !this.size || !this.interval) {
-                throw new Error('Invalid parameters on init');
-            }
-            this.canvas = opts.doc.createElement('canvas');
-            if (opts.hidden) {
-                this.canvas.style.display = 'none';
-            }
-            this.target.appendChild(this.canvas);
-            this.ctx = this.canvas.getContext('2d');
-            this.setSize();
-            return this;
-        },
-        draw: function(interval) {
-            var self = this, time, callback;
-            time = (interval || this.interval) / 1000;
-            callback = function() {
-                self.drawImage();
-                if (self.timer) {
-                    callLater(time, callback);
-                }
-            };
-            this.timer = true;
-            callLater(time, callback);
-            return this;
-        },
-        setSize: function () {
-            this.canvas.width = this.size;
-            this.canvas.height = this.size;
-            this.sz = {
-                r: this.size / 2,
-                w: Math.round(this.size * 0.1),
-                h: Math.round(this.size * 0.25)
-            };
-            this.ctx.setTransform(1, 0, 0, 1, this.sz.r, this.sz.r);
-            return this;
-        },
-        drawImage: function() {
-            var i, color, r, w, h;
-            r = this.sz.r;
-            w = this.sz.w;
-            h = this.sz.h;
-            this.ctx.clearRect(-r, -r, r * 2, r * 2);
-            for (i = 0; i < 12; i++) {
-                if (this.alphas.length < 12) {
-                    this.alphas.push(i / 12);
-                }
-                color = [
-                    'rgba(',
-                    [
-                        this.color.r,
-                        this.color.g,
-                        this.color.b,
-                        this.alphas[i]
-                    ].join(','),
-                    ')'
-                ].join('');
-                this.ctx.fillStyle = color;
-                this.ctx.strokeStyle = 'transparent';
-                this.ctx.beginPath();
-                this.ctx.moveTo(0 - w / 4, r - h);
-                this.ctx.quadraticCurveTo(0, r - h - w / 2, 0 + w / 4, r - h);
-                this.ctx.lineTo(0 + w / 2, r - w / 3);
-                this.ctx.quadraticCurveTo(0, r + w / 3, 0 - w / 2, r - w / 3);
-                this.ctx.closePath();
-                this.ctx.fill();
-                this.ctx.stroke();
-                this.ctx.rotate(30 * Math.PI / 180);
-            }
-            this.alphas.splice(0, 0, this.alphas[11]).pop();
-            return this;
-        },
-        stop: function() {
-            this.timer = false;
-            return this;
-        },
-        extend: function(a, b) {
-            for (var p in b) {
-                a[p] = b[p];
-            }
-            return a;
-        }
-    };
-    loadingCanvas.prototype.init.prototype = loadingCanvas.prototype;
-    
-    return loadingCanvas;
+    var wrapper = doc.createElement('div');
+    wrapper.style.marginLeft = wrapper.style.marginRight = '15px';
+    wrapper.style.marginTop = wrapper.style.marginBottom = '30px';
+    wrapper.style.textAlign = 'center';
+
+    var loading = doc.createElement('img');
+    loading.src = 'data:image/gif;base64,' + [
+        'R0lGODlhEAAQAPQAAP///1VVVfr6+np6eqysrFhYWG5ubuPj48TExGNjY6Ojo5iYmOzs7Lq6utjY',
+        '2ISEhI6OjgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH/C05F',
+        'VFNDQVBFMi4wAwEAAAAh/hpDcmVhdGVkIHdpdGggYWpheGxvYWQuaW5mbwAh+QQJCgAAACwAAAAA',
+        'EAAQAAAFUCAgjmRpnqUwFGwhKoRgqq2YFMaRGjWA8AbZiIBbjQQ8AmmFUJEQhQGJhaKOrCksgEla',
+        '+KIkYvC6SJKQOISoNSYdeIk1ayA8ExTyeR3F749CACH5BAkKAAAALAAAAAAQABAAAAVoICCKR9KM',
+        'aCoaxeCoqEAkRX3AwMHWxQIIjJSAZWgUEgzBwCBAEQpMwIDwY1FHgwJCtOW2UDWYIDyqNVVkUbYr',
+        '6CK+o2eUMKgWrqKhj0FrEM8jQQALPFA3MAc8CQSAMA5ZBjgqDQmHIyEAIfkECQoAAAAsAAAAABAA',
+        'EAAABWAgII4j85Ao2hRIKgrEUBQJLaSHMe8zgQo6Q8sxS7RIhILhBkgumCTZsXkACBC+0cwF2GoL',
+        'LoFXREDcDlkAojBICRaFLDCOQtQKjmsQSubtDFU/NXcDBHwkaw1cKQ8MiyEAIfkECQoAAAAsAAAA',
+        'ABAAEAAABVIgII5kaZ6AIJQCMRTFQKiDQx4GrBfGa4uCnAEhQuRgPwCBtwK+kCNFgjh6QlFYgGO7',
+        'baJ2CxIioSDpwqNggWCGDVVGphly3BkOpXDrKfNm/4AhACH5BAkKAAAALAAAAAAQABAAAAVgICCO',
+        'ZGmeqEAMRTEQwskYbV0Yx7kYSIzQhtgoBxCKBDQCIOcoLBimRiFhSABYU5gIgW01pLUBYkRItAYA',
+        'qrlhYiwKjiWAcDMWY8QjsCf4DewiBzQ2N1AmKlgvgCiMjSQhACH5BAkKAAAALAAAAAAQABAAAAVf',
+        'ICCOZGmeqEgUxUAIpkA0AMKyxkEiSZEIsJqhYAg+boUFSTAkiBiNHks3sg1ILAfBiS10gyqCg0Ua',
+        'FBCkwy3RYKiIYMAC+RAxiQgYsJdAjw5DN2gILzEEZgVcKYuMJiEAOwAAAAAAAAAAAA=='
+    ].join('');
+
+    wrapper.appendChild(loading);
+    return wrapper;
 }
 
 
