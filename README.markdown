@@ -33,12 +33,6 @@ Tombloo という表記のままだったりしますが、Tombfix で動作確�
    ポスト完了時に通知メッセージを表示するパッチ。  
    [POST完了時に通知メッセージを表示するTomblooパッチ | 圧縮電子どうのこうの][tombloo.service.post.notify.js]
 
-*  **tombloo.model.googleplus.circle.js**  
-   Google+で指定のサークルにポストできるようにするパッチ。  
-   ※ このスクリプトは [YungSangさん製の Google+ モデル][model.gplus.js] が必要です  
-   [raw: tombloo.model.googleplus.circle.js][tombloo.model.googleplus.circle.js(raw)]  
-   [Google+で指定のサークルにポストできるようにするTomblooパッチ | 圧縮電子どうのこうの][tombloo.model.googleplus.circle.js]
-
 *  **tombloo.extension.update.patches.js**  
    [raw: tombloo.extension.update.patches.js][tombloo.extension.update.patches.js(raw)]  
    インストール済みのパッチすべてを一括でアップデートできるパッチ。  
@@ -53,11 +47,6 @@ Tombloo という表記のままだったりしますが、Tombfix で動作確�
    [raw: tombloo.service.actions.urlshortener.js][tombloo.service.actions.urlshortener.js(raw)]  
    リンクやページの短縮URLをクリップボードにコピーできるパッチ。  
    [ページやリンクの短縮URLをクリップボードにコピーできるTomblooパッチ | 圧縮電子どうのこうの][tombloo.service.actions.urlshortener.js]
-
-*  **tombloo.extractor.googleplus.js**  
-   [raw: tombloo.extractor.googleplus.js][tombloo.extractor.googleplus.js(raw)]  
-   Google+ストリーム上の画像を原寸大でポストできるパッチ。  
-   [Google+ストリーム上の画像を原寸大でポストできるTomblooパッチ | 圧縮電子どうのこうの][tombloo.extractor.googleplus.js]
 
 *  **tombloo.service.actions.changeacount.resize.js**  
    [raw: tombloo.service.actions.changeacount.resize.js][tombloo.service.actions.changeacount.resize.js(raw)]  
