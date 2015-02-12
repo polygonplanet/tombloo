@@ -53,11 +53,6 @@ Tombloo という表記のままだったりしますが、Tombfix で動作確�
    「アカウントの切り替え」ダイアログを内容サイズに合わせてリサイズするパッチ。  
    [「アカウントの切り替え」ダイアログを内容サイズに合わせてリサイズするTomblooパッチ | 圧縮電子どうのこうの][tombloo.service.actions.changeacount.resize.js]
 
-*  **tombloo.extractor.tumblr.reblog.tags.js**  
-   [raw: tombloo.extractor.tumblr.reblog.tags.js][tombloo.extractor.tumblr.reblog.tags.js(raw)]  
-   Tumblrでリブログ時にタグも一緒にポストできるパッチ。  
-   [Tumblrでリブログ時にタグの継承を可能にするTomblooパッチ | 圧縮電子どうのこうの][tombloo.extractor.tumblr.reblog.tags.js]
-
 *  **tombloo.service.actions.copytitle.js**  
    [raw: tombloo.service.actions.copytitle.js][tombloo.service.actions.copytitle.js(raw)]  
    ページのタイトルやURLをクリップボードにコピーするだけのパッチ。  
@@ -92,11 +87,6 @@ Tombloo という表記のままだったりしますが、Tombfix で動作確�
    [raw: tombloo.model.desktop.js][tombloo.model.desktop.js(raw)]  
    デスクトップに保存するmodelを追加するTombfixパッチ。  
    [デスクトップに保存するmodelを追加するTombfixパッチ | 圧縮電子どうのこうの][tombloo.model.desktop.js]
-
-*  **tombfix.model.tumblr.photoset.local.js**  
-   [raw: tombfix.model.tumblr.photoset.local.js][tombfix.model.tumblr.photoset.local.js(raw)]  
-   TumblrでPhotosetをローカル保存する時、全画像を取得するTombfixパッチ。  
-   [TumblrでPhotosetをローカル保存する時、全画像を取得するTombfixパッチ | 圧縮電子どうのこうの][tombfix.model.tumblr.photoset.local.js]
 
 
 
@@ -138,10 +128,6 @@ Tombloo という表記のままだったりしますが、Tombfix で動作確�
 [tombloo.service.actions.changeacount.resize.js(raw)]: https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.actions.changeacount.resize.js "tombloo.service.actions.changeacount.resize.js(raw)"
 
 
-[tombloo.extractor.tumblr.reblog.tags.js]: http://polygon-planet-log.blogspot.com/2011/08/tumblrtombloo_10.html "Tumblrでリブログ時にタグの継承を可能にするTomblooパッチ | 圧縮電子どうのこうの"
-[tombloo.extractor.tumblr.reblog.tags.js(raw)]: https://github.com/polygonplanet/tombloo/raw/master/tombloo.extractor.tumblr.reblog.tags.js "tombloo.extractor.tumblr.reblog.tags.js(raw)"
-
-
 [tombloo.service.actions.copytitle.js]: http://polygon-planet-log.blogspot.com/2011/10/urltombloo_20.html "ページのタイトルや(非圧縮の)URLをクリップボードにコピーするだけのTomblooパッチ | 圧縮電子どうのこうの"
 [tombloo.service.actions.copytitle.js(raw)]: https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.actions.copytitle.js "tombloo.service.actions.copytitle.js(raw)"
 
@@ -172,10 +158,6 @@ Tombloo という表記のままだったりしますが、Tombfix で動作確�
 
 [tombloo.model.desktop.js]: http://polygon-planet-log.blogspot.jp/2013/09/tombfix-model-local-desktop-patch.html "デスクトップに保存するmodelを追加するTombfixパッチ | 圧縮電子どうのこうの"
 [tombloo.model.desktop.js(raw)]: https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.desktop.js "tombloo.model.desktop.js(raw)"
-
-
-[tombfix.model.tumblr.photoset.local.js]: http://polygon-planet-log.blogspot.jp/2013/09/tombfix-tumblr-photoset-local-patch.html "TumblrでPhotosetをローカル保存する時、全画像を取得するTombfixパッチ | 圧縮電子どうのこうの"
-[tombfix.model.tumblr.photoset.local.js(raw)]: https://github.com/polygonplanet/tombloo/raw/master/tombfix.model.tumblr.photoset.local.js "tombfix.model.tumblr.photoset.local.js(raw)"
 
 
 
