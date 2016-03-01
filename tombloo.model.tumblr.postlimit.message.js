@@ -15,10 +15,10 @@
  *
  * --------------------------------------------------------------------------
  *
- * @version    1.11
- * @date       2012-04-01
+ * @version    1.12
+ * @date       2016-03-01
  * @author     polygon planet <polygon.planet.aqua@gmail.com>
- *              - Twitter : http://twitter.com/polygon_planet
+ *              - Twitter : https://twitter.com/polygon_planet
  * @license    Same as Tombloo
  * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.model.tumblr.postlimit.message.js
  *
@@ -173,13 +173,12 @@ update(Tumblr, {
             resetAll = function(type) {
                 'POST REBLOG'.split(' ').forEach(function(key) {
                     if (!type || type === key) {
-                        let (counter = env.getPref(KEY_COUNT[key])) {
-                            counter = (counter ? JSON.parse(counter) : {}) || {};
-                            keys(counter).forEach(function(k) {
-                                counter[k] = 0;
-                            });
-                            env.setPref(KEY_COUNT[key], JSON.stringify(counter));
-                        }
+                        let counter = env.getPref(KEY_COUNT[key]);
+                        counter = (counter ? JSON.parse(counter) : {}) || {};
+                        keys(counter).forEach(function(k) {
+                            counter[k] = 0;
+                        });
+                        env.setPref(KEY_COUNT[key], JSON.stringify(counter));
                     }
                 });
             };
@@ -211,10 +210,9 @@ update(Tumblr, {
                         counter[user] = value;
                         env.setPref(KEY_COUNT.POST, JSON.stringify(counter));
                         if (value >= POST_LIMIT) {
-                            let (reblogCounter = getCounter(KEY_COUNT.REBLOG)) {
-                                reblogCounter[user] = REBLOG_LIMIT;
-                                env.setPref(KEY_COUNT.REBLOG, JSON.stringify(reblogCounter));
-                            }
+                            let reblogCounter = getCounter(KEY_COUNT.REBLOG);
+                            reblogCounter[user] = REBLOG_LIMIT;
+                            env.setPref(KEY_COUNT.REBLOG, JSON.stringify(reblogCounter));
                         }
                         return value;
                     });
@@ -294,10 +292,9 @@ update(Tumblr, {
                         counter[user] = value;
                         env.setPref(KEY_COUNT.REBLOG, JSON.stringify(counter));
                         if (value >= REBLOG_LIMIT) {
-                            let (postCounter = getCounter(KEY_COUNT.POST)) {
-                                postCounter[user] = POST_LIMIT;
-                                env.setPref(KEY_COUNT.POST, JSON.stringify(postCounter));
-                            }
+                            let postCounter = getCounter(KEY_COUNT.POST);
+                            postCounter[user] = POST_LIMIT;
+                            env.setPref(KEY_COUNT.POST, JSON.stringify(postCounter));
                         }
                         return value;
                     });
@@ -365,7 +362,8 @@ addAround(Tumblr, 'favor', function(proceed, args) {
 
 
 // メニューを登録
-let (LABEL = 'Tumblr Post/Reblog Limit') {
+{
+    let LABEL = 'Tumblr Post/Reblog Limit';
     Tombloo.Service.actions.register({
         name  : LABEL,
         type  : 'context,menu',
