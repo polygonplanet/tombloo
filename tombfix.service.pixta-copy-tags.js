@@ -38,7 +38,9 @@ Tombfix.Service.actions.register({
     const url = this._getPhotoUrl(ctx);
     if (url) {
       this._getTags(url).addCallback(uniqTags => {
-        copyString(uniqTags.join(','));
+        const uniqTagsText = uniqTags.join(',');
+        copyString(uniqTagsText);
+        notify('コピーしました', uniqTagsText, notify.ICON_INFO);
       });
     }
   }
