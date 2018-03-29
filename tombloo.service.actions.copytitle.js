@@ -1,40 +1,18 @@
 /**
- * Service.Actions.CopyTitle - Tombloo patches
- *
  * ページのタイトルやURLをクリップボードにコピーするだけのパッチ
  *
- * 機能:
- * --------------------------------------------------------------------------
- * [Service Actions Copy Title patch]
- *
- * - ページのタイトルやURLをクリップボードにコピーする
- * - Amazonの長いURLを短くしてコピーする
- *
- * --------------------------------------------------------------------------
- *
- * @version    1.02
- * @date       2013-03-24
- * @author     polygon planet <polygon.planet.aqua@gmail.com>
- *              - Blog    : http://polygon-planet-log.blogspot.com/
- *              - Twitter : http://twitter.com/polygon_planet
- *              - Tumblr  : http://polygonplanet.tumblr.com/
- * @license    Same as Tombloo
+ * @version    1.03
+ * @license    Public Domain
  * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.actions.copytitle.js
- *
- * Tombloo: https://github.com/to/tombloo/wiki
  */
-(function(undefined) {
+(function() {
 
-
-// Define language
 var LANG = function(n) {
     return ((n && (n.language || n.userLanguage     ||
             n.browserLanguage || n.systemLanguage)) ||
             'en').split(/[^a-zA-Z0-9]+/).shift().toLowerCase();
 }(navigator);
 
-
-// UI labels
 var LABELS = {
     translate : function(name) {
         return LABELS[name][LANG === 'en' && LANG || 'ja'];
@@ -51,6 +29,10 @@ var LABELS = {
         ja : 'このページのURLをコピー',
         en : 'Copy the page URL'
     },
+    MENU_COPY_TITLE_AND_URL : {
+        ja : 'このページのタイトルとURLをコピー',
+        en : 'Copy the page title and URL'
+    },
     MENU_COPY_AMAZON : {
         ja : 'AmazonのURLを短くしてコピー',
         en : 'Copy the short Amazon URL'
@@ -58,8 +40,7 @@ var LABELS = {
 };
 
 
-// メニューを登録
-Tombloo.Service.actions.register({
+Tombfix.Service.actions.register({
     name : LABELS.translate('MENU_TOP'),
     type : 'context',
     // icon: page_copy.png : http://www.famfamfam.com/
@@ -85,7 +66,7 @@ Tombloo.Service.actions.register({
             return ctx && ctx.title;
         },
         execute : function(ctx) {
-            copyString(ctx.title);
+            copyAndNotify(ctx.title);
         }
     }, {
         name  : LABELS.translate('MENU_COPY_URL'),
@@ -94,7 +75,16 @@ Tombloo.Service.actions.register({
             return ctx && ctx.href;
         },
         execute : function(ctx) {
-            copyString(ctx.href);
+            copyAndNotify(ctx.href);
+        }
+    }, , {
+        name  : LABELS.translate('MENU_COPY_TITLE_AND_URL'),
+        type  : 'context',
+        check : function(ctx) {
+            return ctx && ctx.href;
+        },
+        execute : function(ctx) {
+            copyAndNotify(ctx.title + ' - ' + ctx.href);
         }
     }, {
         name  : LABELS.translate('MENU_COPY_AMAZON'),
@@ -112,11 +102,16 @@ Tombloo.Service.actions.register({
                 re = /^(https?:\/+[^\/]+\/).*$/,
                 url = asin && href.replace(re, '$1dp/' + asin) || 'error';
 
-            copyString(url);
+            copyAndNotify(url);
         }
     }]
 }, '----');
 
+
+function copyAndNotify(content) {
+  copyString(content);
+  notify('コピーしました', content, notify.ICON_INFO);
+}
 
 // -- Helper functions --
 
