@@ -1,7 +1,7 @@
 /**
  * ページのタイトルやURLをクリップボードにコピーするだけのパッチ
  *
- * @version    1.03
+ * @version    1.04
  * @license    Public Domain
  * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.actions.copytitle.js
  */
@@ -29,9 +29,13 @@ var LABELS = {
         ja : 'このページのURLをコピー',
         en : 'Copy the page URL'
     },
-    MENU_COPY_TITLE_AND_URL : {
-        ja : 'このページのタイトルとURLをコピー',
-        en : 'Copy the page title and URL'
+    MENU_COPY_TITLE_AND_URL_ONE_LINE : {
+        ja : 'このページのタイトルとURLをコピー(1行)',
+        en : 'Copy the page title and URL on one line'
+    },
+    MENU_COPY_TITLE_AND_URL_2_LINES : {
+        ja : 'このページのタイトルとURLをコピー(2行)',
+        en : 'Copy the page title and URL on 2 lines'
     },
     MENU_COPY_AMAZON : {
         ja : 'AmazonのURLを短くしてコピー',
@@ -77,14 +81,23 @@ Tombfix.Service.actions.register({
         execute : function(ctx) {
             copyAndNotify(ctx.href);
         }
-    }, , {
-        name  : LABELS.translate('MENU_COPY_TITLE_AND_URL'),
+    }, {
+        name  : LABELS.translate('MENU_COPY_TITLE_AND_URL_ONE_LINE'),
         type  : 'context',
         check : function(ctx) {
             return ctx && ctx.href;
         },
         execute : function(ctx) {
             copyAndNotify(ctx.title + ' - ' + ctx.href);
+        }
+    }, {
+        name  : LABELS.translate('MENU_COPY_TITLE_AND_URL_2_LINES'),
+        type  : 'context',
+        check : function(ctx) {
+            return ctx && ctx.href;
+        },
+        execute : function(ctx) {
+            copyAndNotify(ctx.title + '\n' + ctx.href);
         }
     }, {
         name  : LABELS.translate('MENU_COPY_AMAZON'),
