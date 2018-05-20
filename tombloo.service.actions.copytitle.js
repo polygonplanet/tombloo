@@ -1,7 +1,7 @@
 /**
  * ページのタイトルやURLをクリップボードにコピーするだけのパッチ
  *
- * @version    1.04
+ * @version    1.05
  * @license    Public Domain
  * @updateURL  https://github.com/polygonplanet/tombloo/raw/master/tombloo.service.actions.copytitle.js
  */
@@ -36,6 +36,10 @@ var LABELS = {
     MENU_COPY_TITLE_AND_URL_2_LINES : {
         ja : 'このページのタイトルとURLをコピー(2行)',
         en : 'Copy the page title and URL on 2 lines'
+    },
+    MENU_COPY_TITLE_AND_URL_FOR_TWITTER: {
+        ja : 'このページのタイトルとURLをコピー(Twitter用)',
+        en : 'Copy the page title and URL for Twitter'
     },
     MENU_COPY_AMAZON : {
         ja : 'AmazonのURLを短くしてコピー',
@@ -98,6 +102,15 @@ Tombfix.Service.actions.register({
         },
         execute : function(ctx) {
             copyAndNotify(ctx.title + '\n' + ctx.href);
+        }
+    }, {
+        name  : LABELS.translate('MENU_COPY_TITLE_AND_URL_FOR_TWITTER'),
+        type  : 'context',
+        check : function(ctx) {
+            return ctx && ctx.href;
+        },
+        execute : function(ctx) {
+            copyAndNotify(' "' + ctx.title + '" ' + ctx.href);
         }
     }, {
         name  : LABELS.translate('MENU_COPY_AMAZON'),
